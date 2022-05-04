@@ -251,3 +251,23 @@ class CUBImageFt(Dataset):
         torch.save(data_mat, self.gen_data_file)
 
         self._load_ft_mat()
+
+
+
+# Dataset for circles and discs
+
+class CIRCLES_DATASET(Dataset):
+
+    def __init__(self, data_path):
+        super.__init__(CIRCLES_DATASET)
+        self.data = torch.load(data_path) # tensor of size nb_sample, size_image, size_image
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __len__(self):
+        return len(self.data)
+
+
+
+

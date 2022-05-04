@@ -1,4 +1,4 @@
-# MNIST model specification
+# circles and discs model specification
 
 import torch
 import torch.distributions as dist
@@ -8,15 +8,18 @@ from numpy import prod, sqrt
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.utils import save_image, make_grid
+from torch.utils.data.dataset import TensorDataset
 
 from utils import Constants
 from vis import plot_embeddings, plot_kls_df
 from .vae import VAE
 
+
 # Constants
-dataSize = torch.Size([1, 28, 28])
+data_path = '../../../data/circles_and_discs/circles'
+dataSize = torch.Size([1, 32, 32])
 data_dim = int(prod(dataSize))
-hidden_dim = 400
+hidden_dim = 200
 
 
 def extra_hidden_layer():
@@ -25,7 +28,7 @@ def extra_hidden_layer():
 
 # Classes
 class Enc(nn.Module):
-    """ Generate latent parameters for MNIST image data. """
+    """ Generate latent parameters for image data. """
 
     def __init__(self, latent_dim, num_hidden_layers=1):
         super(Enc, self).__init__()
@@ -44,7 +47,7 @@ class Enc(nn.Module):
 
 
 class Dec(nn.Module):
-    """ Generate an MNIST image given a sample from the latent space. """
+    """ Generate an circle/disc image given a sample from the latent space. """
 
     def __init__(self, latent_dim, num_hidden_layers=1):
         super(Dec, self).__init__()
@@ -62,11 +65,11 @@ class Dec(nn.Module):
         return d, torch.tensor(0.75).to(z.device)  # mean, length scale
 
 
-class MNIST(VAE):
-    """ Derive a specific sub-class of a VAE for MNIST. """
+class CIRCLES(VAE):
+    """ Derive a specific sub-class of a VAE for circles and dics dataset. """
 
     def __init__(self, params):
-        super(MNIST, self).__init__(
+        super(CIRCLES, self).__init__(
             dist.Laplace,  # prior
             dist.Laplace,  # likelihood
             dist.Laplace,  # posterior
@@ -79,7 +82,7 @@ class MNIST(VAE):
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
             nn.Parameter(torch.zeros(1, params.latent_dim), **grad)  # logvar
         ])
-        self.modelName = 'mnist'
+        self.modelName = 'circles' # circles or discs
         self.dataSize = dataSize
         self.llik_scaling = 1.
 
@@ -88,18 +91,20 @@ class MNIST(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     @staticmethod
-    def getDataLoaders(batch_size, shuffle=True, device="cuda"):
+    def getDataLoaders(batch_size, shuffle=True, device="cuda" ):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
-        train = DataLoader(datasets.MNIST('../data', train=True, download=True, transform=tx),
+        # create datasets
+
+        train = DataLoader(TensorDataset(torch.load(data_path  + '_train.pt')),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.MNIST('../data', train=False, download=True, transform=tx),
+        test = DataLoader(TensorDataset(torch.load(data_path + '_test.pt')),
                           batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 
     def generate(self, runPath, epoch):
         N, K = 64, 9
-        samples = super(MNIST, self).generate(N, K).cpu()
+        samples = super(CIRCLES, self).generate(N, K).cpu()
         # wrangle things so they come out tiled
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(sqrt(K)), padding=0) for t in samples]
@@ -108,12 +113,12 @@ class MNIST(VAE):
                    nrow=int(sqrt(N)))
 
     def reconstruct(self, data, runPath, epoch):
-        recon = super(MNIST, self).reconstruct(data[:8])
+        recon = super(CIRCLES, self).reconstruct(data[:8])
         comp = torch.cat([data[:8], recon]).data.cpu()
         save_image(comp, '{}/recon_{:03d}.png'.format(runPath, epoch))
 
     def analyse(self, data, runPath, epoch):
-        zemb, zsl, kls_df = super(MNIST, self).analyse(data, K=10)
+        zemb, zsl, kls_df = super(CIRCLES, self).analyse(data, K=10)
         labels = ['Prior', self.modelName.lower()]
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch))
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))

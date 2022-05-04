@@ -1,4 +1,5 @@
-# MNIST-SVHN multi-modal model specification
+# Toy example with cercles and discs
+
 import os
 
 import torch
@@ -12,13 +13,14 @@ from torchvision.utils import save_image, make_grid
 
 from vis import plot_embeddings, plot_kls_df
 from .mmvae import MMVAE
-from .vae_mnist import MNIST
-from .vae_svhn import SVHN
+from .vae_circles import CIRCLES
 
 
-class MNIST_SVHN(MMVAE):
+data_path = '../data/circles_and_discs/'
+
+class CIRCLES_DISCS(MMVAE):
     def __init__(self, params):
-        super(MNIST_SVHN, self).__init__(dist.Laplace, params, MNIST, SVHN)
+        super(CIRCLES_DISCS, self).__init__(dist.Laplace, params, CIRCLES, CIRCLES)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
@@ -26,47 +28,44 @@ class MNIST_SVHN(MMVAE):
         ])
         self.vaes[0].llik_scaling = prod(self.vaes[1].dataSize) / prod(self.vaes[0].dataSize) \
             if params.llik_scaling == 0 else params.llik_scaling
-        self.modelName = 'mnist-svhn'
+        self.modelName = 'circles_discs'
 
     @property
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
-        if not (os.path.exists('../data/train-ms-mnist-idx.pt')
-                and os.path.exists('../data/train-ms-svhn-idx.pt')
-                and os.path.exists('../data/test-ms-mnist-idx.pt')
-                and os.path.exists('../data/test-ms-svhn-idx.pt')):
+        print(os.listdir('..'))
+        if not (os.path.exists(data_path + 'circles_train.pt')
+                and os.path.exists(data_path + 'discs_train.pt')
+                and os.path.exists(data_path + 'circles_test.pt')
+                and os.path.exists(data_path + 'discs_test.pt')):
             raise RuntimeError('Generate transformed indices with the script in bin')
+
         # get transformed indices
-        t_mnist = torch.load('../data/train-ms-mnist-idx.pt')
-        t_svhn = torch.load('../data/train-ms-svhn-idx.pt')
-        s_mnist = torch.load('../data/test-ms-mnist-idx.pt')
-        s_svhn = torch.load('../data/test-ms-svhn-idx.pt')
+        c_train = torch.load(data_path + 'circles_train.pt')
+        d_train = torch.load(data_path + 'discs_train.pt')
+        c_test = torch.load(data_path + 'circles_test.pt')
+        d_test = torch.load(data_path + 'discs_test.pt')
 
-        # load base datasets
-        t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device)
-        t2, s2 = self.vaes[1].getDataLoaders(batch_size, shuffle, device)
+        train_circles_discs = TensorDataset([c_train, d_train])
+        test_circles_discs = TensorDataset([c_test, d_test])
 
-        train_mnist_svhn = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn))
-        ])
-        test_mnist_svhn = TensorDataset([
-            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
-            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
-        ])
-
-        print(train_mnist_svhn[0])
+        print(train_circles_discs[0])
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
+
+        # debugging
+        print(batch_size)
+        sample = next(train.__iter__())
+        print(sample[0].shape)
         return train, test
 
     def generate(self, runPath, epoch):
         N = 64
-        samples_list = super(MNIST_SVHN, self).generate(N)
+        samples_list = super(CIRCLES_DISCS, self).generate(N)
         for i, samples in enumerate(samples_list):
             samples = samples.data.cpu()
             # wrangle things so they come out tiled
@@ -76,7 +75,7 @@ class MNIST_SVHN(MMVAE):
                        nrow=int(sqrt(N)))
 
     def reconstruct(self, data, runPath, epoch):
-        recons_mat = super(MNIST_SVHN, self).reconstruct([d[:8] for d in data])
+        recons_mat = super(CIRCLES_DISCS, self).reconstruct([d[:8] for d in data])
         for r, recons_list in enumerate(recons_mat):
             for o, recon in enumerate(recons_list):
                 _data = data[r][:8].cpu()
@@ -88,7 +87,7 @@ class MNIST_SVHN(MMVAE):
                 save_image(comp, '{}/recon_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
     def analyse(self, data, runPath, epoch):
-        zemb, zsl, kls_df = super(MNIST_SVHN, self).analyse(data, K=10)
+        zemb, zsl, kls_df = super(CIRCLES_DISCS, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch))
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))

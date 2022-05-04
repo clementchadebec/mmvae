@@ -107,7 +107,7 @@ def _m_iwae(model, x, K=1):
     """IWAE estimate for log p_\theta(x) for multi-modal vae -- fully vectorised"""
     qz_xs, px_zs, zss = model(x, K)
     lws = []
-    for r, qz_x in enumerate(qz_xs):
+    for r, qz_x in enumerate(qz_xs): # enumerate on modalities
         lpz = model.pz(*model.pz_params).log_prob(zss[r]).sum(-1)
         lqz_x = log_mean_exp(torch.stack([qz_x.log_prob(zss[r]).sum(-1) for qz_x in qz_xs]))
         lpx_z = [px_z.log_prob(x[d]).view(*px_z.batch_shape[:2], -1)

@@ -64,11 +64,13 @@ np.random.seed(args.seed)
 
 # load args from disk if pretrained model path is given
 pretrained_path = ""
+# pretrained_path = "../../mnist-svhn"
 if args.pre_trained:
     pretrained_path = args.pre_trained
     args = torch.load(args.pre_trained + '/args.rar')
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
+print(args.no_cuda, args.cuda)
 device = torch.device("cuda" if args.cuda else "cpu")
 
 # load model
@@ -102,10 +104,14 @@ torch.save(args, '{}/args.rar'.format(runPath))
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                        lr=1e-3, amsgrad=True)
 train_loader, test_loader = model.getDataLoaders(args.batch_size, device=device)
+
+# Objective function to use on train data
 objective = getattr(objectives,
                     ('m_' if hasattr(model, 'vaes') else '')
                     + args.obj
                     + ('_looser' if (args.looser and args.obj != 'elbo') else ''))
+
+# Objective function to use on test data
 t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'iwae')
 
 
@@ -114,6 +120,8 @@ def train(epoch, agg):
     b_loss = 0
     for i, dataT in enumerate(train_loader):
         data = unpack_data(dataT, device=device)
+        print(data[0].size())
+        1/0
         optimizer.zero_grad()
         loss = -objective(model, data, K=args.K)
         loss.backward()

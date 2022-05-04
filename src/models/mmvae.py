@@ -79,6 +79,8 @@ class MMVAE(nn.Module):
                         for i, j in combinations(range(len(qz_xs)), 2)]],
                 ax_names=['Dimensions', r'KL$(q\,||\,p)$']
             )
-        return embed_umap(torch.cat(zss, 0).cpu().numpy()), \
+        return torch.cat(zss, 0).cpu().numpy(), \
             torch.cat(zsl, 0).cpu().numpy(), \
             kls_df
+
+            # previously embed_umap(torch.cat(zss, 0).cpu().numpy()) but incompatibility with u_map version
