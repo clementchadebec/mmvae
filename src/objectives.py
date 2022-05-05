@@ -108,15 +108,33 @@ def _m_iwae(model, x, K=1):
     qz_xs, px_zs, zss = model(x, K)
     lws = []
     for r, qz_x in enumerate(qz_xs): # enumerate on modalities
-        lpz = model.pz(*model.pz_params).log_prob(zss[r]).sum(-1)
-        lqz_x = log_mean_exp(torch.stack([qz_x.log_prob(zss[r]).sum(-1) for qz_x in qz_xs]))
+        lpz = model.pz(*model.pz_params).log_prob(zss[r]).sum(-1) # sum on latent dimension (the covariance is diagonal)
+        lqz_x = log_mean_exp(torch.stack([qz_x.log_prob(zss[r]).sum(-1) for qz_x in qz_xs])) # compute the mmvae joint posterior
         lpx_z = [px_z.log_prob(x[d]).view(*px_z.batch_shape[:2], -1)
                      .mul(model.vaes[d].llik_scaling).sum(-1)
                  for d, px_z in enumerate(px_zs[r])]
         lpx_z = torch.stack(lpx_z).sum(0)
         lw = lpz + lpx_z - lqz_x
         lws.append(lw)
-    return torch.cat(lws)  # (n_modality * n_samples) x batch_size, batch_size
+    lws = torch.cat(lws)
+    return lws # (n_modality * K_iwae) x batch_size
+
+def m_vaevae(model, x, K=1):
+    """ We train the vaes maximizing the unimodal ELBO for each modality with an additionnal term
+    that regularizes the distance between posteriors of each modality KL(q(z|x1) || q(z|x2) )
+    only for two modalities"""
+    loss1 = elbo(model.vaes[0], x[0])
+    loss2 = elbo(model.vaes[1], x[1])
+
+    qz_x0, px0_z,_ = model.vaes[0](x[0])
+    qz_x1, px1_z, _ = model.vaes[1](x[1])
+    kld =  kl_divergence(qz_x0, qz_x1).mean(0).sum(-1)
+
+    # print(f'loss1 {loss1}, loss2 {loss2}, kl {kld}')
+    return loss1 + loss2 - 1000*kld
+
+
+
 
 
 def m_iwae(model, x, K=1):

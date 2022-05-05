@@ -1,4 +1,5 @@
 # circles and discs model specification
+import os
 
 import torch
 import torch.distributions as dist
@@ -8,18 +9,18 @@ from numpy import prod, sqrt
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.utils import save_image, make_grid
-from torch.utils.data.dataset import TensorDataset
-
+from datasets import CIRCLES_DATASET
 from utils import Constants
 from vis import plot_embeddings, plot_kls_df
 from .vae import VAE
 
 
 # Constants
-data_path = '../../../data/circles_and_discs/circles'
+data_path = '../data/circles_and_discs/'
 dataSize = torch.Size([1, 32, 32])
 data_dim = int(prod(dataSize))
-hidden_dim = 200
+hidden_dim = 400
+dist_dict = {'normal' : dist.Normal, 'laplace' : dist.Laplace}
 
 
 def extra_hidden_layer():
@@ -40,7 +41,6 @@ class Enc(nn.Module):
         self.fc22 = nn.Linear(hidden_dim, latent_dim)
 
     def forward(self, x):
-        print(x.size())
         e = self.enc(x.view(*x.size()[:-3], -1))  # flatten data
         lv = self.fc22(e)
         return self.fc21(e), F.softmax(lv, dim=-1) * lv.size(-1) + Constants.eta
@@ -70,9 +70,9 @@ class CIRCLES(VAE):
 
     def __init__(self, params):
         super(CIRCLES, self).__init__(
-            dist.Laplace,  # prior
-            dist.Laplace,  # likelihood
-            dist.Laplace,  # posterior
+            dist_dict[params.dist],  # prior
+            dist_dict[params.dist],  # likelihood
+            dist_dict[params.dist],  # posterior
             Enc(params.latent_dim, params.num_hidden_layers),
             Dec(params.latent_dim, params.num_hidden_layers),
             params
@@ -91,14 +91,13 @@ class CIRCLES(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     @staticmethod
-    def getDataLoaders(batch_size, shuffle=True, device="cuda" ):
+    def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda" ):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
         # create datasets
-
-        train = DataLoader(TensorDataset(torch.load(data_path  + '_train.pt')),
+        train = DataLoader(CIRCLES_DATASET(data_path + type + '_train.pt'),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(TensorDataset(torch.load(data_path + '_test.pt')),
+        test = DataLoader(CIRCLES_DATASET(data_path + type + '_test.pt'),
                           batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 

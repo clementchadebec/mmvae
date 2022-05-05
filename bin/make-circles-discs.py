@@ -6,12 +6,11 @@ from PIL import Image
 import torch
 from sklearn.model_selection import train_test_split
 
-dataset_size = 200
+dataset_size = 100000
 size_image = 32
 min_rayon, max_rayon = 0.1, 0.9
 circle_thickness = 0.1
 output_path = '../data/circles_and_discs'
-print(os.listdir('..'))
 if not os.path.exists(output_path):
     os.mkdir(output_path)
 

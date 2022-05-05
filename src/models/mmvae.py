@@ -32,7 +32,9 @@ class MMVAE(nn.Module):
         # initialise cross-modal matrix
         px_zs = [[None for _ in range(len(self.vaes))] for _ in range(len(self.vaes))]
         for m, vae in enumerate(self.vaes):
+            # encode each modality with its specific encoder
             qz_x, px_z, zs = vae(x[m], K=K)
+            # print(zs.shape)
             qz_xs.append(qz_x)
             zss.append(zs)
             px_zs[m][m] = px_z  # fill-in diagonal
@@ -57,7 +59,7 @@ class MMVAE(nn.Module):
         self.eval()
         with torch.no_grad():
             _, px_zs, _ = self.forward(data)
-            # cross-modal matrix of reconstructions
+            # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
             recons = [[get_mean(px_z) for px_z in r] for r in px_zs]
         return recons
 
@@ -65,9 +67,12 @@ class MMVAE(nn.Module):
         self.eval()
         with torch.no_grad():
             qz_xs, _, zss = self.forward(data, K=K)
-            pz = self.pz(*self.pz_params)
+            pz = self.pz(*self.pz_params) # prior
+
+            # Add prior samples to the samples from each encoder generated during the forward pass
             zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
-                   *[zs.view(-1, zs.size(-1)) for zs in zss]]
+                   *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
+
             zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
             kls_df = tensors_to_df(
                 [*[kl_divergence(qz_x, pz).cpu().numpy() for qz_x in qz_xs],
@@ -79,6 +84,7 @@ class MMVAE(nn.Module):
                         for i, j in combinations(range(len(qz_xs)), 2)]],
                 ax_names=['Dimensions', r'KL$(q\,||\,p)$']
             )
+
         return torch.cat(zss, 0).cpu().numpy(), \
             torch.cat(zsl, 0).cpu().numpy(), \
             kls_df

@@ -21,7 +21,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     choices=[s[4:] for s in dir(models) if 'VAE_' in s],
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg'],
+                    choices=['elbo', 'iwae', 'dreg', 'vaevae'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 10)')
@@ -52,6 +52,8 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disable CUDA use')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
+parser.add_argument('--dist', type=str, default = 'normal',
+                    choices= ['normal', 'laplace'])
 
 # args
 args = parser.parse_args()
@@ -70,12 +72,13 @@ if args.pre_trained:
     args = torch.load(args.pre_trained + '/args.rar')
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-print(args.no_cuda, args.cuda)
+print(f'Cuda is {args.cuda}')
 device = torch.device("cuda" if args.cuda else "cpu")
 
 # load model
 modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
+
 
 if pretrained_path:
     print('Loading model {} from {}'.format(model.modelName, pretrained_path))
@@ -111,17 +114,15 @@ objective = getattr(objectives,
                     + args.obj
                     + ('_looser' if (args.looser and args.obj != 'elbo') else ''))
 
-# Objective function to use on test data
-t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'iwae')
-
+# Objective fulrnction to use on test data
+# t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'elbo')
+t_objective = objective
 
 def train(epoch, agg):
     model.train()
     b_loss = 0
     for i, dataT in enumerate(train_loader):
         data = unpack_data(dataT, device=device)
-        print(data[0].size())
-        1/0
         optimizer.zero_grad()
         loss = -objective(model, data, K=args.K)
         loss.backward()
@@ -139,12 +140,19 @@ def test(epoch, agg):
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
+            ticks = dataT[0][1]
+
+            # temp = ticks.argsort()
+            # ranks = np.empty_like(temp)
+            # ranks[temp] = np.arange(len(ticks))
+            ticks = np.arange(len(data[0]))
+
             loss = -t_objective(model, data, K=args.K)
             b_loss += loss.item()
             if i == 0:
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
-                    model.analyse(data, runPath, epoch)
+                    model.analyse(data, runPath, epoch,ticks[:20])
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 

@@ -32,13 +32,23 @@ def embed_umap(data):
     return embedding.fit_transform(data)
 
 
-def plot_embeddings(emb, emb_l, labels, filepath):
+def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
+
     cmap_obj, cmap_arr = custom_cmap(n=len(labels))
-    plt.figure()
+    plt.figure(figsize=(15,10))
     plt.scatter(emb[:, 0], emb[:, 1], c=emb_l, cmap=cmap_obj, s=25, alpha=0.2, edgecolors='none')
     l_elems = [Line2D([0], [0], marker='o', color=cm, label=l, alpha=0.5, linestyle='None')
                for (cm, l) in zip(cmap_arr, labels)]
     plt.legend(frameon=False, loc=2, handles=l_elems)
+
+    # Add some ticks allowing to attach the examples to their latent representation
+    m_emb = np.mean(emb.reshape(-1, K, emb.shape[-1]), axis=1)
+
+    if ticks is not None:
+        for i, txt in enumerate(ticks[:8]):
+            plt.text(m_emb[len(m_emb)//3 + i,0], m_emb[len(m_emb)//3 + i,1], str(txt), c='blue')
+            plt.text(m_emb[2*len(m_emb)//3 + i,0], m_emb[2*len(m_emb)//3 + i,1], str(txt), c='red')
+
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 

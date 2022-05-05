@@ -30,37 +30,32 @@ class CIRCLES_DISCS(MMVAE):
             if params.llik_scaling == 0 else params.llik_scaling
         self.modelName = 'circles_discs'
 
+        self.vaes[0].modelName = 'circles'
+        self.vaes[1].modelName = 'discs'
+
     @property
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
-        print(os.listdir('..'))
         if not (os.path.exists(data_path + 'circles_train.pt')
                 and os.path.exists(data_path + 'discs_train.pt')
                 and os.path.exists(data_path + 'circles_test.pt')
                 and os.path.exists(data_path + 'discs_test.pt')):
             raise RuntimeError('Generate transformed indices with the script in bin')
 
-        # get transformed indices
-        c_train = torch.load(data_path + 'circles_train.pt')
-        d_train = torch.load(data_path + 'discs_train.pt')
-        c_test = torch.load(data_path + 'circles_test.pt')
-        d_test = torch.load(data_path + 'discs_test.pt')
+        # load base datasets
+        t1, s1 = self.vaes[0].getDataLoaders(batch_size, 'circles', shuffle, device)
+        t2, s2 = self.vaes[1].getDataLoaders(batch_size,'discs', shuffle, device)
 
-        train_circles_discs = TensorDataset([c_train, d_train])
-        test_circles_discs = TensorDataset([c_test, d_test])
+        train_circles_discs = TensorDataset([t1.dataset,t2.dataset])
+        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
 
-        print(train_circles_discs[0])
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
-        # debugging
-        print(batch_size)
-        sample = next(train.__iter__())
-        print(sample[0].shape)
         return train, test
 
     def generate(self, runPath, epoch):
@@ -80,16 +75,13 @@ class CIRCLES_DISCS(MMVAE):
             for o, recon in enumerate(recons_list):
                 _data = data[r][:8].cpu()
                 recon = recon.squeeze(0).cpu()
-                # resize mnist to 32 and colour. 0 => mnist, 1 => svhn
-                _data = _data if r == 1 else resize_img(_data, self.vaes[1].dataSize)
-                recon = recon if o == 1 else resize_img(recon, self.vaes[1].dataSize)
                 comp = torch.cat([_data, recon])
                 save_image(comp, '{}/recon_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
-    def analyse(self, data, runPath, epoch):
+    def analyse(self, data, runPath, epoch, ticks=None):
         zemb, zsl, kls_df = super(CIRCLES_DISCS, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
-        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch))
+        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks=ticks, K=10)
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
 
 

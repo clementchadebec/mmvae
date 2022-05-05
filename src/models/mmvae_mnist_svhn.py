@@ -57,8 +57,6 @@ class MNIST_SVHN(MMVAE):
             ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
         ])
 
-        print(train_mnist_svhn[0])
-
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)

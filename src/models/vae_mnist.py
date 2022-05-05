@@ -37,7 +37,6 @@ class Enc(nn.Module):
         self.fc22 = nn.Linear(hidden_dim, latent_dim)
 
     def forward(self, x):
-        print(x.size())
         e = self.enc(x.view(*x.size()[:-3], -1))  # flatten data
         lv = self.fc22(e)
         return self.fc21(e), F.softmax(lv, dim=-1) * lv.size(-1) + Constants.eta
