@@ -119,7 +119,7 @@ def _m_iwae(model, x, K=1):
     lws = torch.cat(lws)
     return lws # (n_modality * K_iwae) x batch_size
 
-def m_vaevae(model, x, K=1):
+def m_vaevae(model, x, K=1, beta=1000):
     """ We train the vaes maximizing the unimodal ELBO for each modality with an additionnal term
     that regularizes the distance between posteriors of each modality KL(q(z|x1) || q(z|x2) )
     only for two modalities"""
@@ -131,13 +131,14 @@ def m_vaevae(model, x, K=1):
     kld =  kl_divergence(qz_x0, qz_x1).mean(0).sum(-1)
 
     # print(f'loss1 {loss1}, loss2 {loss2}, kl {kld}')
-    return loss1 + loss2 - 1000*kld
+
+    return loss1 + loss2 - beta*kld
 
 
 
 
 
-def m_iwae(model, x, K=1):
+def m_iwae(model, x, K=1, beta=0):
     """Computes iwae estimate for log p_\theta(x) for multi-modal vae """
     S = compute_microbatch_split(x, K)
     x_split = zip(*[_x.split(S) for _x in x])
@@ -164,7 +165,7 @@ def _m_iwae_looser(model, x, K=1):
     return torch.stack(lws)  # (n_modality * n_samples) x batch_size, batch_size
 
 
-def m_iwae_looser(model, x, K=1):
+def m_iwae_looser(model, x, K=1, beta = 0):
     """Computes iwae estimate for log p_\theta(x) for multi-modal vae
     This version is the looser bound---with the average over modalities outside the log
     """
@@ -175,7 +176,7 @@ def m_iwae_looser(model, x, K=1):
     return log_mean_exp(lw, dim=1).mean(0).sum()
 
 
-def _m_dreg(model, x, K=1):
+def _m_dreg(model, x, K=1, beta=0):
     """DERG estimate for log p_\theta(x) for multi-modal vae -- fully vectorised"""
     qz_xs, px_zs, zss = model(x, K)
     qz_xs_ = [vae.qz_x(*[p.detach() for p in vae.qz_x_params]) for vae in model.vaes]
@@ -192,7 +193,7 @@ def _m_dreg(model, x, K=1):
     return torch.cat(lws), torch.cat(zss)
 
 
-def m_dreg(model, x, K=1):
+def m_dreg(model, x, K=1, beta=0):
     """Computes dreg estimate for log p_\theta(x) for multi-modal vae """
     S = compute_microbatch_split(x, K)
     x_split = zip(*[_x.split(S) for _x in x])
@@ -206,7 +207,7 @@ def m_dreg(model, x, K=1):
     return (grad_wt * lw).sum()
 
 
-def _m_dreg_looser(model, x, K=1):
+def _m_dreg_looser(model, x, K=1, beta=0):
     """DERG estimate for log p_\theta(x) for multi-modal vae -- fully vectorised
     This version is the looser bound---with the average over modalities outside the log
     """
@@ -225,7 +226,7 @@ def _m_dreg_looser(model, x, K=1):
     return torch.stack(lws), torch.stack(zss)
 
 
-def m_dreg_looser(model, x, K=1):
+def m_dreg_looser(model, x, K=1, beta=0):
     """Computes dreg estimate for log p_\theta(x) for multi-modal vae
     This version is the looser bound---with the average over modalities outside the log
     """

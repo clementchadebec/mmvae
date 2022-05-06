@@ -2,6 +2,7 @@ from .mmvae_cub_images_sentences import CUB_Image_Sentence as VAE_cubIS
 from .mmvae_cub_images_sentences_ft import CUB_Image_Sentence_ft as VAE_cubISft
 from .mmvae_mnist_svhn import MNIST_SVHN as VAE_mnist_svhn
 from .mmvae_cercles_discs import CIRCLES_DISCS as VAE_circles_discs
+from .mmvae_mnist_fashion import MNIST_FASHION as VAE_mnist_fashion
 from .vae_cub_image import CUB_Image as VAE_cubI
 from .vae_cub_image_ft import CUB_Image_ft as VAE_cubIft
 from .vae_cub_sent import CUB_Sentence as VAE_cubS

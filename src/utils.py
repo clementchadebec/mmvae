@@ -4,6 +4,7 @@ import shutil
 import sys
 import time
 
+import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn.functional as F
@@ -199,3 +200,4 @@ class FakeCategorical(dist.Distribution):
         # cross-entropy loss ($\sum -gt_i \log(p_i)$ with most gt_i = 0, We adopt the
         # operationally equivalence here, which is summing up the sentence dimension
         # in objective.
+

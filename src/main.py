@@ -24,7 +24,7 @@ parser.add_argument('--obj', type=str, default='elbo', metavar='O',
                     choices=['elbo', 'iwae', 'dreg', 'vaevae'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
-                    help='number of particles to use for iwae/dreg (default: 10)')
+                    help='number of particles to use for iwae/dreg (default: 20)')
 parser.add_argument('--looser', action='store_true', default=False,
                     help='use the looser version of IWAE/DREG')
 parser.add_argument('--llik_scaling', type=float, default=0.,
@@ -54,6 +54,8 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--dist', type=str, default = 'normal',
                     choices= ['normal', 'laplace'])
+parser.add_argument('--beta', type=int, default=1000,
+                    help='scaling factor for the regularization in vaevae loss')
 
 # args
 args = parser.parse_args()
@@ -124,7 +126,7 @@ def train(epoch, agg):
     for i, dataT in enumerate(train_loader):
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
-        loss = -objective(model, data, K=args.K)
+        loss = -objective(model, data, K=args.K, beta=args.beta)
         loss.backward()
         optimizer.step()
         b_loss += loss.item()
@@ -152,7 +154,7 @@ def test(epoch, agg):
             if i == 0:
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
-                    model.analyse(data, runPath, epoch,ticks[:20])
+                    model.analyse(data, runPath, epoch,ticks)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 

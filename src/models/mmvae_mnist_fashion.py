@@ -16,9 +16,9 @@ from .vae_mnist import MNIST
 from .vae_svhn import SVHN
 
 
-class MNIST_SVHN(MMVAE):
+class MNIST_FASHION(MMVAE):
     def __init__(self, params):
-        super(MNIST_SVHN, self).__init__(dist.Laplace, params, MNIST, SVHN)
+        super(MNIST_FASHION, self).__init__(dist.Laplace, params, MNIST, MNIST)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
@@ -34,37 +34,37 @@ class MNIST_SVHN(MMVAE):
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
         if not (os.path.exists('../data/train-ms-mnist-idx.pt')
-                and os.path.exists('../data/train-ms-svhn-idx.pt')
+                and os.path.exists('../data/train-ms-fashion-idx.pt')
                 and os.path.exists('../data/test-ms-mnist-idx.pt')
-                and os.path.exists('../data/test-ms-svhn-idx.pt')):
+                and os.path.exists('../data/test-ms-fashion-idx.pt')):
             raise RuntimeError('Generate transformed indices with the script in bin')
         # get transformed indices
         t_mnist = torch.load('../data/train-ms-mnist-idx.pt')
-        t_svhn = torch.load('../data/train-ms-svhn-idx.pt')
+        t_fashion = torch.load('../data/train-ms-fashion-idx.pt')
         s_mnist = torch.load('../data/test-ms-mnist-idx.pt')
-        s_svhn = torch.load('../data/test-ms-svhn-idx.pt')
+        s_fashion = torch.load('../data/test-ms-fashion-idx.pt')
 
         # load base datasets
         t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device)
         t2, s2 = self.vaes[1].getDataLoaders(batch_size, shuffle, device)
 
-        train_mnist_svhn = TensorDataset([
+        train_mnist_fashion = TensorDataset([
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn))
+            ResampleDataset(t2.dataset, lambda d, i: t_fashion[i], size=len(t_fashion))
         ])
-        test_mnist_svhn = TensorDataset([
+        test_mnist_fashion = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
-            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
+            ResampleDataset(s2.dataset, lambda d, i: s_fashion[i], size=len(s_fashion))
         ])
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 
     def generate(self, runPath, epoch):
         N = 64
-        samples_list = super(MNIST_SVHN, self).generate(N)
+        samples_list = super(MNIST_FASHION, self).generate(N)
         for i, samples in enumerate(samples_list):
             samples = samples.data.cpu()
             # wrangle things so they come out tiled
@@ -74,7 +74,7 @@ class MNIST_SVHN(MMVAE):
                        nrow=int(sqrt(N)))
 
     def reconstruct(self, data, runPath, epoch):
-        recons_mat = super(MNIST_SVHN, self).reconstruct([d[:8] for d in data])
+        recons_mat = super(MNIST_FASHION, self).reconstruct([d[:8] for d in data])
         for r, recons_list in enumerate(recons_mat):
             for o, recon in enumerate(recons_list):
                 _data = data[r][:8].cpu()
@@ -86,7 +86,7 @@ class MNIST_SVHN(MMVAE):
                 save_image(comp, '{}/recon_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
     def analyse(self, data, runPath, epoch, ticks=None):
-        zemb, zsl, kls_df = super(MNIST_SVHN, self).analyse(data, K=10)
+        zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=10)
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
