@@ -17,6 +17,7 @@ from .vae import VAE
 dataSize = torch.Size([3, 32, 32])
 imgChans = dataSize[0]
 fBase = 32  # base size of filter channels
+dist_dict = {'normal' : dist.Normal, 'laplace' : dist.Laplace}
 
 
 # Classes
@@ -80,9 +81,9 @@ class SVHN(VAE):
 
     def __init__(self, params):
         super(SVHN, self).__init__(
-            dist.Laplace,  # prior
-            dist.Laplace,  # likelihood
-            dist.Laplace,  # posterior
+            dist_dict[params['dist']],  # prior
+            dist_dict[params['dist']],  # likelihood
+            dist_dict[params['dist']],  # posterior
             Enc(params.latent_dim),
             Dec(params.latent_dim),
             params

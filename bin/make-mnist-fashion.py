@@ -53,15 +53,15 @@ if __name__ == '__main__':
     fashion_l, fashion_li = train_fashion.targets.sort()
     idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, fashion_l, fashion_li, max_d=max_d, dm=dm)
     print('len train idx:', len(idx1), len(idx2))
-    torch.save(idx1, '../data/train-ms-mnist-idx.pt')
-    torch.save(idx2, '../data/train-ms-fashion-idx.pt')
+    torch.save(idx1, '../data/train-ms-mnist-idx-unbalanced.pt')
+    torch.save(idx2, '../data/train-ms-fashion-idx-unbalanced.pt')
 
     mnist_l, mnist_li = test_mnist.targets.sort()
     fashion_l, fashion_li = test_fashion.targets.sort()
     idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, fashion_l, fashion_li, max_d=max_d, dm=dm)
     print('len test idx:', len(idx1), len(idx2))
-    torch.save(idx1, '../data/test-ms-mnist-idx.pt')
-    torch.save(idx2, '../data/test-ms-fashion-idx.pt')
+    torch.save(idx1, '../data/test-ms-mnist-idx-unbalanced.pt')
+    torch.save(idx2, '../data/test-ms-fashion-idx-unbalanced.pt')
 
 
     print(idx1[:20], idx2[:20])

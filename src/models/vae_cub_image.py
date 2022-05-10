@@ -85,9 +85,9 @@ class CUB_Image(VAE):
 
     def __init__(self, params):
         super(CUB_Image, self).__init__(
-            dist.Laplace,  # prior
-            dist.Laplace,  # likelihood
-            dist.Laplace,  # posterior
+            dist_dict[params['dist']],  # prior
+            dist_dict[params['dist']],  # likelihood
+            dist_dict[params['dist']],  # posterior
             Enc(params.latent_dim),
             Dec(params.latent_dim),
             params

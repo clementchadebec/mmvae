@@ -29,7 +29,7 @@ def resampler(dataset, idx):
 class CUB_Image_Sentence(MMVAE):
 
     def __init__(self, params):
-        super(CUB_Image_Sentence, self).__init__(dist.Laplace, params, CUB_Image, CUB_Sentence)
+        super(CUB_Image_Sentence, self).__init__(params, CUB_Image, CUB_Sentence)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu

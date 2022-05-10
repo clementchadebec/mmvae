@@ -17,6 +17,7 @@ from .vae import VAE
 dataSize = torch.Size([1, 28, 28])
 data_dim = int(prod(dataSize))
 hidden_dim = 400
+dist_dict = {'normal' : dist.Normal, 'laplace' : dist.Laplace}
 
 
 def extra_hidden_layer():
@@ -61,14 +62,15 @@ class Dec(nn.Module):
         return d, torch.tensor(0.75).to(z.device)  # mean, length scale
 
 
+
 class MNIST(VAE):
     """ Derive a specific sub-class of a VAE for MNIST. """
 
     def __init__(self, params):
         super(MNIST, self).__init__(
-            dist.Laplace,  # prior
-            dist.Laplace,  # likelihood
-            dist.Laplace,  # posterior
+            dist_dict[params.dist],  # prior
+            dist_dict[params.dist],  # likelihood
+            dist_dict[params.dist],  # posterior
             Enc(params.latent_dim, params.num_hidden_layers),
             Dec(params.latent_dim, params.num_hidden_layers),
             params
@@ -87,12 +89,13 @@ class MNIST(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     @staticmethod
-    def getDataLoaders(batch_size, shuffle=True, device="cuda"):
+    def getDataLoaders(batch_size, shuffle=True, device="cuda", type = 'numbers'):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
-        train = DataLoader(datasets.MNIST('../data', train=True, download=True, transform=tx),
+        datasetC = datasets.MNIST if type=='numbers' else datasets.FashionMNIST
+        train = DataLoader(datasetC('../data', train=True, download=True, transform=tx),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.MNIST('../data', train=False, download=True, transform=tx),
+        test = DataLoader(datasetC('../data', train=False, download=True, transform=tx),
                           batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 

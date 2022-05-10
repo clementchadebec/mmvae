@@ -4,15 +4,19 @@ from itertools import combinations
 
 import torch
 import torch.nn as nn
+import torch.distributions as dist
 
 from utils import get_mean, kl_divergence
 from vis import embed_umap, tensors_to_df
 
 
+dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+
+
 class MMVAE(nn.Module):
-    def __init__(self, prior_dist, params, *vaes):
+    def __init__(self, params, *vaes):
         super(MMVAE, self).__init__()
-        self.pz = prior_dist
+        self.pz = dist_dict[params.dist]
         self.vaes = nn.ModuleList([vae(params) for vae in vaes])
         self.modelName = None  # filled-in per sub-class
         self.params = params
@@ -34,7 +38,6 @@ class MMVAE(nn.Module):
         for m, vae in enumerate(self.vaes):
             # encode each modality with its specific encoder
             qz_x, px_z, zs = vae(x[m], K=K)
-            # print(zs.shape)
             qz_xs.append(qz_x)
             zss.append(zs)
             px_zs[m][m] = px_z  # fill-in diagonal
@@ -90,3 +93,13 @@ class MMVAE(nn.Module):
             kls_df
 
             # previously embed_umap(torch.cat(zss, 0).cpu().numpy()) but incompatibility with u_map version
+
+    def sample_from_conditional(self,data,n = 10):
+        self.eval()
+        px_zss = [self.forward(data)[1] for _ in range(n)]
+        with torch.no_grad():
+            # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
+            recons = [torch.stack([torch.stack([get_mean(px_z) for px_z in r]) for r in px_zs]) for px_zs in px_zss]
+            recons = torch.stack(recons).squeeze().permute(1,2,0,3,4,5)
+
+        return recons

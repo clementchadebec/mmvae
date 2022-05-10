@@ -21,7 +21,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     choices=[s[4:] for s in dir(models) if 'VAE_' in s],
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg', 'vaevae'],
+                    choices=['elbo', 'iwae', 'dreg', 'vaevae', 'jmvae'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -152,6 +152,7 @@ def test(epoch, agg):
             loss = -t_objective(model, data, K=args.K)
             b_loss += loss.item()
             if i == 0:
+                model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
                     model.analyse(data, runPath, epoch,ticks)

@@ -20,7 +20,7 @@ data_path = '../data/circles_and_discs/'
 
 class CIRCLES_DISCS(MMVAE):
     def __init__(self, params):
-        super(CIRCLES_DISCS, self).__init__(dist.Laplace, params, CIRCLES, CIRCLES)
+        super(CIRCLES_DISCS, self).__init__(params, CIRCLES, CIRCLES)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu

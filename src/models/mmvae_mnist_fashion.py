@@ -18,7 +18,7 @@ from .vae_svhn import SVHN
 
 class MNIST_FASHION(MMVAE):
     def __init__(self, params):
-        super(MNIST_FASHION, self).__init__(dist.Laplace, params, MNIST, MNIST)
+        super(MNIST_FASHION, self).__init__(params, MNIST, MNIST)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
@@ -26,7 +26,7 @@ class MNIST_FASHION(MMVAE):
         ])
         self.vaes[0].llik_scaling = prod(self.vaes[1].dataSize) / prod(self.vaes[0].dataSize) \
             if params.llik_scaling == 0 else params.llik_scaling
-        self.modelName = 'mnist-svhn'
+        self.modelName = 'mnist-fashion'
 
     @property
     def pz_params(self):
@@ -45,8 +45,8 @@ class MNIST_FASHION(MMVAE):
         s_fashion = torch.load('../data/test-ms-fashion-idx.pt')
 
         # load base datasets
-        t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device)
-        t2, s2 = self.vaes[1].getDataLoaders(batch_size, shuffle, device)
+        t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device, type='numbers')
+        t2, s2 = self.vaes[1].getDataLoaders(batch_size, shuffle, device, type='fashion')
 
         train_mnist_fashion = TensorDataset([
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
@@ -80,16 +80,28 @@ class MNIST_FASHION(MMVAE):
                 _data = data[r][:8].cpu()
                 recon = recon.squeeze(0).cpu()
                 # resize mnist to 32 and colour. 0 => mnist, 1 => svhn
-                _data = _data if r == 1 else resize_img(_data, self.vaes[1].dataSize)
-                recon = recon if o == 1 else resize_img(recon, self.vaes[1].dataSize)
                 comp = torch.cat([_data, recon])
                 save_image(comp, '{}/recon_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
+
+    def sample_from_conditional(self,data, runPath,epoch,n = 10):
+
+        recons = super(MNIST_FASHION, self).sample_from_conditional([d[:8] for d in data], n=n)
+
+        for r, recon_list in enumerate(recons):
+            for o, recon in enumerate(recon_list):
+                _data = data[r][:8].cpu()
+                recon = torch.reshape(recon,(n*8,1,28,28)).cpu()
+                comp = torch.cat([_data,recon])
+                save_image(comp, '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
+
 
     def analyse(self, data, runPath, epoch, ticks=None):
         zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=10)
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
+
+
 
 
 def resize_img(img, refsize):

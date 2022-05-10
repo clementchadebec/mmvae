@@ -83,7 +83,7 @@ def m_elbo_naive(model, x, K=1):
     return obj.mean(0).sum()
 
 
-def m_elbo(model, x, K=1):
+def m_elbo(model, x, K=1, beta=1000):
     """Computes importance-sampled m_elbo (in notes3) for multi-modal vae """
     qz_xs, px_zs, zss = model(x)
     lpx_zs, klds = [], []
@@ -134,6 +134,20 @@ def m_vaevae(model, x, K=1, beta=1000):
 
     return loss1 + loss2 - beta*kld
 
+
+def m_jmvae(model, x, K=1, beta=0):
+    """Computes jmvae loss"""
+    qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
+    qz_xs, px_zs, z_xs = model.forward(x, K=1)
+    loss = 0
+    for m,px_z in enumerate(pxy_z):
+        loss = px_z.log_prob(x[m]).squeeze() + loss
+    loss = loss.mean(0).sum()
+    kl1 = kl_divergence(qz_xy, qz_xs[0]).mean(0).sum()
+    kl2 = kl_divergence(qz_xy,qz_xs[1]).mean(0).sum()
+
+    print(loss, kl1, kl2)
+    return loss - kl1 - kl2
 
 
 

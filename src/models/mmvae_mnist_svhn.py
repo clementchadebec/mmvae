@@ -18,7 +18,7 @@ from .vae_svhn import SVHN
 
 class MNIST_SVHN(MMVAE):
     def __init__(self, params):
-        super(MNIST_SVHN, self).__init__(dist.Laplace, params, MNIST, SVHN)
+        super(MNIST_SVHN, self).__init__(params, MNIST, SVHN)
         grad = {'requires_grad': params.learn_prior}
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
