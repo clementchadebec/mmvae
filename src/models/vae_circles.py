@@ -85,13 +85,14 @@ class CIRCLES(VAE):
         self.modelName = 'circles' # circles or discs
         self.dataSize = dataSize
         self.llik_scaling = 1.
+        self.data_path = params.data_path
 
     @property
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     @staticmethod
-    def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda" ):
+    def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda",data_path=data_path ):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
         # create datasets

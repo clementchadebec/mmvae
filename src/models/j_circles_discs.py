@@ -4,12 +4,15 @@ from torch import nn
 import torch.nn.functional as F
 from utils import Constants
 import torch
+from vis import plot_posteriors
 
+from .mmvae import MMVAE
 from .mmvae_mnist_fashion import MNIST_FASHION
+from .mmvae_cercles_discs import CIRCLES_DISCS
 from .jmvae import JMVAE
 
 # Constants
-joint_input_size = 28*28 + 28*28 # modality 1 size, modality 2 size
+joint_input_size = 32*32 + 32*32 # modality 1 size, modality 2 size
 hidden_dim = 400
 
 
@@ -37,14 +40,16 @@ class Enc(nn.Module):
         return self.fc21(e), F.softmax(lv, dim=-1) * lv.size(-1) + Constants.eta
 
 
-class J_MNIST_FASHION(MNIST_FASHION, JMVAE):
+class J_CIRCLES_DISCS(CIRCLES_DISCS, JMVAE):
 
     def __init__(self, params):
-        MNIST_FASHION.__init__(self,params)
+        CIRCLES_DISCS.__init__(self,params)
         JMVAE.__init__(self,params, Enc(params.latent_dim, params.num_hidden_layers), self.vaes)
 
     def analyse_posterior(self,data, n_samples,runPath,epoch, ticks=None):
-        means, stds = MNIST_FASHION.analyse_posterior(self,data, n_samples, runPath, epoch, ticks)
+        means, stds = MMVAE.analyse_posterior(self,data, n_samples)
         m, s = JMVAE.analyse_joint_posterior(self,data, n_samples)
         means.append(m)
         stds.append(s)
+        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch), ticks=ticks)
+

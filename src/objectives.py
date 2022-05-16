@@ -2,7 +2,7 @@
 import torch
 from numpy import prod
 
-from utils import log_mean_exp, is_multidata, kl_divergence
+from utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2
 
 
 # helper to vectorise computation
@@ -21,7 +21,7 @@ def elbo(model, x, K=1):
     qz_x, px_z, _ = model(x)
     lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.llik_scaling
     kld = kl_divergence(qz_x, model.pz(*model.pz_params))
-    return (lpx_z.sum(-1) - kld.sum(-1)).mean(0).sum()
+    return (lpx_z.sum(-1) - 10**-4 * kld.sum(-1)).mean(0).sum()
 
 
 def _iwae(model, x, K):
@@ -100,7 +100,9 @@ def m_elbo(model, x, K=1, beta=1000):
                 lwt = (qz_x.log_prob(zs) - qz_xs[d].log_prob(zs).detach()).sum(-1)
             lpx_zs.append(lwt.exp() * lpx_z)
     obj = (1 / len(model.vaes)) * (torch.stack(lpx_zs).sum(0) - torch.stack(klds).sum(0))
-    return obj.mean(0).sum()
+
+    details = {}
+    return obj.mean(0).sum(), details
 
 
 def _m_iwae(model, x, K=1):
@@ -119,7 +121,7 @@ def _m_iwae(model, x, K=1):
     lws = torch.cat(lws)
     return lws # (n_modality * K_iwae) x batch_size
 
-def m_vaevae(model, x, K=1, beta=1000):
+def _m_vaevae(model, x, dist, K=1, beta=1000, epoch = 1, warmup = 0):
     """ We train the vaes maximizing the unimodal ELBO for each modality with an additionnal term
     that regularizes the distance between posteriors of each modality KL(q(z|x1) || q(z|x2) )
     only for two modalities"""
@@ -128,27 +130,100 @@ def m_vaevae(model, x, K=1, beta=1000):
 
     qz_x0, px0_z,_ = model.vaes[0](x[0])
     qz_x1, px1_z, _ = model.vaes[1](x[1])
-    kld =  kl_divergence(qz_x0, qz_x1).mean(0).sum(-1)
-
+    reg = 1/2*(dist(qz_x0,qz_x1).mean(0).sum(-1) + dist(qz_x1,qz_x0).mean(0).sum()) # symetric distance
     # print(f'loss1 {loss1}, loss2 {loss2}, kl {kld}')
+    details = dict(loss = loss1 + loss2 , reg = reg, loss1 = loss1, loss2 = loss2)
 
-    return loss1 + loss2 - beta*kld
+    return (loss1 + loss2 - beta*reg, details) if epoch >= warmup else (loss1 + loss2, details)
 
+def m_vaevae_kl(model, x, K=1, beta=1000, epoch=1, warmup=0):
+    return _m_vaevae(model, x, kl_divergence, K, beta,epoch, warmup)
 
-def m_jmvae(model, x, K=1, beta=0):
+def m_vaevae_w2(model, x, K=1, beta=1000, epoch=1, warmup=0):
+    return _m_vaevae(model, x, wasserstein_2, K, beta, epoch, warmup)
+
+def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0):
     """Computes jmvae loss"""
+    if not hasattr(model, 'joint_encoder'):
+        raise TypeError('The model must have a joint encoder for this loss.')
+
+    qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
+    qz_xs, px_zs, z_xs = model.forward(x, K=1)
+    loss, details = 0, {}
+    for m,px_z in enumerate(pxy_z):
+        details[f'loss_{m}'] = px_z.log_prob(x[m]).squeeze().mean(0).sum()
+        loss = details[f'loss_{m}'] + loss
+    # Joint ELBO
+    loss = loss - 10**-2*kl_divergence(qz_xy,model.pz(*model.pz_params)).mean(0).sum()
+    # KL regularizers
+    kl1 = kl_divergence(qz_xy, qz_xs[0]).mean(0).sum()
+    kl2 = kl_divergence(qz_xy,qz_xs[1]).mean(0).sum()
+    details['reg'] , details['loss'] = kl1+kl2, loss
+    return (loss - beta*(kl1 + kl2), details) if epoch >= warmup else (loss, details)
+
+
+def m_multi_elbos(model, x, K=1, beta=0):
+    """ Generalized multimodal Elbo loss introduced in (Sutter 2021).
+    It consists in sum of modified ELBOS that minimizes a sum of KL divergence"""
+
+    if not hasattr(model, 'joint_encoder'):
+        raise TypeError('The model must have a joint encoder for this loss.')
     qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
     qz_xs, px_zs, z_xs = model.forward(x, K=1)
     loss = 0
-    for m,px_z in enumerate(pxy_z):
-        loss = px_z.log_prob(x[m]).squeeze() + loss
-    loss = loss.mean(0).sum()
-    kl1 = kl_divergence(qz_xy, qz_xs[0]).mean(0).sum()
-    kl2 = kl_divergence(qz_xy,qz_xs[1]).mean(0).sum()
+    n_modal = len(pxy_z)
+    if n_modal != 2:
+        print("This loss is not normalized correctly for more than 2 modalities")
+    for m in range(n_modal):
+        loss = loss + pxy_z[m].log_prob(x[m]).squeeze().mean(0).sum()
+        for r in range(n_modal):
+            loss += px_zs[r][m].log_prob(x[m]).squeeze().mean(0).sum()
 
-    print(loss, kl1, kl2)
-    return loss - kl1 - kl2
+        loss -= kl_divergence(qz_xs[m],model.pz(*model.pz_params)).mean(0).sum()
+    loss -= kl_divergence(qz_xy, model.pz(*model.pz_params)).mean(0).sum()
 
+    return loss/3, {}
+
+
+def m_svae(model, x, K=1, beta = 0):
+    """ Loss implemented at the same time in the SVAE (in defense of product of experts) and VAEVAE article"""
+
+    if not hasattr(model, 'joint_encoder'):
+        raise TypeError('The model must have a joint encoder for this loss.')
+    qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
+    qz_xs, px_zs, z_xs = model.forward(x, K=1)
+    loss = 0
+
+    loss, reg = 0, 0
+    n_modal = len(pxy_z)
+    for m in range(n_modal):
+        # unimodal elbos
+        loss += px_zs[m][m].log_prob(x[m]).mean()
+        reg += kl_divergence(qz_xs[m], model.pz(*model.pz_params)).mean(0).sum()
+        # joint reconstruction
+        loss += pxy_z[m].log_prob(x[m]).mean()
+        reg += kl_divergence(qz_xy, qz_xs[m]).mean(0).sum()
+
+    return 1/2*(loss - beta*reg) , dict(loss=loss, reg=reg)
+
+
+def m_telbo(model, x, K=1, beta = 1):
+    """ Loss implemented in SCAN. We optimize simultaneously the unimodal elbos and the multimodal ones."""
+
+    if not hasattr(model, 'joint_encoder'):
+        raise TypeError('The model must have a joint encoder for this loss.')
+    qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
+    qz_xs, px_zs, z_xs = model.forward(x, K=1)
+    loss,reg = 0,0
+    for m in range(len(pxy_z)):
+        # unimodal elbos
+        loss += px_zs[m][m].log_prob(x[m]).mean()
+        reg += kl_divergence(qz_xs[m], model.pz(*model.pz_params)).mean(0).sum()
+        # joint reconstruction
+        loss += pxy_z[m].log_prob(x[m]).mean()
+    # Add multimodal kl
+    reg += kl_divergence(qz_xy, model.pz(*model.pz_params)).mean(0).sum()
+    return loss - beta*reg, dict(loss=loss, reg=reg)
 
 
 
@@ -158,7 +233,8 @@ def m_iwae(model, x, K=1, beta=0):
     x_split = zip(*[_x.split(S) for _x in x])
     lw = [_m_iwae(model, _x, K) for _x in x_split]
     lw = torch.cat(lw, 1)  # concat on batch
-    return log_mean_exp(lw).sum()
+    details = {}
+    return log_mean_exp(lw).sum(), details
 
 
 def _m_iwae_looser(model, x, K=1):
@@ -218,7 +294,8 @@ def m_dreg(model, x, K=1, beta=0):
         grad_wt = (lw - torch.logsumexp(lw, 0, keepdim=True)).exp()
         if zss.requires_grad:
             zss.register_hook(lambda grad: grad_wt.unsqueeze(-1) * grad)
-    return (grad_wt * lw).sum()
+    details = {}
+    return (grad_wt * lw).sum(), details
 
 
 def _m_dreg_looser(model, x, K=1, beta=0):

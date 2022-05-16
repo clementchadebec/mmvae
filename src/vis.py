@@ -2,6 +2,7 @@
 
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -51,6 +52,22 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
 
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
+
+def plot_posteriors(means, stds,filepath, ticks = None, colors = ['blue', 'orange', 'green']):
+    fig, ax = plt.subplots()
+    min = np.min([(torch.min(means[i])-torch.max(stds[i])).cpu() for i in np.arange(len(means))])
+    max = np.max([(torch.max(means[i]) + torch.max(stds[i])).cpu() for i in np.arange(len(means))])
+    ax.set_xlim(min,max)
+    ax.set_ylim(min,max)
+
+    for i,t_means in enumerate(means) : # enumerate on modalities
+        t_stds, c = stds[i], colors[i]
+        for j,m in enumerate(t_means): # enumerate on samples
+            ax.add_patch(Ellipse((m[0],m[1]), t_stds[j][0], t_stds[j][1],figure=fig, color=c, fill=False))
+            if ticks is not None :
+                ax.text(m[0], m[1], str(ticks[j]))
+    plt.savefig(filepath, bbox_inches='tight')
+    return
 
 
 def tensor_to_df(tensor, ax_names=None):

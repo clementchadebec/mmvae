@@ -34,4 +34,10 @@ class JMVAE():
 
         return qz_xy, pxy_z,z_xy
 
+    def analyse_joint_posterior(self, data, n_samples):
+        bdata = [d[:n_samples] for d in data]
+        qz_xy, _, _ = self.forward_joint(bdata)
+        m,s = qz_xy.mean, qz_xy.stddev
+        return m,s
+
 

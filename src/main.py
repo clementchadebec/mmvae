@@ -12,7 +12,7 @@ from torch import optim
 
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data
+from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--experiment', type=str, default='', metavar='E',
@@ -21,7 +21,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     choices=[s[4:] for s in dir(models) if 'VAE_' in s],
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg', 'vaevae', 'jmvae'],
+                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -54,8 +54,11 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--dist', type=str, default = 'normal',
                     choices= ['normal', 'laplace'])
-parser.add_argument('--beta', type=int, default=1000,
+parser.add_argument('--beta', type=float, default=1000,
                     help='scaling factor for the regularization in vaevae loss')
+parser.add_argument('--data-path', type=str, default = '../data/')
+
+parser.add_argument('--warmup', type=int, default=0)
 
 # args
 args = parser.parse_args()
@@ -123,17 +126,20 @@ t_objective = objective
 def train(epoch, agg):
     model.train()
     b_loss = 0
+    b_details = {}
     for i, dataT in enumerate(train_loader):
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
-        loss = -objective(model, data, K=args.K, beta=args.beta)
+        loss, details = objective(model, data, K=args.K, beta=args.beta,epoch=epoch,warmup=args.warmup)
+        loss = -loss # minimization
         loss.backward()
         optimizer.step()
         b_loss += loss.item()
+        update_details(b_details, details)
         if args.print_freq > 0 and i % args.print_freq == 0:
-            print("iteration {:04d}: loss: {:6.3f}".format(i, loss.item() / args.batch_size))
+            print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details))
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
-    print('====> Epoch: {:03d} Train loss: {:.4f}'.format(epoch, agg['train_loss'][-1]))
+    print('====> Epoch: {:03d} Train loss: {:.4f}, details : {}'.format(epoch, agg['train_loss'][-1], b_details))
 
 
 def test(epoch, agg):
@@ -142,20 +148,17 @@ def test(epoch, agg):
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
-            ticks = dataT[0][1]
-
-            # temp = ticks.argsort()
-            # ranks = np.empty_like(temp)
-            # ranks[temp] = np.arange(len(ticks))
-            ticks = np.arange(len(data[0]))
-
-            loss = -t_objective(model, data, K=args.K)
+            ticks = dataT[0][1] # targets
+            ticks = np.arange(len(data[0])) #or simply the indexes
+            loss, details = t_objective(model, data, K=args.K)
+            loss = -loss
             b_loss += loss.item()
             if i == 0:
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
                     model.analyse(data, runPath, epoch,ticks)
+                    model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 

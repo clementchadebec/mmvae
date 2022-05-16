@@ -67,6 +67,8 @@ class MMVAE(nn.Module):
         return recons
 
     def analyse(self, data, K):
+        """Compute all embeddings, and plot empirical posterior and prior distribution.
+        It also computes KL distances between distributions"""
         self.eval()
         with torch.no_grad():
             qz_xs, _, zss = self.forward(data, K=K)
@@ -75,7 +77,7 @@ class MMVAE(nn.Module):
             # Add prior samples to the samples from each encoder generated during the forward pass
             zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
                    *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
-
+            # Labels
             zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
             kls_df = tensors_to_df(
                 [*[kl_divergence(qz_x, pz).cpu().numpy() for qz_x in qz_xs],
@@ -93,6 +95,17 @@ class MMVAE(nn.Module):
             kls_df
 
             # previously embed_umap(torch.cat(zss, 0).cpu().numpy()) but incompatibility with u_map version
+
+    def analyse_posterior(self,data, n_samples=8):
+        """ For all points in data, computes the mean and standard of q(z|x), q(z|y)"""
+        bdata = [d[:n_samples] for d in data]
+        qz_xs, _, _ = self.forward(bdata)
+        means, std = [], []
+        for m, qz_x in enumerate(qz_xs):
+            means.append(get_mean(qz_x))
+            std.append(qz_x.stddev)
+        return means, std
+
 
     def sample_from_conditional(self,data,n = 10):
         self.eval()

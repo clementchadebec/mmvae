@@ -5,11 +5,11 @@ from torchvision import datasets, transforms
 import numpy as np
 import json
 
-
+unbalanced = False
 # in place i the labels of fashion mnist that are associated with the number i in mnist
-# correspondence = [[1,2,3], [4,5,6], [7,8,9]]
-correspondence = np.arange(10).reshape(-1,1)
 
+correspondence = [[1,2,3], [4,5,6], [7,8,9]] if unbalanced else np.arange(10).reshape(-1,1)
+output_path = '../data/unbalanced/' if unbalanced else '../data/'
 
 def values_in(arr, filter):
     """ Returns a boolean array that indicates which values of array are in filter"""
@@ -19,20 +19,18 @@ def values_in(arr, filter):
         bool_arr += arr == v
     return bool_arr.bool()
 
-a = torch.tensor([1,2,3,4,5,6,7])
-print( a[values_in(a, [2,5,8])])
 
 def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     """
     l*: sorted labels
     idx*: indices of sorted labels in original list
+    dm = number of time to repeat the randomization process
     """
     _idx1, _idx2 = [], []
-    for l in range(len(correspondence)):  # assuming both have same idxs
-        print(len(idx1), len(values_in(l2,correspondence[l])))
+    for l in range(len(correspondence)): # assuming both have same idxs
         l_idx1, l_idx2 = idx1[l1 == l], idx2[values_in(l2,correspondence[l])]
         n = min(l_idx1.size(0), l_idx2.size(0), max_d)
-        l_idx1, l_idx2 = l_idx1[:n], l_idx2[:n]
+        l_idx1, l_idx2 = l_idx1[torch.randperm(l_idx1.size(0))][:n], l_idx2[torch.randperm(l_idx2.size(0))][:n]
         for _ in range(dm):
             _idx1.append(l_idx1[torch.randperm(n)])
             _idx2.append(l_idx2[torch.randperm(n)])
@@ -53,15 +51,15 @@ if __name__ == '__main__':
     fashion_l, fashion_li = train_fashion.targets.sort()
     idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, fashion_l, fashion_li, max_d=max_d, dm=dm)
     print('len train idx:', len(idx1), len(idx2))
-    torch.save(idx1, '../data/train-ms-mnist-idx-unbalanced.pt')
-    torch.save(idx2, '../data/train-ms-fashion-idx-unbalanced.pt')
+    torch.save(idx1, output_path + 'train-ms-mnist-idx.pt')
+    torch.save(idx2, output_path + 'train-ms-fashion-idx.pt')
 
     mnist_l, mnist_li = test_mnist.targets.sort()
     fashion_l, fashion_li = test_fashion.targets.sort()
     idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, fashion_l, fashion_li, max_d=max_d, dm=dm)
     print('len test idx:', len(idx1), len(idx2))
-    torch.save(idx1, '../data/test-ms-mnist-idx-unbalanced.pt')
-    torch.save(idx2, '../data/test-ms-fashion-idx-unbalanced.pt')
+    torch.save(idx1, output_path + 'test-ms-mnist-idx.pt')
+    torch.save(idx2, output_path + 'test-ms-fashion-idx.pt')
 
 
     print(idx1[:20], idx2[:20])

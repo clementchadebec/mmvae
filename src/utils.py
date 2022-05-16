@@ -129,6 +129,17 @@ def kl_divergence(d1, d2, K=100):
         samples = d1.rsample(torch.Size([K]))
         return (d1.log_prob(samples) - d2.log_prob(samples)).mean(0)
 
+def wasserstein_2(d1,d2):
+    """ Computes the wasserstein distance between normal distributions"""
+    if type(d1) != type(dist.Normal(0,1)) :
+        raise NameError("Wasserstein_2 function must be applied to Normal distributions only.")
+
+    w2 = (d1.mean - d2.mean)**2 + d1.stddev + d2.stddev - 2*torch.sqrt(d1.stddev*d2.stddev)
+
+    return w2
+
+
+
 
 def pdist(sample_1, sample_2, eps=1e-5):
     """Compute the matrix of all squared pairwise distances. Code
@@ -201,3 +212,10 @@ class FakeCategorical(dist.Distribution):
         # operationally equivalence here, which is summing up the sentence dimension
         # in objective.
 
+def update_details(dict1, dict2):
+    """Modify in place the first dict by adding values of the second dict"""
+    for k in dict2.keys():
+        if k in dict1.keys():
+            dict1[k] += dict2[k]
+        else :
+            dict1[k] = dict2[k]

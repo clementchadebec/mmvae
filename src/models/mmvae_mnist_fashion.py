@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision.utils import save_image, make_grid
 
-from vis import plot_embeddings, plot_kls_df
+from vis import plot_embeddings, plot_kls_df, plot_posteriors
 from .mmvae import MMVAE
 from .vae_mnist import MNIST
 from .vae_svhn import SVHN
@@ -27,22 +27,25 @@ class MNIST_FASHION(MMVAE):
         self.vaes[0].llik_scaling = prod(self.vaes[1].dataSize) / prod(self.vaes[0].dataSize) \
             if params.llik_scaling == 0 else params.llik_scaling
         self.modelName = 'mnist-fashion'
+        self.data_path = params.data_path
+        print(self.data_path)
 
     @property
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
-        if not (os.path.exists('../data/train-ms-mnist-idx.pt')
-                and os.path.exists('../data/train-ms-fashion-idx.pt')
-                and os.path.exists('../data/test-ms-mnist-idx.pt')
-                and os.path.exists('../data/test-ms-fashion-idx.pt')):
+        print(self.data_path)
+        if not (os.path.exists(self.data_path + 'train-ms-mnist-idx.pt')
+                and os.path.exists(self.data_path + 'train-ms-fashion-idx.pt')
+                and os.path.exists(self.data_path + 'test-ms-mnist-idx.pt')
+                and os.path.exists(self.data_path + 'test-ms-fashion-idx.pt')):
             raise RuntimeError('Generate transformed indices with the script in bin')
         # get transformed indices
-        t_mnist = torch.load('../data/train-ms-mnist-idx.pt')
-        t_fashion = torch.load('../data/train-ms-fashion-idx.pt')
-        s_mnist = torch.load('../data/test-ms-mnist-idx.pt')
-        s_fashion = torch.load('../data/test-ms-fashion-idx.pt')
+        t_mnist = torch.load(self.data_path + 'train-ms-mnist-idx.pt')
+        t_fashion = torch.load(self.data_path + 'train-ms-fashion-idx.pt')
+        s_mnist = torch.load(self.data_path + 'test-ms-mnist-idx.pt')
+        s_fashion = torch.load(self.data_path + 'test-ms-fashion-idx.pt')
 
         # load base datasets
         t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device, type='numbers')
@@ -52,6 +55,7 @@ class MNIST_FASHION(MMVAE):
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
             ResampleDataset(t2.dataset, lambda d, i: t_fashion[i], size=len(t_fashion))
         ])
+
         test_mnist_fashion = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
             ResampleDataset(s2.dataset, lambda d, i: s_fashion[i], size=len(s_fashion))
@@ -99,9 +103,11 @@ class MNIST_FASHION(MMVAE):
         zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=10)
-        plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
+        # plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
 
-
+    def analyse_posterior(self,data, n_samples,runPath, epoch, ticks=None):
+        means, stds = super(MNIST_FASHION, self).analyse_posterior(data, n_samples)
+        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch), ticks=ticks)
 
 
 def resize_img(img, refsize):
