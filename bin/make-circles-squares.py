@@ -26,6 +26,7 @@ def square_line(X,Y,r):
 
 squares = []
 circles = []
+labels = []
 
 for i, r_disc in enumerate(rayons):
     for _ in range(n_repeat):
@@ -40,7 +41,7 @@ for i, r_disc in enumerate(rayons):
 
         squares.extend([img_full_square, img_empty_square])
         circles.extend([img_full_disc, img_empty_disc])
-
+        labels.extend([1,0])
 
 
 # Visualize some examples
@@ -58,14 +59,16 @@ for i in np.linspace(0,dataset_size*n_repeat-1, 100):
 # Save in pytorch format
 squares = torch.unsqueeze(torch.FloatTensor(squares), 1)
 circles = torch.unsqueeze(torch.FloatTensor(circles), 1)
-
+labels = torch.tensor(labels)
 # Select some for training and testing
-s_train, s_test, c_train, c_test = train_test_split(squares,circles, test_size=0.3)
+s_train, s_test, c_train, c_test, l_train, l_test = train_test_split(squares,circles, labels, test_size=0.3)
 
 torch.save(s_train, output_path + '/circles_train.pt')
 torch.save(s_test, output_path + '/circles_test.pt')
 torch.save(c_train, output_path + '/discs_train.pt')
 torch.save(c_test, output_path + '/discs_test.pt')
+torch.save(l_train, output_path+ '/labels_train.pt')
+torch.save(l_test, output_path + '/labels_test.pt')
 
 print(c_train.shape, c_test.shape)
 

@@ -16,12 +16,12 @@ def compute_microbatch_split(x, K):
     return min(B, S)
 
 
-def elbo(model, x, K=1):
+def elbo(model, x, K=1, beta_prior = 1):
     """Computes E_{p(x)}[ELBO] """
     qz_x, px_z, _ = model(x)
     lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.llik_scaling
     kld = kl_divergence(qz_x, model.pz(*model.pz_params))
-    return (lpx_z.sum(-1) - 10**-4 * kld.sum(-1)).mean(0).sum()
+    return (lpx_z.sum(-1) - beta_prior * kld.sum(-1)).mean(0).sum()
 
 
 def _iwae(model, x, K):
@@ -121,26 +121,25 @@ def _m_iwae(model, x, K=1):
     lws = torch.cat(lws)
     return lws # (n_modality * K_iwae) x batch_size
 
-def _m_vaevae(model, x, dist, K=1, beta=1000, epoch = 1, warmup = 0):
+def _m_vaevae(model, x, dist, K=1, beta=1000, epoch = 1, warmup = 0, beta_prior=1):
     """ We train the vaes maximizing the unimodal ELBO for each modality with an additionnal term
     that regularizes the distance between posteriors of each modality KL(q(z|x1) || q(z|x2) )
     only for two modalities"""
-    loss1 = elbo(model.vaes[0], x[0])
-    loss2 = elbo(model.vaes[1], x[1])
+    loss1 = elbo(model.vaes[0], x[0], beta_prior=beta_prior)
+    loss2 = elbo(model.vaes[1], x[1], beta_prior=beta_prior)
 
     qz_x0, px0_z,_ = model.vaes[0](x[0])
     qz_x1, px1_z, _ = model.vaes[1](x[1])
-    reg = 1/2*(dist(qz_x0,qz_x1).mean(0).sum(-1) + dist(qz_x1,qz_x0).mean(0).sum()) # symetric distance
-    # print(f'loss1 {loss1}, loss2 {loss2}, kl {kld}')
+    reg = 1/2*(dist(qz_x0,qz_x1)[:,:model.align].mean(0).sum(-1) + dist(qz_x1,qz_x0)[:,:model.align].mean(0).sum()) # symetric distance
     details = dict(loss = loss1 + loss2 , reg = reg, loss1 = loss1, loss2 = loss2)
 
     return (loss1 + loss2 - beta*reg, details) if epoch >= warmup else (loss1 + loss2, details)
 
-def m_vaevae_kl(model, x, K=1, beta=1000, epoch=1, warmup=0):
-    return _m_vaevae(model, x, kl_divergence, K, beta,epoch, warmup)
+def m_vaevae_kl(model, x, K=1, beta=1000, epoch=1, warmup=0, beta_prior = 1):
+    return _m_vaevae(model, x, kl_divergence, K, beta,epoch, warmup, beta_prior)
 
-def m_vaevae_w2(model, x, K=1, beta=1000, epoch=1, warmup=0):
-    return _m_vaevae(model, x, wasserstein_2, K, beta, epoch, warmup)
+def m_vaevae_w2(model, x, K=1, beta=1000, epoch=1, warmup=0, beta_prior = 1):
+    return _m_vaevae(model, x, wasserstein_2, K, beta, epoch, warmup, beta_prior)
 
 def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0):
     """Computes jmvae loss"""

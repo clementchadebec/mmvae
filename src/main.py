@@ -60,6 +60,8 @@ parser.add_argument('--data-path', type=str, default = '../data/')
 
 parser.add_argument('--warmup', type=int, default=0)
 
+parser.add_argument('--beta-prior', type=float, default = 1)
+
 # args
 args = parser.parse_args()
 
@@ -95,7 +97,7 @@ if not args.experiment:
 
 # set up run path
 runId = datetime.datetime.now().isoformat()
-experiment_dir = Path('../experiments/' + args.experiment)
+experiment_dir = Path('../experiments/' + args.experiment + '/' + datetime.date.today().isoformat())
 experiment_dir.mkdir(parents=True, exist_ok=True)
 runPath = mkdtemp(prefix=runId, dir=str(experiment_dir))
 sys.stdout = Logger('{}/run.log'.format(runPath))
@@ -130,7 +132,7 @@ def train(epoch, agg):
     for i, dataT in enumerate(train_loader):
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
-        loss, details = objective(model, data, K=args.K, beta=args.beta,epoch=epoch,warmup=args.warmup)
+        loss, details = objective(model, data,args.K, args.beta,epoch,args.warmup, args.beta_prior)
         loss = -loss # minimization
         loss.backward()
         optimizer.step()
@@ -148,16 +150,16 @@ def test(epoch, agg):
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
-            ticks = dataT[0][1] # targets
+            classes = dataT[0][1] # targets
             ticks = np.arange(len(data[0])) #or simply the indexes
-            loss, details = t_objective(model, data, K=args.K)
+            loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior)
             loss = -loss
             b_loss += loss.item()
             if i == 0:
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
-                    model.analyse(data, runPath, epoch,ticks)
+                    model.analyse(data, runPath, epoch,classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))

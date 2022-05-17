@@ -14,7 +14,7 @@ from torchvision.utils import save_image, make_grid
 from vis import plot_embeddings, plot_kls_df, plot_posteriors
 from .mmvae import MMVAE
 from .vae_circles import CIRCLES
-
+from utils import tensor_classes_labels
 
 data_path = '../data/circles_and_discs/'
 
@@ -30,8 +30,8 @@ class CIRCLES_DISCS(MMVAE):
             if params.llik_scaling == 0 else params.llik_scaling
         self.modelName = 'circles_discs'
 
-        self.vaes[0].modelName = 'circles'
-        self.vaes[1].modelName = 'discs'
+        self.vaes[0].modelName = 'squares'
+        self.vaes[1].modelName = 'circles'
         self.data_path = params.data_path
 
     @property
@@ -83,6 +83,7 @@ class CIRCLES_DISCS(MMVAE):
 
         recons = super(CIRCLES_DISCS, self).sample_from_conditional([d[:8] for d in data], n=n)
 
+        # save the images
         for r, recon_list in enumerate(recons):
             for o, recon in enumerate(recon_list):
                 _data = data[r][:8].cpu()
@@ -90,15 +91,18 @@ class CIRCLES_DISCS(MMVAE):
                 comp = torch.cat([_data,recon])
                 save_image(comp, '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
-    def analyse(self, data, runPath, epoch, ticks=None):
-        zemb, zsl, kls_df = super(CIRCLES_DISCS, self).analyse(data, K=10)
-        labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
-        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks=ticks, K=10)
+    def analyse(self, data, runPath, epoch, ticks=None, classes=None):
+        zemb, zsl, kls_df = super(CIRCLES_DISCS, self).analyse(data, K=1)
+        labels = [*[vae.modelName.lower() for vae in self.vaes]] # no prior samples
+        zsl, labels = tensor_classes_labels(zsl,2*list(classes),labels,['empty', 'full']) if classes \
+                                                                                     is not None else (zsl, labels)
+        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks=ticks, K=1)
         plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
 
     def analyse_posterior(self,data, n_samples,runPath, epoch, ticks=None):
         means, stds = super(CIRCLES_DISCS, self).analyse_posterior(data, n_samples)
-        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch), ticks=ticks)
+        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch),
+                        [self.vaes[0].modelName, self.vaes[1].modelName], ticks=ticks)
 
 def resize_img(img, refsize):
     return F.pad(img, (2, 2, 2, 2)).expand(img.size(0), *refsize)

@@ -21,6 +21,7 @@ class MMVAE(nn.Module):
         self.modelName = None  # filled-in per sub-class
         self.params = params
         self._pz_params = None  # defined in subclass
+        self.align = -1
 
     @property
     def pz_params(self):
@@ -35,6 +36,7 @@ class MMVAE(nn.Module):
         qz_xs, zss = [], []
         # initialise cross-modal matrix
         px_zs = [[None for _ in range(len(self.vaes))] for _ in range(len(self.vaes))]
+
         for m, vae in enumerate(self.vaes):
             # encode each modality with its specific encoder
             qz_x, px_z, zs = vae(x[m], K=K)
@@ -75,8 +77,10 @@ class MMVAE(nn.Module):
             pz = self.pz(*self.pz_params) # prior
 
             # Add prior samples to the samples from each encoder generated during the forward pass
-            zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
-                   *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
+            # zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
+            #        *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
+
+            zss = [*[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]] # No prior samples
             # Labels
             zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
             kls_df = tensors_to_df(

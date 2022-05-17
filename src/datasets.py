@@ -258,12 +258,12 @@ class CUBImageFt(Dataset):
 
 class CIRCLES_DATASET(Dataset):
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, labels_path):
         super().__init__()
         self.data = torch.load(data_path) # tensor of size nb_sample, size_image, size_image
-
+        self.labels = torch.load(labels_path)
     def __getitem__(self, item):
-        return self.data[item], item
+        return self.data[item], self.labels[item]
 
     def __len__(self):
         return len(self.data)

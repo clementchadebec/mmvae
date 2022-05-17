@@ -37,7 +37,7 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
 
     cmap_obj, cmap_arr = custom_cmap(n=len(labels))
     plt.figure(figsize=(15,10))
-    plt.scatter(emb[:, 0], emb[:, 1], c=emb_l, cmap=cmap_obj, s=25, alpha=0.2, edgecolors='none')
+    plt.scatter(emb[:, 0], emb[:, 1], c=emb_l, cmap=cmap_obj, s=25, alpha=0.8, edgecolors='none')
     l_elems = [Line2D([0], [0], marker='o', color=cm, label=l, alpha=0.5, linestyle='None')
                for (cm, l) in zip(cmap_arr, labels)]
     plt.legend(frameon=False, loc=2, handles=l_elems)
@@ -53,7 +53,7 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
-def plot_posteriors(means, stds,filepath, ticks = None, colors = ['blue', 'orange', 'green']):
+def plot_posteriors(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
     fig, ax = plt.subplots()
     min = np.min([(torch.min(means[i])-torch.max(stds[i])).cpu() for i in np.arange(len(means))])
     max = np.max([(torch.max(means[i]) + torch.max(stds[i])).cpu() for i in np.arange(len(means))])
@@ -66,6 +66,11 @@ def plot_posteriors(means, stds,filepath, ticks = None, colors = ['blue', 'orang
             ax.add_patch(Ellipse((m[0],m[1]), t_stds[j][0], t_stds[j][1],figure=fig, color=c, fill=False))
             if ticks is not None :
                 ax.text(m[0], m[1], str(ticks[j]))
+
+
+    l_elems = [Line2D([0], [0], marker='o', color=cm, label=l, linestyle='None')
+               for (cm, l) in zip(colors, labels)]
+    plt.legend(frameon=False, loc=2, handles=l_elems)
     plt.savefig(filepath, bbox_inches='tight')
     return
 
