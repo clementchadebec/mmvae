@@ -1,6 +1,6 @@
 # MNIST-SVHN multi-modal model specification
 import os
-
+import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn as nn
@@ -14,7 +14,7 @@ from vis import plot_embeddings, plot_kls_df, plot_posteriors
 from .mmvae import MMVAE
 from .vae_mnist import MNIST
 from .vae_svhn import SVHN
-
+from utils import tensor_classes_labels
 
 class MNIST_FASHION(MMVAE):
     def __init__(self, params):
@@ -99,9 +99,12 @@ class MNIST_FASHION(MMVAE):
                 save_image(comp, '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
 
-    def analyse(self, data, runPath, epoch, ticks=None):
+    def analyse(self, data, runPath, epoch, classes = None, ticks=None):
         zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=10)
         labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
+        zsl, labels = tensor_classes_labels(zsl, 2 * list(classes), labels, np.arange(10).astype(str)) if classes \
+                                                                                                  is not None else (zsl, labels)
+
         plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=10)
         # plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
 

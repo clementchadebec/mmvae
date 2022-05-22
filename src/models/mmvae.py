@@ -110,10 +110,34 @@ class MMVAE(nn.Module):
             std.append(qz_x.stddev)
         return means, std
 
+    def cross_modalities_sample_unaligned(self, data, n = 10):
+        """ If not all sample dimensions are shared, we need a different
+        cross modality generation where the shared variables are generated using
+        q(z|xi) and the rest are sampled from the prior"""
+        m = len(data) # nb_modalities
+        samples = [[None for _ in range(m)] for _ in range(m)]
+        for i in range(m):
+            for j in range(m):
+
+                zss = self.vaes[i].forward(data[i], K=n)[2]
+                pz = self.pz(*self.pz_params)
+                z_prior = pz.rsample(zss.size()[:-1]).squeeze()
+                zss[:,:,self.align:] = z_prior[:,:,self.align:] if i!=j else zss[:,:,self.align:]
+                samples[i][j] = self.vaes[j].dec(zss)[0] # shape [n,n_data,1,32,32]
+
+        return samples
+
+
+
+
+
 
     def sample_from_conditional(self,data,n = 10):
+
         self.eval()
-        px_zss = [self.forward(data)[1] for _ in range(n)]
+        px_zss = [self.forward(data)[1] for _ in range(n)] # sample from qz_xs
+        if self.align != -1:
+            return self.cross_modalities_sample_unaligned(data, n)
         with torch.no_grad():
             # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
             recons = [torch.stack([torch.stack([get_mean(px_z) for px_z in r]) for r in px_zs]) for px_zs in px_zss]

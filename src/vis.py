@@ -53,6 +53,15 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
+def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath):
+    fig, ax = plt.subplots(1,2)
+    sc1 = ax[0].scatter(emb0[:,0],emb0[:,1], c = emb_l0)
+    fig.colorbar(sc1,ax=ax[0])
+    sc2 = ax[1].scatter(emb1[:,0],emb1[:,1], c = emb_l1)
+    fig.colorbar(sc2, ax=ax[1])
+    plt.savefig(filepath)
+    plt.close()
+
 def plot_posteriors(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
     fig, ax = plt.subplots()
     min = np.min([(torch.min(means[i])-torch.max(stds[i])).cpu() for i in np.arange(len(means))])

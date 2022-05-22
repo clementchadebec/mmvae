@@ -130,7 +130,11 @@ def _m_vaevae(model, x, dist, K=1, beta=1000, epoch = 1, warmup = 0, beta_prior=
 
     qz_x0, px0_z,_ = model.vaes[0](x[0])
     qz_x1, px1_z, _ = model.vaes[1](x[1])
-    reg = 1/2*(dist(qz_x0,qz_x1)[:,:model.align].mean(0).sum(-1) + dist(qz_x1,qz_x0)[:,:model.align].mean(0).sum()) # symetric distance
+    if model.align != -1:
+        reg = 1/2*(dist(qz_x0,qz_x1)[:,:model.align].mean(0).sum(-1) + dist(qz_x1,qz_x0)[:,:model.align].mean(0).sum()) # symetric distance
+    else :
+        reg = 1/2*(dist(qz_x0,qz_x1).mean(0).sum(-1) + dist(qz_x1,qz_x0).mean(0).sum()) # symetric distance
+
     details = dict(loss = loss1 + loss2 , reg = reg, loss1 = loss1, loss2 = loss2)
 
     return (loss1 + loss2 - beta*reg, details) if epoch >= warmup else (loss1 + loss2, details)
@@ -141,11 +145,12 @@ def m_vaevae_kl(model, x, K=1, beta=1000, epoch=1, warmup=0, beta_prior = 1):
 def m_vaevae_w2(model, x, K=1, beta=1000, epoch=1, warmup=0, beta_prior = 1):
     return _m_vaevae(model, x, wasserstein_2, K, beta, epoch, warmup, beta_prior)
 
-def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0):
+def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     """Computes jmvae loss"""
     if not hasattr(model, 'joint_encoder'):
         raise TypeError('The model must have a joint encoder for this loss.')
-
+    # if epoch >= warmup:
+    #     model.joint_encoder.requires_grad_(False)
     qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
     qz_xs, px_zs, z_xs = model.forward(x, K=1)
     loss, details = 0, {}
@@ -153,12 +158,12 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0):
         details[f'loss_{m}'] = px_z.log_prob(x[m]).squeeze().mean(0).sum()
         loss = details[f'loss_{m}'] + loss
     # Joint ELBO
-    loss = loss - 10**-2*kl_divergence(qz_xy,model.pz(*model.pz_params)).mean(0).sum()
+    loss = loss - beta_prior*kl_divergence(qz_xy,model.pz(*model.pz_params)).mean(0).sum()
     # KL regularizers
     kl1 = kl_divergence(qz_xy, qz_xs[0]).mean(0).sum()
     kl2 = kl_divergence(qz_xy,qz_xs[1]).mean(0).sum()
-    details['reg'] , details['loss'] = kl1+kl2, loss
-    return (loss - beta*(kl1 + kl2), details) if epoch >= warmup else (loss, details)
+    details['kl1'], details['kl2'] , details['loss'] = kl1,kl2, loss
+    return (loss - beta*(kl1+kl2), details) if epoch >= warmup else (loss, details)
 
 
 def m_multi_elbos(model, x, K=1, beta=0):
@@ -206,23 +211,30 @@ def m_svae(model, x, K=1, beta = 0):
     return 1/2*(loss - beta*reg) , dict(loss=loss, reg=reg)
 
 
-def m_telbo(model, x, K=1, beta = 1):
-    """ Loss implemented in SCAN. We optimize simultaneously the unimodal elbos and the multimodal ones."""
+def m_telbo(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
+    """ Loss implemented in "Generative models of visually grounded imagination"
+    We optimize simultaneously the unimodal elbos and the multimodal ones."""
 
     if not hasattr(model, 'joint_encoder'):
         raise TypeError('The model must have a joint encoder for this loss.')
+
     qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
     qz_xs, px_zs, z_xs = model.forward(x, K=1)
-    loss,reg = 0,0
+    details = {'mloss' : 0}
     for m in range(len(pxy_z)):
-        # unimodal elbos
-        loss += px_zs[m][m].log_prob(x[m]).mean()
-        reg += kl_divergence(qz_xs[m], model.pz(*model.pz_params)).mean(0).sum()
+        # unimodal elbos : fix parameter theta for this computation
+        model.vaes[m].enc.requires_grad_(False)
+        details[f'loss_{m}'] = px_zs[m][m].log_prob(x[m]).squeeze().mean(0).sum()
+        details[f'loss_{m}'] -= beta_prior*kl_divergence(qz_xs[m], model.pz(*model.pz_params)).mean(0).sum()
+
         # joint reconstruction
-        loss += pxy_z[m].log_prob(x[m]).mean()
+        model.vaes[m].enc.requires_grad_(True)
+        details['mloss'] += pxy_z[m].log_prob(x[m]).squeeze().mean(0).sum()
     # Add multimodal kl
-    reg += kl_divergence(qz_xy, model.pz(*model.pz_params)).mean(0).sum()
-    return loss - beta*reg, dict(loss=loss, reg=reg)
+    details['reg'] = beta_prior*kl_divergence(qz_xy, model.pz(*model.pz_params)).mean(0).sum()
+
+    loss = details['mloss'] - details['reg'] + beta*(details['loss_0'] + details['loss_1'])
+    return loss, details
 
 
 

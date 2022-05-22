@@ -222,7 +222,6 @@ def update_details(dict1, dict2):
 
 def tensor_classes_labels(l1, l2, l1_names, l2_names):
     """ Transform labels that are tuples (l1[i], l2[i]) to int"""
-    print(len(l1), len(l2))
     vl1, vl2 = len(np.unique(l1)), len(np.unique(l2))
     tlabels, tnames = [], []
     for i in range(len(l1)):

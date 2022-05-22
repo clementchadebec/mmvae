@@ -96,10 +96,8 @@ class CIRCLES(VAE):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
         # create datasets
-        train = DataLoader(CIRCLES_DATASET(data_path + type + '_train.pt', data_path + 'labels_train.pt'),
-                           batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(CIRCLES_DATASET(data_path + type + '_test.pt', data_path + 'labels_test.pt'),
-                          batch_size=batch_size, shuffle=shuffle, **kwargs)
+        train = DataLoader(CIRCLES_DATASET(data_path + type + '_train.pt', data_path + 'labels_train.pt', data_path + 'r_' + type+'_train.pt'),batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(CIRCLES_DATASET(data_path + type + '_test.pt', data_path + 'labels_test.pt', data_path + 'r_'+type+'_test.pt'),batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 
     def generate(self, runPath, epoch):

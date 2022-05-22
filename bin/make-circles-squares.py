@@ -24,20 +24,21 @@ def circle(X,Y,r):
 def square_line(X,Y,r):
     return (np.abs(X) + np.abs(Y) <= (r + circle_thickness/2))*(np.abs(X) + np.abs(Y) >= r - circle_thickness/2)
 
-squares = []
-circles = []
+squares, r_squares = [], []
+circles,r_circles = [],[]
 labels = []
 
 for i, r_disc in enumerate(rayons):
     for _ in range(n_repeat):
         X,Y = np.meshgrid(x,x)
-
+        r_circles.extend([np.random.uniform(min_rayon,max_rayon) for _ in range(2)])
+        r_squares.extend([np.random.uniform(min_rayon, max_rayon) for _ in range(2)])
         # Associate a random-sized disc to a random-sized full square
-        img_full_disc = X**2 + Y**2 <= np.random.uniform(min_rayon,max_rayon)**2
-        img_full_square = np.abs(X) + np.abs(Y) <= np.random.uniform(min_rayon,max_rayon)
+        img_full_disc = X**2 + Y**2 <= r_circles[-2]**2
+        img_full_square = np.abs(X) + np.abs(Y) <= r_squares[-2]
         # And a random-sized ring to a random sized line-square
-        img_empty_disc = circle(X,Y,np.random.uniform(min_rayon,max_rayon))
-        img_empty_square = square_line(X,Y,np.random.uniform(min_rayon,max_rayon))
+        img_empty_disc = circle(X,Y,r_circles[-1])
+        img_empty_square = square_line(X,Y,r_squares[-1])
 
         squares.extend([img_full_square, img_empty_square])
         circles.extend([img_full_disc, img_empty_disc])
@@ -59,16 +60,21 @@ for i in np.linspace(0,dataset_size*n_repeat-1, 100):
 # Save in pytorch format
 squares = torch.unsqueeze(torch.FloatTensor(squares), 1)
 circles = torch.unsqueeze(torch.FloatTensor(circles), 1)
-labels = torch.tensor(labels)
+labels, r_squares, r_circles = torch.tensor(labels),torch.tensor(r_squares), torch.tensor(r_circles)
 # Select some for training and testing
-s_train, s_test, c_train, c_test, l_train, l_test = train_test_split(squares,circles, labels, test_size=0.3)
+s_train, s_test, c_train, c_test, idx_train, idx_test = train_test_split(squares,circles, np.arange(len(labels)), test_size=0.3)
 
-torch.save(s_train, output_path + '/circles_train.pt')
-torch.save(s_test, output_path + '/circles_test.pt')
-torch.save(c_train, output_path + '/discs_train.pt')
-torch.save(c_test, output_path + '/discs_test.pt')
-torch.save(l_train, output_path+ '/labels_train.pt')
-torch.save(l_test, output_path + '/labels_test.pt')
+
+torch.save(s_train, output_path + '/squares_train.pt')
+torch.save(s_test, output_path + '/squares_test.pt')
+torch.save(c_train, output_path + '/circles_train.pt')
+torch.save(c_test, output_path + '/circles_test.pt')
+torch.save(labels[idx_train], output_path+ '/labels_train.pt')
+torch.save(labels[idx_test], output_path + '/labels_test.pt')
+torch.save(r_squares[idx_train], output_path + '/r_squares_train.pt')
+torch.save(r_squares[idx_test], output_path + '/r_squares_test.pt')
+torch.save(r_circles[idx_train], output_path +'/r_circles_train.pt')
+torch.save(r_circles[idx_test], output_path +'/r_circles_test.pt')
 
 print(c_train.shape, c_test.shape)
 

@@ -139,7 +139,7 @@ def train(epoch, agg):
         b_loss += loss.item()
         update_details(b_details, details)
         if args.print_freq > 0 and i % args.print_freq == 0:
-            print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details))
+            print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details['loss_0']/b_details['loss_1']))
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
     print('====> Epoch: {:03d} Train loss: {:.4f}, details : {}'.format(epoch, agg['train_loss'][-1], b_details))
 
@@ -150,7 +150,7 @@ def test(epoch, agg):
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
-            classes = dataT[0][1] # targets
+            classes = dataT[0][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
             loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior)
             loss = -loss
@@ -159,8 +159,11 @@ def test(epoch, agg):
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
-                    model.analyse(data, runPath, epoch,classes=classes)
+                    model.analyse(data, runPath, epoch, classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
+
+                    if args.model in ['circles_discs','j_circles_discs'] :
+                        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 

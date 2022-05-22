@@ -18,6 +18,10 @@ class JMVAE():
         self.qz_xz_params = None # populated in forward
         self.vaes = vaes # a list of vaes already defined
 
+    def eval(self):
+        for vae in self.vaes:
+            vae.eval()
+        self.joint_encoder.eval()
 
     # One additional method to forward using the joint autoencoder
     def forward_joint(self, x, K=1):
@@ -36,8 +40,18 @@ class JMVAE():
 
     def analyse_joint_posterior(self, data, n_samples):
         bdata = [d[:n_samples] for d in data]
-        qz_xy, _, _ = self.forward_joint(bdata)
+        qz_xy, _, zxy = self.forward_joint(bdata)
         m,s = qz_xy.mean, qz_xy.stddev
-        return m,s
+        zxy = zxy.permute(1,0,2).reshape(-1,zxy.size(-1))
+        return m,s, zxy.cpu().numpy()
+
+    def reconstruct_jointly(self, data):
+        self.eval()
+        with torch.no_grad():
+            _,pxy_z,_ = self.forward_joint(data)
+            recons = [get_mean(px_z) for px_z in pxy_z]
+        return recons
+
+
 
 
