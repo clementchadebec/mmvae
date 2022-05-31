@@ -10,8 +10,9 @@ from .vae_mnist import MNIST as VAE_mnist
 from .vae_svhn import SVHN as VAE_svhn
 from .j_mnist_fashion import J_MNIST_FASHION as VAE_j_mnist_fashion
 from .j_circles_discs import J_CIRCLES_DISCS as VAE_j_circles_discs
+from .jmvae_nf import JMVAE_NF as VAE_jnf_circles_discs
 
 
 __all__ = [VAE_mnist_svhn, VAE_mnist, VAE_svhn, VAE_cubIS, VAE_cubS,
            VAE_mnist_fashion, VAE_j_mnist_fashion,
-           VAE_cubI, VAE_cubISft, VAE_cubIft]
+           VAE_cubI, VAE_cubISft, VAE_cubIft,VAE_jnf_circles_discs ]

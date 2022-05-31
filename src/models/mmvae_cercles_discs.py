@@ -33,11 +33,11 @@ class CIRCLES_DISCS(MMVAE):
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
         self.data_path = params.data_path
-        self.align = -1
+        self.align = -1 # this parameter only serv
 
     @property
     def pz_params(self):
-        return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
+        return self._pz_params[0], torch.exp(0.5*self._pz_params[1])
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
         ty0, ty1 = self.vaes[0].modelName, self.vaes[1].modelName
@@ -48,8 +48,8 @@ class CIRCLES_DISCS(MMVAE):
             raise RuntimeError('Generate transformed indices with the script in bin')
 
         # load base datasets
-        t1, s1 = self.vaes[0].getDataLoaders(batch_size, ty0, shuffle, device, data_path=self.data_path)
-        t2, s2 = self.vaes[1].getDataLoaders(batch_size,ty1, shuffle, device, data_path=self.data_path)
+        t1, s1 = CIRCLES.getDataLoaders(batch_size, ty0, shuffle, device, data_path=self.data_path)
+        t2, s2 = CIRCLES.getDataLoaders(batch_size,ty1, shuffle, device, data_path=self.data_path)
 
         train_circles_discs = TensorDataset([t1.dataset,t2.dataset])
         test_circles_discs = TensorDataset([s1.dataset, s2.dataset])

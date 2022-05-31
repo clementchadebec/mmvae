@@ -5,6 +5,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from tempfile import mkdtemp
+import random
 
 import numpy as np
 import torch
@@ -21,7 +22,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     choices=[s[4:] for s in dir(models) if 'VAE_' in s],
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo'],
+                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -67,9 +68,11 @@ args = parser.parse_args()
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
-torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
+random.seed(args.seed)
 
 # load args from disk if pretrained model path is given
 pretrained_path = ""
@@ -152,7 +155,7 @@ def test(epoch, agg):
             data = unpack_data(dataT, device=device)
             classes = dataT[0][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
-            loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior)
+            loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior, epoch=epoch,warmup=args.warmup)
             loss = -loss
             b_loss += loss.item()
             if i == 0:
@@ -162,7 +165,7 @@ def test(epoch, agg):
                     model.analyse(data, runPath, epoch, classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
 
-                    if args.model in ['circles_discs','j_circles_discs'] :
+                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_discs'] :
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))

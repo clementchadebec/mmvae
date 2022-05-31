@@ -1,7 +1,7 @@
 # objectives of choice
 import torch
 from numpy import prod
-
+import torch.nn.functional as F
 from utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2
 
 
@@ -149,8 +149,8 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     """Computes jmvae loss"""
     if not hasattr(model, 'joint_encoder'):
         raise TypeError('The model must have a joint encoder for this loss.')
-    # if epoch >= warmup:
-    #     model.joint_encoder.requires_grad_(False)
+    if epoch >= warmup:
+        model.joint_encoder.requires_grad_(False)
     qz_xy, pxy_z, z_xy = model.forward_joint(x,K=1)
     qz_xs, px_zs, z_xs = model.forward(x, K=1)
     loss, details = 0, {}
@@ -165,6 +165,27 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     details['kl1'], details['kl2'] , details['loss'] = kl1,kl2, loss
     return (loss - beta*(kl1+kl2), details) if epoch >= warmup else (loss, details)
 
+def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
+    if epoch >= warmup:
+        model.joint_encoder.requires_grad_(False)
+    qz_xy, recons, z_xy = model.forward(x)
+    loss, details = 0, {}
+    for m, xm in enumerate(x):
+        assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
+
+        loss = loss - F.mse_loss(
+                recons[m].reshape(xm.shape[0], -1),
+                xm.reshape(xm.shape[0], -1),
+                reduction="none",
+            ).sum(dim=-1).mean()
+    details['loss'] = loss
+    # KLD to the prior
+    details['kld_prior'] = kl_divergence(qz_xy,model.pz(*model.pz_params)).sum(-1).mean()
+    # Approximate the posterior
+
+    details['reg'] = 0 if epoch < warmup else model.compute_kld(x)
+    return (loss - beta_prior*details['kld_prior'] - beta*details['reg'], details) if epoch >= warmup \
+        else (loss - beta_prior*details['kld_prior'], details)
 
 def m_multi_elbos(model, x, K=1, beta=0):
     """ Generalized multimodal Elbo loss introduced in (Sutter 2021).

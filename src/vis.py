@@ -62,7 +62,7 @@ def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath):
     plt.savefig(filepath)
     plt.close()
 
-def plot_posteriors(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
+def plot_posteriors_ellipsoid(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
     fig, ax = plt.subplots()
     min = np.min([(torch.min(means[i])-torch.max(stds[i])).cpu() for i in np.arange(len(means))])
     max = np.max([(torch.max(means[i]) + torch.max(stds[i])).cpu() for i in np.arange(len(means))])
@@ -82,6 +82,22 @@ def plot_posteriors(means, stds,filepath,labels, ticks = None, colors = ['blue',
     plt.legend(frameon=False, loc=2, handles=l_elems)
     plt.savefig(filepath, bbox_inches='tight')
     return
+
+def plot_posteriors(means, std, filepath, labels, ticks=None, colors=['blue', 'orange','green']):
+    plot_posteriors_ellipsoid(means, std,filepath, labels, ticks, colors)
+
+def plot_samples_posteriors(zsamples, filepath, labels, ticks = None):
+    """
+    zsamples is a list with zsamples[m] of shape N, n_data_points, laten_dim
+    """
+    fig, ax = plt.subplots(1,2)
+    for m, zs in enumerate(zsamples):
+        zs = zs.permute(1,0,2)
+        for i, z in enumerate(zs):
+            ax[m].scatter(z[:,0].cpu(), z[:,1].cpu())
+
+    plt.savefig(filepath, bbox_inches='tight')
+
 
 
 def tensor_to_df(tensor, ax_names=None):

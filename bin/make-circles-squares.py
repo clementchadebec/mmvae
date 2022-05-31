@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 dataset_size = 10000
 size_image = 32
 min_rayon, max_rayon = 0.3, 0.9
-circle_thickness = 0.1
+circle_thickness = 0.25
 n_repeat = 10
 output_path = '../data/circles_squares'
 if not os.path.exists(output_path):

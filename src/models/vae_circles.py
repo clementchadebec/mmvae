@@ -19,7 +19,7 @@ from .vae import VAE
 data_path = '../data/circles_and_discs/'
 dataSize = torch.Size([1, 32, 32])
 data_dim = int(prod(dataSize))
-hidden_dim = 400
+hidden_dim = 512
 dist_dict = {'normal' : dist.Normal, 'laplace' : dist.Laplace}
 
 
@@ -42,10 +42,37 @@ class Enc(nn.Module):
 
     def forward(self, x):
         e = self.enc(x.view(*x.size()[:-3], -1))  # flatten data
-        lv = self.fc22(e)
-        return self.fc21(e), F.softmax(lv, dim=-1) * lv.size(-1) + Constants.eta
+        lv = torch.exp(0.5*self.fc22(e))
+        return self.fc21(e), lv + Constants.eta
 
-
+# class Enc(nn.Module):
+#     """ Generate latent parameters for image data. """
+#
+#     def __init__(self, latent_dim, num_hidden_layers=1):
+#         super(Enc, self).__init__()
+#         module1 = []
+#         module1.append(nn.Sequential(nn.Linear(data_dim, hidden_dim), nn.ReLU(True)))
+#         module1.extend([extra_hidden_layer() for _ in range(num_hidden_layers - 1)])
+#         self.enc1 = nn.Sequential(*module1)
+#         self.fc1_1 = nn.Linear(hidden_dim, latent_dim//2)
+#         self.fc1_2 = nn.Linear(hidden_dim, latent_dim//2)
+#
+#         module2 = []
+#         module2.append(nn.Sequential(nn.Linear(data_dim, hidden_dim), nn.ReLU(True)))
+#         module2.extend([extra_hidden_layer() for _ in range(num_hidden_layers - 1)])
+#         self.enc2 = nn.Sequential(*module2)
+#         self.fc2_1 = nn.Linear(hidden_dim, latent_dim//2)
+#         self.fc2_2 = nn.Linear(hidden_dim, latent_dim//2)
+#
+#
+#     def forward(self, x):
+#         y1 = self.enc1(x.view(*x.size()[:-3], -1))
+#         y2 = self.enc2(x.view(*x.size()[:-3], -1))
+#         mu1, lv1 = self.fc1_1(y1), self.fc1_2(y1)
+#         mu2, lv2 = self.fc2_1(y2), self.fc2_2(y2)
+#         return torch.cat([mu1, mu2], dim=1), torch.exp(0.5*torch.cat([lv1, lv2], dim=1))
+#
+#
 class Dec(nn.Module):
     """ Generate an circle/disc image given a sample from the latent space. """
 
