@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn.functional as F
+from torch import Tensor
 
 from datasets import CUBImageFt
 
@@ -230,3 +231,19 @@ def tensor_classes_labels(l1, l2, l1_names, l2_names):
         for n1 in l1_names:
             tnames.append(n2 + n1)
     return tlabels, tnames
+
+
+def extract_rayon(x: Tensor , eps = 1e-3):
+    """x Tensor of size (bs x nb_data x ch x widht x height)
+    return rayon tensor (nb_data x bs)"""
+    rayons = torch.zeros(x.shape[0],x.shape[1])
+
+    for i,batch in enumerate(x):
+        for j,d in enumerate(batch):
+            d = (d.squeeze() >= eps).int()
+            r = torch.argmax(d[15,:])
+            rayons[i,j] = (32-2*r)/(32)
+    return rayons.permute(1,0)
+
+
+

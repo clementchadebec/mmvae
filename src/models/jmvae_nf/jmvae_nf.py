@@ -7,11 +7,12 @@ import torch.nn as nn
 import torch.distributions as dist
 
 from utils import get_mean, kl_divergence
-from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors
+from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
+from utils import extract_rayon
 
 from .vae_circles import CIRCLES
 from .j_circles_discs import Enc as joint_encoder
@@ -19,8 +20,8 @@ from .j_circles_discs import Enc as joint_encoder
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1,32,32)
 
-vae = my_VAE_LinNF
-vae_config = VAE_LinNF_Config
+vae = my_VAE_IAF
+vae_config = VAE_IAF_Config
 
 
 class JMVAE_NF(nn.Module):
@@ -31,8 +32,8 @@ class JMVAE_NF(nn.Module):
         self.qz_xy_params = None # populated in forward
         self.pz = dist_dict[params.dist]
         self.mod = 2
-        my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim,flows = ['Radial', 'Radial'])
-        # my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim)
+        # my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim,flows = ['Radial']*5)
+        my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim)
 
         self.vaes = nn.ModuleList([ vae(model_config=my_vae_config) for _ in range(self.mod)])
         self.modelName = 'jmvae_nf_circles_squares'
@@ -106,8 +107,8 @@ class JMVAE_NF(nn.Module):
             log_q_z0 = (
                     -0.5 * (log_var + torch.pow(z0 - mu, 2) / torch.exp(log_var))
             ).sum(dim=1)
-            kld -= log_q_z0 - flow_output.log_abs_det_jac
-            # kld += 1/3*vae_output.recon_loss -log_q_z0-flow_output.log_abs_det_jac
+            # kld -= log_q_z0 + flow_output.log_abs_det_jac
+            kld += 1/3*vae_output.recon_loss -log_q_z0-flow_output.log_abs_det_jac
 
         return kld.mean()
 
@@ -161,8 +162,8 @@ class JMVAE_NF(nn.Module):
         return
 
 
-    def sample_from_conditional(self,data, runPath, epoch, n=10):
-        bdata = [d[:8] for d in data]
+    def _sample_from_conditional(self,bdata, n=10):
+        """Samples from q(z|x) and reconstruct y and conversely"""
         self.eval()
         samples = [[[],[]],[[],[]]]
         with torch.no_grad():
@@ -176,11 +177,30 @@ class JMVAE_NF(nn.Module):
                 samples[1][0].append(self.vaes[0].decoder(z1)["reconstruction"])
                 samples[0][0].append(o0.__getitem__('recon_x'))
                 samples[1][1].append(o1.__getitem__('recon_x'))
+        return samples
+
+    def sample_from_conditional(self, data, runPath, epoch, n=10):
+        bdata = [d[:8] for d in data]
+        self.eval()
+        samples = self._sample_from_conditional(bdata,n)
 
         for r, recon_list in enumerate(samples):
             for o, recon in enumerate(recon_list):
-
+                # recon n x 8 x 1 x 32 x 32
                 _data = bdata[r].cpu()
-                recon = torch.stack(recon).resize(n*8,1, 32, 32).cpu()
+                recon = torch.stack(recon)
+                recon = recon.resize(n*8,1, 32, 32).cpu()
                 comp = torch.cat([_data,recon])
                 save_image(comp,'{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
+
+        self.conditional_rdist(data, runPath,epoch)
+
+    def conditional_rdist(self,data,runPath,epoch,n=30):
+        bdata = [d[:8] for d in data]
+        samples = self._sample_from_conditional(bdata,n)
+        samples = torch.cat([torch.stack(samples[0][1]), torch.stack(samples[1][0])], dim=1)
+        r = extract_rayon(samples)
+        plot_hist(r,'{}/hist_{:03d}.png'.format(runPath, epoch))
+
+
+

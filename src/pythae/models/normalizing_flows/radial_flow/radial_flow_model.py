@@ -69,7 +69,7 @@ class RadialFlow(BaseNF):
         log_det = (self.input_dim - 1) * torch.log(1 + beta * h) + torch.log(
             1 + beta * h - beta * r / (alpha + r) ** 2
         )
-        output = ModelOutput(out= self.x0 + r_z, log_abs_det_jac = log_det.squeeze())
+        output = ModelOutput(out= self.x0 + r_z, log_abs_det_jac = -log_det.squeeze())
         return output
 
 

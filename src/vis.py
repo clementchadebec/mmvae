@@ -127,3 +127,15 @@ def plot_kls_df(df, filepath):
         plt.legend(loc='best', fontsize='22')
         plt.savefig(filepath, bbox_inches='tight')
         plt.close()
+
+def plot_hist(rayons, filename):
+    """rayons tensor (n_data,n_samples)"""
+
+    fig, ax = plt.subplots(rayons.shape[0]//8+rayons.shape[0]%8,8)
+    for i, t in enumerate(rayons):
+        try :
+            ax[i//8, i%8].hist(t.cpu(), bins=10, range=(0,1))
+        except :
+            ax[i%8].hist(t.cpu(), bins=10, range=(0,1))
+    plt.savefig(filename)
+    plt.close()

@@ -13,7 +13,8 @@ from torch import optim
 
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details
+from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon
+from vis import plot_hist
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--experiment', type=str, default='', metavar='E',
@@ -164,8 +165,8 @@ def test(epoch, agg):
                 if not args.no_analytics:
                     model.analyse(data, runPath, epoch, classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
-
                     if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_discs'] :
+                        # plot_hist(extract_rayon(data[0].unsqueeze(1)), 'hist_test.png')
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
