@@ -9,6 +9,7 @@ from numpy import sqrt, prod
 from torch.utils.data import DataLoader
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision.utils import save_image, make_grid
+from .dataloaders import MNIST_FASHION_DATALOADER
 
 from vis import plot_embeddings, plot_kls_df, plot_posteriors
 from .mmvae import MMVAE
@@ -35,35 +36,7 @@ class MNIST_FASHION(MMVAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
-        print(self.data_path)
-        if not (os.path.exists(self.data_path + 'train-ms-mnist-idx.pt')
-                and os.path.exists(self.data_path + 'train-ms-fashion-idx.pt')
-                and os.path.exists(self.data_path + 'test-ms-mnist-idx.pt')
-                and os.path.exists(self.data_path + 'test-ms-fashion-idx.pt')):
-            raise RuntimeError('Generate transformed indices with the script in bin')
-        # get transformed indices
-        t_mnist = torch.load(self.data_path + 'train-ms-mnist-idx.pt')
-        t_fashion = torch.load(self.data_path + 'train-ms-fashion-idx.pt')
-        s_mnist = torch.load(self.data_path + 'test-ms-mnist-idx.pt')
-        s_fashion = torch.load(self.data_path + 'test-ms-fashion-idx.pt')
-
-        # load base datasets
-        t1, s1 = self.vaes[0].getDataLoaders(batch_size, shuffle, device, type='numbers')
-        t2, s2 = self.vaes[1].getDataLoaders(batch_size, shuffle, device, type='fashion')
-
-        train_mnist_fashion = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_fashion[i], size=len(t_fashion))
-        ])
-
-        test_mnist_fashion = TensorDataset([
-            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
-            ResampleDataset(s2.dataset, lambda d, i: s_fashion[i], size=len(s_fashion))
-        ])
-
-        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        train,test = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device)
         return train, test
 
     def generate(self, runPath, epoch):
@@ -100,18 +73,18 @@ class MNIST_FASHION(MMVAE):
 
 
     def analyse(self, data, runPath, epoch, classes = None, ticks=None):
-        zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=10)
-        labels = ['Prior', *[vae.modelName.lower() for vae in self.vaes]]
-        zsl, labels = tensor_classes_labels(zsl, 2 * list(classes), labels, np.arange(10).astype(str)) if classes \
+        zemb, zsl, kls_df = super(MNIST_FASHION, self).analyse(data, K=1)
+        labels = [ *[vae.modelName.lower() for vae in self.vaes]]
+        zsl, labels = tensor_classes_labels(zsl, 2 * list(classes), labels, classes.unique().numpy().astype(str)) if classes \
                                                                                                   is not None else (zsl, labels)
 
-        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=10)
+        plot_embeddings(zemb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(runPath, epoch), ticks = ticks, K=1)
         # plot_kls_df(kls_df, '{}/kl_distance_{:03d}.png'.format(runPath, epoch))
 
     def analyse_posterior(self,data, n_samples,runPath, epoch, ticks=None):
         means, stds = super(MNIST_FASHION, self).analyse_posterior(data, n_samples)
-        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch), ticks=ticks)
-
+        plot_posteriors(means, stds, '{}/posteriors_{:03}.png'.format(runPath,epoch),labels=['numbers', 'fashion'], ticks=ticks)
+        return means, stds
 
 def resize_img(img, refsize):
     return F.pad(img, (2, 2, 2, 2)).expand(img.size(0), *refsize)

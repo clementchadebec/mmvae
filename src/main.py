@@ -69,8 +69,8 @@ args = parser.parse_args()
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.deterministic = False
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 random.seed(args.seed)
@@ -101,6 +101,7 @@ if not args.experiment:
 
 # set up run path
 runId = datetime.datetime.now().isoformat()
+
 experiment_dir = Path('../experiments/' + args.experiment + '/' + datetime.date.today().isoformat())
 experiment_dir.mkdir(parents=True, exist_ok=True)
 runPath = mkdtemp(prefix=runId, dir=str(experiment_dir))

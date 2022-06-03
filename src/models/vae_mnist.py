@@ -90,6 +90,7 @@ class MNIST(VAE):
 
     @staticmethod
     def getDataLoaders(batch_size, shuffle=True, device="cuda", type = 'numbers'):
+
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
         datasetC = datasets.MNIST if type=='numbers' else datasets.FashionMNIST

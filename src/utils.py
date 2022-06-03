@@ -225,6 +225,7 @@ def tensor_classes_labels(l1, l2, l1_names, l2_names):
     """ Transform labels that are tuples (l1[i], l2[i]) to int"""
     vl1, vl2 = len(np.unique(l1)), len(np.unique(l2))
     tlabels, tnames = [], []
+    print(len(l1), len(l2))
     for i in range(len(l1)):
         tlabels.append(vl1*l2[i] + l1[i])
     for n2 in l2_names:

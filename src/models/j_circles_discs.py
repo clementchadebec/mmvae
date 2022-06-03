@@ -17,32 +17,10 @@ size1, size2 = 32*32 , 32*32 # modality 1 size, modality 2 size
 hidden_dim = 512
 
 
-def extra_hidden_layer():
-    return nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.ReLU(True))
+
 
 
 # Classes
-class Enc(nn.Module):
-    """ Simple MLP with shared head as joint encoder"""
-
-    def __init__(self, latent_dim, num_hidden_layers=1):
-        super(Enc, self).__init__()
-        self.input1 = nn.Sequential(nn.Linear(size1,hidden_dim), nn.ReLU(True))
-        self.input2 = nn.Sequential(nn.Linear(size2,hidden_dim), nn.ReLU(True))
-        modules = []
-        modules.append(nn.Sequential(nn.Linear(2*hidden_dim, hidden_dim), nn.ReLU(True)))
-        modules.extend([extra_hidden_layer() for _ in range(num_hidden_layers - 1)])
-        self.enc = nn.Sequential(*modules)
-        self.fc21 = nn.Linear(hidden_dim, latent_dim)
-        self.fc22 = nn.Linear(hidden_dim, latent_dim)
-
-    def forward(self, x):
-        x0 = self.input1.forward(x[0].view(*x[0].size()[:-3], -1))
-        x1 = self.input2.forward(x[1].view(*x[1].size()[:-3], -1))
-        e = self.enc(torch.cat([x0,x1], dim=1)) # flatten data
-        lv = torch.exp(0.5 * self.fc22(e))
-
-        return self.fc21(e), lv + Constants.eta
 
 
 class J_CIRCLES_DISCS(CIRCLES_DISCS, JMVAE):

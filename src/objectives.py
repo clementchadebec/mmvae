@@ -155,8 +155,7 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     qz_xs, px_zs, z_xs = model.forward(x, K=1)
     loss, details = 0, {}
     for m,px_z in enumerate(pxy_z):
-        details[f'loss_{m}'] = px_z.log_prob(x[m]).squeeze().mean(0).sum()
-        loss = details[f'loss_{m}'] + loss
+        loss+= px_z.log_prob(x[m]).squeeze().mean(0).sum()
     # Joint ELBO
     loss = loss - beta_prior*kl_divergence(qz_xy,model.pz(*model.pz_params)).mean(0).sum()
     # KL regularizers
@@ -315,7 +314,7 @@ def _m_dreg(model, x, K=1, beta=0):
     return torch.cat(lws), torch.cat(zss)
 
 
-def m_dreg(model, x, K=1, beta=0):
+def m_dreg(model, x, K=1, beta=0, warmup=0, epoch=1, beta_prior=1):
     """Computes dreg estimate for log p_\theta(x) for multi-modal vae """
     S = compute_microbatch_split(x, K)
     x_split = zip(*[_x.split(S) for _x in x])

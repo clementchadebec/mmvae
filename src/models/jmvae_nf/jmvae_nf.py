@@ -9,34 +9,25 @@ import torch.distributions as dist
 from utils import get_mean, kl_divergence
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
-from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config
-from torchnet.dataset import TensorDataset
-from torch.utils.data import DataLoader
-from utils import extract_rayon
 
-from .vae_circles import CIRCLES
-from .j_circles_discs import Enc as joint_encoder
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1,32,32)
 
-vae = my_VAE_IAF
-vae_config = VAE_IAF_Config
+
 
 
 class JMVAE_NF(nn.Module):
-    def __init__(self, params):
+    def __init__(self,params, joint_encoder, vae, vae_config):
         super(JMVAE_NF, self).__init__()
-        self.joint_encoder = joint_encoder(params.latent_dim, params.num_hidden_layers)
+        self.joint_encoder = joint_encoder
         self.qz_xy = dist_dict[params.dist]
         self.qz_xy_params = None # populated in forward
         self.pz = dist_dict[params.dist]
         self.mod = 2
-        # my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim,flows = ['Radial']*5)
-        my_vae_config = vae_config(input_dim=input_dim, latent_dim = params.latent_dim)
 
-        self.vaes = nn.ModuleList([ vae(model_config=my_vae_config) for _ in range(self.mod)])
-        self.modelName = 'jmvae_nf_circles_squares'
+        self.vaes = nn.ModuleList([ vae(model_config=vae_config) for _ in range(self.mod)])
+        self.modelName = None
         self.params = params
         self.data_path = params.data_path
         self._pz_params = nn.ParameterList([
@@ -49,20 +40,9 @@ class JMVAE_NF(nn.Module):
     def pz_params(self):
         return self._pz_params
 
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda"):
-        # handle merging individual datasets appropriately in sub-class
-        # load base datasets
-        t1, s1 = CIRCLES.getDataLoaders(batch_size, 'squares', shuffle, device, data_path=self.data_path)
-        t2, s2 = CIRCLES.getDataLoaders(batch_size, 'circles', shuffle, device, data_path=self.data_path)
-
-        train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
-        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
-
-        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
-
-        return train, test
+    def getDataLoaders(self):
+        raise "getDataLoaders class must be defined in the subclasses"
+        return
 
     def forward(self, x):
         """ Using the joint encoder, it computes the latent representation and returns
@@ -135,7 +115,6 @@ class JMVAE_NF(nn.Module):
             save_image(comp, '{}/recon_{}_{:03d}.png'.format(runPath, m, epoch))
         return
 
-        return
 
     def analyse_joint_posterior(self, data, n_samples):
         bdata = [d[:n_samples] for d in data]
@@ -144,9 +123,7 @@ class JMVAE_NF(nn.Module):
         zxy = zxy.reshape(-1,zxy.size(-1))
         return m,s, zxy.cpu().numpy()
 
-    def analyse_rayons(self,data, r0, r1, runPath, epoch):
-        m,s,zxy = self.analyse_joint_posterior(data,n_samples=len(data[0]))
-        plot_embeddings_colorbars(zxy,zxy,r0,r1,'{}/embedding_rayon_{:03}.png'.format(runPath,epoch))
+
 
     def analyse(self, data, runPath, epoch, ticks=None, classes=None):
         m, s, zxy = self.analyse_joint_posterior( data, n_samples=len(data[0]))
@@ -182,25 +159,18 @@ class JMVAE_NF(nn.Module):
     def sample_from_conditional(self, data, runPath, epoch, n=10):
         bdata = [d[:8] for d in data]
         self.eval()
-        samples = self._sample_from_conditional(bdata,n)
+        samples = self._sample_from_conditional(bdata, n)
 
         for r, recon_list in enumerate(samples):
             for o, recon in enumerate(recon_list):
-                # recon n x 8 x 1 x 32 x 32
                 _data = bdata[r].cpu()
                 recon = torch.stack(recon)
-                recon = recon.resize(n*8,1, 32, 32).cpu()
-                comp = torch.cat([_data,recon])
-                save_image(comp,'{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
+                _,_,ch,w,h = recon.shape
+                recon = recon.resize(n * 8, ch, w, h).cpu()
+                comp = torch.cat([_data, recon])
+                save_image(comp, '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
 
-        self.conditional_rdist(data, runPath,epoch)
 
-    def conditional_rdist(self,data,runPath,epoch,n=30):
-        bdata = [d[:8] for d in data]
-        samples = self._sample_from_conditional(bdata,n)
-        samples = torch.cat([torch.stack(samples[0][1]), torch.stack(samples[1][0])], dim=1)
-        r = extract_rayon(samples)
-        plot_hist(r,'{}/hist_{:03d}.png'.format(runPath, epoch))
 
 
 
