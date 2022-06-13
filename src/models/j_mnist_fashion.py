@@ -4,7 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from utils import Constants
 import torch
-from .joint_encoders import BaseEncoder
+from .nn.joint_encoders import BaseEncoder
 
 from .mmvae_mnist_fashion import MNIST_FASHION
 from .jmvae import JMVAE

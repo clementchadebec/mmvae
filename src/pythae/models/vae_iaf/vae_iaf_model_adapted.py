@@ -100,7 +100,9 @@ class my_VAE_IAF(VAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac = log_abs_det_jac,
-            recon_loss=recon_loss
+            recon_loss=recon_loss,
+            loss = loss,
+            kld = kld
 
         )
 

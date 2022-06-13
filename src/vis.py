@@ -54,7 +54,9 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.close()
 
 def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath):
-    fig, ax = plt.subplots(1,2)
+    fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
+    ax[0].set_xlim([-4, 4])
+    ax[0].set_ylim([-4,4])
     sc1 = ax[0].scatter(emb0[:,0],emb0[:,1], c = emb_l0)
     fig.colorbar(sc1,ax=ax[0])
     sc2 = ax[1].scatter(emb1[:,0],emb1[:,1], c = emb_l1)
@@ -90,12 +92,15 @@ def plot_samples_posteriors(zsamples, filepath, labels, ticks = None):
     """
     zsamples is a list with zsamples[m] of shape N, n_data_points, laten_dim
     """
-    fig, ax = plt.subplots(1,2)
+    fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
+    ax[0].set_xlim([-4, 4])
+    ax[0].set_ylim([-4,4])
     for m, zs in enumerate(zsamples):
         zs = zs.permute(1,0,2)
         for i, z in enumerate(zs):
-            ax[m].scatter(z[:,0].cpu(), z[:,1].cpu())
-
+            ax[m].scatter(z[:,0].cpu(), z[:,1].cpu(), label=i)
+    plt.legend()
+    plt.suptitle("Samples from q(z|x), q(z|y) for different x,y")
     plt.savefig(filepath, bbox_inches='tight')
 
 
@@ -128,14 +133,18 @@ def plot_kls_df(df, filepath):
         plt.savefig(filepath, bbox_inches='tight')
         plt.close()
 
-def plot_hist(rayons, filename):
+def plot_hist(rayons, filename, range=(0,1), bins=10):
     """rayons tensor (n_data,n_samples)"""
 
-    fig, ax = plt.subplots(rayons.shape[0]//8+rayons.shape[0]%8,8)
+    fig, ax = plt.subplots(rayons.shape[0]//8+rayons.shape[0]%8,min(rayons.shape[0], 8))
     for i, t in enumerate(rayons):
         try :
-            ax[i//8, i%8].hist(t.cpu(), bins=10, range=(0,1))
+            ax[i//8, i%8].hist(t.cpu(), bins=bins, range=range, density=True)
         except :
-            ax[i%8].hist(t.cpu(), bins=10, range=(0,1))
+            try :
+                ax[i%8].hist(t.cpu(), bins=bins, range=range,density=True)
+            except:
+                ax.hist(t.cpu(), bins=bins, range=range,density=True)
+    plt.suptitle("Histogrammes pour 8 examples q(z|x),q(z|y)")
     plt.savefig(filename)
     plt.close()

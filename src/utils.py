@@ -73,10 +73,21 @@ def save_model(model, filepath):
     `model.load_state_dict(torch.load('path-to-saved-model'))`.
     """
     save_vars(model.state_dict(), filepath)
+    fdir, fext = os.path.splitext(filepath)
     if hasattr(model, 'vaes'):
         for vae in model.vaes:
-            fdir, fext = os.path.splitext(filepath)
             save_vars(vae.state_dict(), fdir + '_' + vae.modelName + fext)
+            save_vars(vae.decoder.state_dict(), fdir + '_' + vae.modelName + '_decoder' + fext)
+    if hasattr(model, 'joint_encoder'):
+        save_vars(model.joint_encoder.state_dict(), fdir + '_joint_encoder' + fext)
+
+def load_joint_vae(model, filepath):
+    """ Load the state of joint autoencoders and decoders from previous training"""
+
+    model.joint_encoder.load_state_dict(torch.load(filepath + 'model_joint_encoder.pt'))
+    for vae in model.vaes:
+        vae.decoder.load_state_dict(torch.load(filepath + 'model_' + vae.modelName + '_decoder.pt' ))
+    return
 
 
 def is_multidata(dataB):
@@ -246,5 +257,30 @@ def extract_rayon(x: Tensor , eps = 1e-3):
             rayons[i,j] = (32-2*r)/(32)
     return rayons.permute(1,0)
 
+def check_parameters_equal(m1, m2):
+    for p1, p2 in zip(m1.parameters(), m2.parameters()):
+        if p1.data.ne(p2.data).sum() > 0:
+            print("the models have different parameters")
+            return
+    print("the models have equal parameters")
+
+def check_non_zero_parameters(m):
+    for p in m.parameters() :
+        if p.grad.data.ne(torch.zeros_like(p.grad.data)).sum() > 0:
+            print("the model have non-zero grad")
+            return
+    print("the model has zero grad")
 
 
+def negative_entropy(rayons, range, bins):
+    """Compute an approximate entropy from the samples to compare the sizes of the samples to the
+    uniform distribution
+
+    rayons is array of shape n_data, n_samples"""
+
+    entropy = 0
+    for data in rayons:
+        p = np.histogram(data, range=range, bins=bins, density=False)[0] + 1e-5
+        p/=len(data)
+        entropy += np.sum(np.log(p)*p)
+    return entropy/len(rayons)

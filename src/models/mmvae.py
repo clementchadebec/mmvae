@@ -142,5 +142,5 @@ class MMVAE(nn.Module):
             # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
             recons = [torch.stack([torch.stack([get_mean(px_z) for px_z in r]) for r in px_zs]) for px_zs in px_zss]
             recons = torch.stack(recons).squeeze().permute(1,2,0,3,4,5)
-
+            print(recons.shape)
         return recons

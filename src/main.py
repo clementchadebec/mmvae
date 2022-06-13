@@ -6,14 +6,18 @@ from collections import defaultdict
 from pathlib import Path
 from tempfile import mkdtemp
 import random
+from copy import deepcopy
+
 
 import numpy as np
 import torch
 from torch import optim
 
+import wandb
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon
+import metrics
+from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon,load_joint_vae
 from vis import plot_hist
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
@@ -23,7 +27,8 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     choices=[s[4:] for s in dir(models) if 'VAE_' in s],
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'],
+                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'
+                             ,'telbo_nf'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -61,11 +66,20 @@ parser.add_argument('--beta', type=float, default=1000,
 parser.add_argument('--data-path', type=str, default = '../data/')
 
 parser.add_argument('--warmup', type=int, default=0)
-
+parser.add_argument('--no-nf', action='store_true', default= False)
 parser.add_argument('--beta-prior', type=float, default = 1)
+parser.add_argument('--beta-rec', type=float, default = 0.3)
+parser.add_argument('--fix-decoders', action='store_true', default=False)
+parser.add_argument('--fix-jencoder', type=bool, default=True)
 
 # args
 args = parser.parse_args()
+
+# Log parameters of the experiments
+wandb.init(project = args.model, entity="asenellart", config={}, mode='online')
+wandb.config.update(args)
+wandb.define_metric('epoch')
+wandb.define_metric('*', step_metric='epoch')
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
@@ -96,6 +110,15 @@ if pretrained_path:
     model.load_state_dict(torch.load(pretrained_path + '/model.rar'))
     model._pz_params = model._pz_params
 
+skip_warmup = False
+pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-13/2022-06-13T11:08:16.189888yu6g22wt/'
+min_epoch = 1
+if skip_warmup:
+    print('Loading joint encoder and decoders')
+    load_joint_vae(model,pretrained_joint_path)
+    min_epoch = args.warmup
+
+
 if not args.experiment:
     args.experiment = model.modelName
 
@@ -117,7 +140,7 @@ torch.save(args, '{}/args.rar'.format(runPath))
 
 # preparation for training
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
-                       lr=1e-3, amsgrad=True)
+                       lr=1e-3)
 train_loader, test_loader = model.getDataLoaders(args.batch_size, device=device)
 
 # Objective function to use on train data
@@ -126,9 +149,10 @@ objective = getattr(objectives,
                     + args.obj
                     + ('_looser' if (args.looser and args.obj != 'elbo') else ''))
 
-# Objective fulrnction to use on test data
+# Objective function to use on test data
 # t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'elbo')
 t_objective = objective
+
 
 def train(epoch, agg):
     model.train()
@@ -141,10 +165,14 @@ def train(epoch, agg):
         loss = -loss # minimization
         loss.backward()
         optimizer.step()
+
         b_loss += loss.item()
         update_details(b_details, details)
+        # print('after update_det',b_details['loss'])
         if args.print_freq > 0 and i % args.print_freq == 0:
             print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details['loss_0']/b_details['loss_1']))
+    b_details = {k : b_details[k]/len(train_loader.dataset) for k in b_details.keys()}
+    wandb.log(b_details)
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
     print('====> Epoch: {:03d} Train loss: {:.4f}, details : {}'.format(epoch, agg['train_loss'][-1], b_details))
 
@@ -155,20 +183,26 @@ def test(epoch, agg):
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
-            classes = dataT[0][1]
+            classes = dataT[0][1], dataT[1][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
             loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior, epoch=epoch,warmup=args.warmup)
             loss = -loss
             b_loss += loss.item()
             if i == 0:
+                wandb.log({'epoch' : epoch})
+                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics:
                     model.analyse(data, runPath, epoch, classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
-                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_discs'] :
-                        # plot_hist(extract_rayon(data[0].unsqueeze(1)), 'hist_test.png')
+                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares'] :
+                        if epoch == 1:
+                            print("Computing test histogram")
+                            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
+                            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
+
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 
@@ -189,11 +223,16 @@ def estimate_log_marginal(K):
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
-        for epoch in range(1, args.epochs + 1):
+        for epoch in range(min_epoch, args.epochs + 1):
+            if epoch == args.warmup :
+                print(f" ====> Epoch {epoch} Reset the optimizer")
+                optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=1e-3)
+
             train(epoch, agg)
             test(epoch, agg)
-            save_model(model, runPath + '/model.rar')
-            save_vars(agg, runPath + '/losses.rar')
-            model.generate(runPath, epoch)
+            save_model(model, runPath + '/model.pt')
+            save_vars(agg, runPath + '/losses.pt')
+            with torch.no_grad():
+                model.generate(runPath, epoch)
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

@@ -31,7 +31,7 @@ from .rae_gp import RAE_GP, RAE_GP_Config
 from .rae_l2 import RAE_L2, RAE_L2_Config
 from .rhvae import RHVAE, RHVAEConfig
 from .svae import SVAE, SVAEConfig
-from .vae import VAE, VAEConfig
+from .vae import VAE, VAEConfig, my_VAE
 from .vae_gan import VAEGAN, VAEGANConfig
 from .vae_iaf import VAE_IAF, VAE_IAF_Config, my_VAE_IAF
 from .vae_lin_nf import VAE_LinNF, VAE_LinNF_Config, my_VAE_LinNF
@@ -85,5 +85,6 @@ __all__ = [
     "VAE_LinNF_Config",
     "VAE_IAF",
     "VAE_IAF_Config",
-    "my_VAE_IAF"
+    "my_VAE_IAF",
+    "my_VAE"
 ]

@@ -1,10 +1,11 @@
 # Base JMVAE-NF class definition
 
 from itertools import combinations
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributions as dist
+import wandb
 
 from utils import get_mean, kl_divergence
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
@@ -18,15 +19,15 @@ input_dim = (1,32,32)
 
 
 class JMVAE_NF(nn.Module):
-    def __init__(self,params, joint_encoder, vae, vae_config):
+    def __init__(self,params, joint_encoder, vaes):
         super(JMVAE_NF, self).__init__()
         self.joint_encoder = joint_encoder
         self.qz_xy = dist_dict[params.dist]
         self.qz_xy_params = None # populated in forward
         self.pz = dist_dict[params.dist]
         self.mod = 2
-
-        self.vaes = nn.ModuleList([ vae(model_config=vae_config) for _ in range(self.mod)])
+        self.vaes = vaes
+        # self.vaes = nn.ModuleList([ vae(model_config=vae_config) for _ in range(self.mod)])
         self.modelName = None
         self.params = params
         self.data_path = params.data_path
@@ -34,6 +35,10 @@ class JMVAE_NF(nn.Module):
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
             nn.Parameter(torch.ones(1, params.latent_dim), requires_grad=False)  # logvar
         ])
+        self.beta_rec = params.beta_rec
+        self.max_epochs = params.epochs
+        self.fix_jencoder = params.fix_jencoder
+        self.fix_decoders = params.fix_decoders
 
 
     @property
@@ -48,7 +53,10 @@ class JMVAE_NF(nn.Module):
         """ Using the joint encoder, it computes the latent representation and returns
                 qz_xy, pxy_z, z"""
 
+        # print(list(self.vaes[0].decoder.parameters()))
+
         self.qz_xy_params = self.joint_encoder(x)
+
         qz_xy = self.qz_xy(*self.qz_xy_params)
         z_xy = qz_xy.rsample()
         recons = []
@@ -77,20 +85,25 @@ class JMVAE_NF(nn.Module):
         return kld.mean()
 
     def compute_kld(self, x):
-        """ Computes KL(q(z|x,y) || q(z|x))"""
+        """ Computes KL(q(z|x,y) || q(z|x)) + KL(q(z|x,y) || q(z|y))
+        We also add terms to avoid q(z|x) spreading out too much"""
+
+
         qz_xy,_,z_xy = self.forward(x)
-        kld = 2*qz_xy.log_prob(z_xy).sum(-1)
+        reg = 0
+        details_reg = {}
         for m, vae in enumerate(self.vaes):
             flow_output = vae.iaf_flow(z_xy) if hasattr(vae, "iaf_flow") else vae.inverse_flow(z_xy)
             vae_output = vae.forward(x[m])
             mu, log_var, z0 = vae_output.mu, vae_output.log_var, flow_output.out
-            log_q_z0 = (
-                    -0.5 * (log_var + torch.pow(z0 - mu, 2) / torch.exp(log_var))
-            ).sum(dim=1)
-            # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            kld += 1/3*vae_output.recon_loss -log_q_z0-flow_output.log_abs_det_jac
+            log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
-        return kld.mean()
+            # kld -= log_q_z0 + flow_output.log_abs_det_jac
+            details_reg[f'recon_loss_{m}'] = vae_output.loss.sum()
+            details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
+            reg += details_reg[f'kld_{m}'] + self.beta_rec * details_reg[f'recon_loss_{m}']
+
+        return reg, details_reg
 
 
     def generate(self,runPath, epoch, N= 10):
@@ -112,7 +125,10 @@ class JMVAE_NF(nn.Module):
             d = data[m][:8].cpu()
             recon = recon.squeeze(0).cpu()
             comp = torch.cat([d,recon])
-            save_image(comp, '{}/recon_{}_{:03d}.png'.format(runPath, m, epoch))
+            filename = '{}/recon_{}_{:03d}.png'.format(runPath, m, epoch)
+            save_image(comp, filename)
+            wandb.log({f'recon_{m}' : wandb.Image(filename)})
+
         return
 
 
@@ -123,11 +139,13 @@ class JMVAE_NF(nn.Module):
         zxy = zxy.reshape(-1,zxy.size(-1))
         return m,s, zxy.cpu().numpy()
 
+    def analyse(self, data, runPath, epoch, classes=None):
+        pass
 
-
-    def analyse(self, data, runPath, epoch, ticks=None, classes=None):
-        m, s, zxy = self.analyse_joint_posterior( data, n_samples=len(data[0]))
-        return
+    def analyse_uni_posterior(self, data, n_samples):
+        bdata = [d[:n_samples] for d in data]
+        zsamples = [self.vaes[m].forward(bdata[m]).z.cpu() for m in range(self.mod)]
+        return zsamples
 
 
     def analyse_posterior(self,data, n_samples, runPath, epoch, ticks=None, N= 30):
@@ -136,6 +154,7 @@ class JMVAE_NF(nn.Module):
         #zsamples[m] is of size N, n_samples, latent_dim
         zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).__getitem__('z') for _ in range(N)]) for m in range(self.mod)]
         plot_samples_posteriors(zsamples, '{}/samplepost_{:03d}.png'.format(runPath, epoch), None)
+        wandb.log({'sample_posteriors' : wandb.Image('{}/samplepost_{:03d}.png'.format(runPath, epoch))})
         return
 
 
@@ -168,8 +187,9 @@ class JMVAE_NF(nn.Module):
                 _,_,ch,w,h = recon.shape
                 recon = recon.resize(n * 8, ch, w, h).cpu()
                 comp = torch.cat([_data, recon])
-                save_image(comp, '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch))
-
+                filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
+                save_image(comp, filename)
+                wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
 
 

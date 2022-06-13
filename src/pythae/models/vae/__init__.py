@@ -15,5 +15,5 @@ Available samplers
 
 from .vae_config import VAEConfig
 from .vae_model import VAE
-
-__all__ = ["VAE", "VAEConfig"]
+from .vae_model_adapted import my_VAE
+__all__ = ["VAE", "VAEConfig", "my_VAE"]

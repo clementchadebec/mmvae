@@ -2,7 +2,7 @@
 import torch
 from numpy import prod
 import torch.nn.functional as F
-from utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2
+from utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2, update_details
 
 
 # helper to vectorise computation
@@ -166,8 +166,43 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
 
 def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
-        model.joint_encoder.requires_grad_(False)
+        model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
+        for vae in model.vaes:
+            vae.decoder.requires_grad_(not model.fix_decoders) #fix the decoders
     qz_xy, recons, z_xy = model.forward(x)
+    # mu, std = model.joint_encoder.forward(x)
+    loss, details = 0, {}
+    for m, xm in enumerate(x):
+        assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
+
+        loss = loss - F.mse_loss(
+                recons[m].reshape(xm.shape[0], -1),
+                xm.reshape(xm.shape[0], -1),
+                reduction="none",
+            ).sum(dim=-1).sum()
+    details['loss'] = loss
+    # KLD to the prior
+    mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
+    # print(list(model.joint_encoder.parameters())[0].requires_grad)
+    details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
+    # Approximate the posterior
+    if epoch >= warmup:
+        reg, det = model.compute_kld(x)
+        details['reg'] = reg
+        update_details(details, det)
+    else :
+        details['reg']=0
+
+    return (loss - beta_prior*details['kld_prior'] - beta*details['reg'], details) if epoch >= warmup \
+        else (loss - beta_prior*details['kld_prior'], details)
+
+def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
+    if epoch >= warmup:
+        model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
+        for vae in model.vaes:
+            vae.decoder.requires_grad_(not model.fix_decoders) #fix the decoders
+    qz_xy, recons, z_xy = model.forward(x)
+    # mu, std = model.joint_encoder.forward(x)
     loss, details = 0, {}
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
@@ -177,14 +212,19 @@ def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
             ).sum(dim=-1).mean()
-    details['loss'] = loss
+    details['loss'] = loss.copy()
     # KLD to the prior
-    details['kld_prior'] = kl_divergence(qz_xy,model.pz(*model.pz_params)).sum(-1).mean()
+    mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
+    # print(list(model.joint_encoder.parameters())[0].requires_grad)
+    details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).mean()
     # Approximate the posterior
+    if epoch >= warmup:
+        # Add the unimodal elbos
+        for m,vae in enumerate(model.vaes):
+            details[f'reg_{m}'] = model.vaes[m].forward(x[m]).loss
+            loss -= beta*details[f'reg_{m}']
 
-    details['reg'] = 0 if epoch < warmup else model.compute_kld(x)
-    return (loss - beta_prior*details['kld_prior'] - beta*details['reg'], details) if epoch >= warmup \
-        else (loss - beta_prior*details['kld_prior'], details)
+    return loss - beta_prior * details['kld_prior'] , details
 
 def m_multi_elbos(model, x, K=1, beta=0):
     """ Generalized multimodal Elbo loss introduced in (Sutter 2021).
