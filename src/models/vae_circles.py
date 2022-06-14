@@ -121,7 +121,6 @@ class CIRCLES(VAE):
     @staticmethod
     def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda",data_path=data_path, transform=None ):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
-        tx = transforms.ToTensor()
         # create datasets
         train_set = CIRCLES_DATASET(data_path + type + '_train.pt', data_path + 'labels_train.pt', data_path + 'r_' + type+'_train.pt',
                                     transforms=transform)

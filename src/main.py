@@ -76,7 +76,7 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 args = parser.parse_args()
 
 # Log parameters of the experiments
-wandb.init(project = args.model, entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -111,11 +111,14 @@ if pretrained_path:
     model._pz_params = model._pz_params
 
 skip_warmup = False
-pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-13/2022-06-13T11:08:16.189888yu6g22wt/'
+# pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-13/2022-06-13T11:08:16.189888yu6g22wt/'
+pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 min_epoch = 1
+
+
 if skip_warmup:
     print('Loading joint encoder and decoders')
-    load_joint_vae(model,pretrained_joint_path, ['VAE', 'VAE'])
+    load_joint_vae(model,pretrained_joint_path)
     min_epoch = args.warmup
 
 
@@ -233,6 +236,8 @@ if __name__ == '__main__':
             test(epoch, agg)
             save_model(model, runPath + '/model.pt')
             save_vars(agg, runPath + '/losses.pt')
-
+            with torch.no_grad():
+                model.generate(runPath, epoch, N=32, save=True)
+                model.generate_from_conditional(runPath, epoch, N=32, save=True)
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

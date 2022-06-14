@@ -14,7 +14,7 @@ from ..dataloaders import MultimodalBasicDataset
 
 
 from utils import get_mean, kl_divergence, add_channels
-from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
+from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
 
 
@@ -58,8 +58,6 @@ class JMVAE_NF(nn.Module):
     def forward(self, x):
         """ Using the joint encoder, it computes the latent representation and returns
                 qz_xy, pxy_z, z"""
-
-        # print(list(self.vaes[0].decoder.parameters()))
 
         self.qz_xy_params = self.joint_encoder(x)
 
@@ -112,7 +110,7 @@ class JMVAE_NF(nn.Module):
         return reg, details_reg
 
 
-    def generate(self, N= 10):
+    def generate(self,runPath, epoch, N= 8, save=False):
         self.eval()
         with torch.no_grad():
             data = []
@@ -120,7 +118,31 @@ class JMVAE_NF(nn.Module):
             latents = pz.rsample(torch.Size([N]))
             for d, vae in enumerate(self.vaes):
                 data.append(vae.decoder(latents)["reconstruction"])
+        if save:
+            save_samples(data,'{}/generate_{:03d}.png'.format(runPath, epoch))
+            wandb.log({'generate_joint' : wandb.Image('{}/generate_{:03d}.png'.format(runPath, epoch))})
         return data  # list of generations---one for each modality
+
+    def generate_from_conditional(self,runPath, epoch, N=10, save=False):
+        """ Generate samples using the bayes formula : p(x,y) = p(x)p(y|x)"""
+
+        # First step : generate samples from prior --> p(x), p(y)
+        data = self.generate(runPath, epoch, N=N)
+
+        # Second step : generate one modality from the other --> p(x|y) and p(y|x)
+        cond_data = self._sample_from_conditional(data,n=1)
+
+        # Rearrange the data
+
+        reorganized = [[data[0], torch.cat(cond_data[0][1])], [torch.cat(cond_data[1][0]), data[1]]]
+        if save:
+            save_samples(reorganized[0], '{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))
+            wandb.log({'gen_from_cond_0' : wandb.Image('{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))})
+            save_samples(reorganized[1], '{}/gen_from_cond_1_{:03d}.png'.format(runPath, epoch))
+            wandb.log({'gen_from_cond_1' : wandb.Image('{}/gen_from_cond_1_{:03d}.png'.format(runPath, epoch))})
+
+        return reorganized
+
 
     def reconstruct(self, data, runPath,epoch):
         self.eval()
@@ -197,7 +219,7 @@ class JMVAE_NF(nn.Module):
                 save_image(comp, filename)
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
-    def compute_fid(self, batchsize, device, dims=2048, nb_batches=20, to_tensor=False):
+    def compute_fid(self,gen_data, batchsize, device, dims=2048, nb_batches=20, to_tensor=False, compare_with='joint'):
         if to_tensor:
             tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
         else :
@@ -206,22 +228,35 @@ class JMVAE_NF(nn.Module):
 
         block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
         model = InceptionV3([block_idx]).to(device)
-        print(nb_batches)
         m1, s1 = calculate_activation_statistics(s, model, dims, device=device, nb_batches = nb_batches)
 
-        # Compare with joint generations
-        data = self.generate(N = batchsize*nb_batches)
-        data = torch.stack(data)
+        # _,gen_dataloader = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx, random=True)
+        #
+        data = torch.stack(gen_data)
         tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
         dataset = MultimodalBasicDataset(data, tx)
         gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)
 
         m2, s2 = calculate_activation_statistics(gen_dataloader, model, dims, device=device, nb_batches=nb_batches)
-        return calculate_frechet_distance(m1[:dims], s1[:dims, :dims], m2[:dims], s2[:dims, :dims])
+        return  calculate_frechet_distance(m1, s1, m2, s2)
 
-    def compute_metrics(self, epoch):
-        if epoch%10 != 1:
+
+
+    def compute_metrics(self,runPath, epoch, freq = 5, to_tensor=False):
+        if epoch%freq != 1:
             return {}
-        fid = self.compute_fid(batchsize=64, device='cuda',dims=2048, nb_batches=20)
-        return {'fid' : fid}
+        batchsize,nb_batches = 64,20
+        fids = {}
+        if epoch <= (self.params.warmup//freq + 1)*freq: # Compute fid between joint generation and test set
+            gen_data = self.generate(runPath, epoch, N = batchsize*nb_batches)
+            fid = self.compute_fid(gen_data,batchsize, device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
+            fids['fid_joint'] = fid
+
+        # Compute fid between test set and joint distributions computed from conditional
+        cond_gen_data = self.generate_from_conditional(runPath, epoch, N = batchsize*nb_batches)
+        for i,gen_data in enumerate(cond_gen_data):
+            fids[f'fids_{i}'] = self.compute_fid(gen_data,batchsize,device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
+
+        return fids
+
 

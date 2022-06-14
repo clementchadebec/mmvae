@@ -1,0 +1,1 @@
+{"loss": -77.68365478515625, "kld_prior": 10.263616561889648, "reg": 0.0, "_timestamp": 1655219727, "_runtime": 6, "_step": 1, "epoch": 1, "_wandb": {"runtime": 15}}

@@ -8,7 +8,7 @@ import torch.distributions as dist
 from sklearn.manifold import TSNE
 import wandb
 
-from utils import get_mean, kl_divergence, negative_entropy, add_channels
+from utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
@@ -94,6 +94,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
 
+
         labels2, labels1 = self.extract_hist_values(data, n_data, ns)
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
         good_samples = torch.div(labels2 - 1,3, rounding_mode='trunc') == classes_mul
@@ -105,6 +106,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         neg_entrop = negative_entropy(labels2_acc.cpu(),range=(0,10), bins=10)
 
         metrics = dict(acc2=acc2, acc1 =acc1, neg_entropy = neg_entrop)
+        general_metrics = JMVAE_NF.compute_metrics(self,epoch, to_tensor=True)
+        update_details(metrics, general_metrics)
         return metrics
 
 

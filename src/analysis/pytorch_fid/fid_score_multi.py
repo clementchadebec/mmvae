@@ -187,7 +187,6 @@ def calculate_activation_statistics(Dataloader, model, dims=2048,
     -- sigma : The covariance matrix of the activations of the pool_3 layer of
                the inception model.
     """
-    print(nb_batches)
     act = get_activations(Dataloader, model, dims, device,nb_batches=nb_batches)
     mu = np.mean(act, axis=0)
     sigma = np.cov(act, rowvar=False)

@@ -9,6 +9,7 @@ import seaborn as sns
 import torch
 from matplotlib.lines import Line2D
 from umap import UMAP
+from torchvision.utils import make_grid, save_image
 
 
 def custom_cmap(n):
@@ -148,3 +149,9 @@ def plot_hist(rayons, filename, range=(0,1), bins=10):
     plt.suptitle("Histogrammes pour 8 examples q(z|x),q(z|y)")
     plt.savefig(filename)
     plt.close()
+
+def save_samples(data, filename):
+    """data is a list containing samples from each modality"""
+
+    grids = torch.cat([make_grid(d) for d in data], dim=2)
+    save_image(grids, filename)
