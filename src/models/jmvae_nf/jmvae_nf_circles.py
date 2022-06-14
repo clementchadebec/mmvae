@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.distributions as dist
 import wandb
 
-from utils import get_mean, kl_divergence, negative_entropy
+from utils import get_mean, kl_divergence, negative_entropy, update_details
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config
@@ -52,11 +52,11 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
 
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda"):
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
         # handle merging individual datasets appropriately in sub-class
         # load base datasets
-        t1, s1 = CIRCLES.getDataLoaders(batch_size, 'squares', shuffle, device, data_path=self.data_path)
-        t2, s2 = CIRCLES.getDataLoaders(batch_size, 'circles', shuffle, device, data_path=self.data_path)
+        t1, s1 = CIRCLES.getDataLoaders(batch_size, 'squares', shuffle, device, data_path=self.data_path, transform=transform)
+        t2, s2 = CIRCLES.getDataLoaders(batch_size, 'circles', shuffle, device, data_path=self.data_path, transform=transform)
 
         train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
         test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
@@ -95,8 +95,11 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         return extract_rayon(samples), (0,1), 10
 
     def compute_metrics(self, data, runPath, epoch, classes=None):
+        m = JMVAE_NF.compute_metrics(self, epoch)
         bdata = [d[:100] for d in data]
         samples = self._sample_from_conditional(bdata, n=100)
         r, range, bins = self.extract_hist_values(samples)
-        return {'neg_entropy' : negative_entropy(r.cpu(), range, bins)}
+        sm =  {'neg_entropy' : negative_entropy(r.cpu(), range, bins)}
+        update_details(sm,m)
+        return sm
 

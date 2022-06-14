@@ -16,7 +16,7 @@ from torch import optim
 import wandb
 import models
 import objectives
-import metrics
+from analysis import WrapperDoubleInception3, mFID
 from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon,load_joint_vae
 from vis import plot_hist
 
@@ -76,7 +76,7 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 args = parser.parse_args()
 
 # Log parameters of the experiments
-wandb.init(project = args.model, entity="asenellart", config={}, mode='online')
+wandb.init(project = args.model, entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -115,7 +115,7 @@ pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-13/2022-06-13T11:
 min_epoch = 1
 if skip_warmup:
     print('Loading joint encoder and decoders')
-    load_joint_vae(model,pretrained_joint_path)
+    load_joint_vae(model,pretrained_joint_path, ['VAE', 'VAE'])
     min_epoch = args.warmup
 
 
@@ -153,6 +153,7 @@ objective = getattr(objectives,
 # t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'elbo')
 t_objective = objective
 
+# Define evaluation metrics
 
 def train(epoch, agg):
     model.train()
@@ -232,7 +233,6 @@ if __name__ == '__main__':
             test(epoch, agg)
             save_model(model, runPath + '/model.pt')
             save_vars(agg, runPath + '/losses.pt')
-            with torch.no_grad():
-                model.generate(runPath, epoch)
+
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

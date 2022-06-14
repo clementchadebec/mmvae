@@ -8,7 +8,7 @@ import torch.distributions as dist
 from sklearn.manifold import TSNE
 import wandb
 
-from utils import get_mean, kl_divergence, negative_entropy
+from utils import get_mean, kl_divergence, negative_entropy, add_channels
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 from utils import extract_rayon
 from ..dataloaders import MNIST_FASHION_DATALOADER
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
+
 
 from ..vae_circles import CIRCLES
 from ..nn import DoubleHeadMLP, DoubleHeadMnist
@@ -64,9 +65,11 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.modelName = 'jmvae_nf_mnist'
         self.data_path = params.data_path
         self.params = params
+        self.vaes[0].modelName = 'mnist'
+        self.vaes[1].modelName = 'fashion'
 
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda"):
-        train, test = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device)
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
+        train, test = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -130,3 +133,11 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         # Analyse histograms of conditional samples
         super().analyse(data, runPath, epoch)
         self.conditional_dist(data, runPath, epoch, n=100)
+
+
+
+
+
+
+
+

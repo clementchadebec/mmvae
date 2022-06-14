@@ -9,6 +9,8 @@ import torch
 import torch.distributions as dist
 import torch.nn.functional as F
 from torch import Tensor
+from torchvision import transforms
+
 
 from datasets import CUBImageFt
 
@@ -81,12 +83,12 @@ def save_model(model, filepath):
     if hasattr(model, 'joint_encoder'):
         save_vars(model.joint_encoder.state_dict(), fdir + '_joint_encoder' + fext)
 
-def load_joint_vae(model, filepath):
+def load_joint_vae(model, filepath, model_names):
     """ Load the state of joint autoencoders and decoders from previous training"""
 
     model.joint_encoder.load_state_dict(torch.load(filepath + 'model_joint_encoder.pt'))
-    for vae in model.vaes:
-        vae.decoder.load_state_dict(torch.load(filepath + 'model_' + vae.modelName + '_decoder.pt' ))
+    for i, vae in enumerate(model.vaes):
+        vae.decoder.load_state_dict(torch.load(filepath + 'model_' + model_names[i] + '_decoder.pt' ))
     return
 
 
@@ -284,3 +286,13 @@ def negative_entropy(rayons, range, bins):
         p/=len(data)
         entropy += np.sum(np.log(p)*p)
     return entropy/len(rayons)
+
+
+class add_channels(object):
+
+    def __call__(self, image):
+        if image.shape[0] == 1:
+            image = torch.cat([image, torch.zeros_like(image), torch.zeros_like(image)], dim=0)
+        return image
+
+

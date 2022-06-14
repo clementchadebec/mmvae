@@ -119,12 +119,16 @@ class CIRCLES(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     @staticmethod
-    def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda",data_path=data_path ):
+    def getDataLoaders(batch_size, type = 'circles', shuffle=True, device="cuda",data_path=data_path, transform=None ):
         kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
         tx = transforms.ToTensor()
         # create datasets
-        train = DataLoader(CIRCLES_DATASET(data_path + type + '_train.pt', data_path + 'labels_train.pt', data_path + 'r_' + type+'_train.pt'),batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(CIRCLES_DATASET(data_path + type + '_test.pt', data_path + 'labels_test.pt', data_path + 'r_'+type+'_test.pt'),batch_size=batch_size, shuffle=shuffle, **kwargs)
+        train_set = CIRCLES_DATASET(data_path + type + '_train.pt', data_path + 'labels_train.pt', data_path + 'r_' + type+'_train.pt',
+                                    transforms=transform)
+        test_set = CIRCLES_DATASET(data_path + type + '_test.pt', data_path + 'labels_test.pt', data_path + 'r_'+type+'_test.pt',
+                                   transforms=transform)
+        train = DataLoader(train_set,batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set,batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 
     def generate(self, runPath, epoch):
