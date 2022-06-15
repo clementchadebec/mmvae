@@ -52,20 +52,20 @@ class DoubleHeadMLP(nn.Module):
 
         return self.fc21(e), lv + Constants.eta
 
-class DoubleHeadMnist(nn.Module):
+class DoubleHeadJoint(nn.Module):
 
-    def __init__(self, hidden_dim, num_hidden_layers, params):
-        super(DoubleHeadMnist, self).__init__()
+    def __init__(self, hidden_dim, num_hidden_layers, params1, params2, encoder1, encoder2):
+        super(DoubleHeadJoint, self).__init__()
 
-        self.input1 = Encoder_VAE_MNIST(params)
-        self.input2 = Encoder_VAE_MNIST(params)
+        self.input1 = encoder1(params1)
+        self.input2 = encoder2(params2)
 
         modules = []
-        modules.append(nn.Sequential(nn.Linear(2 * params.latent_dim, hidden_dim), nn.ReLU(True)))
+        modules.append(nn.Sequential(nn.Linear(2 * params1.latent_dim, hidden_dim), nn.ReLU(True)))
         modules.extend([extra_hidden_layer(hidden_dim) for _ in range(num_hidden_layers - 1)])
         self.enc = nn.Sequential(*modules)
-        self.fc21 = nn.Linear(hidden_dim, params.latent_dim)
-        self.fc22 = nn.Linear(hidden_dim, params.latent_dim)
+        self.fc21 = nn.Linear(hidden_dim, params1.latent_dim)
+        self.fc22 = nn.Linear(hidden_dim, params1.latent_dim)
 
     def forward(self, x):
         x0 = self.input1.forward(x[0])[0]

@@ -81,8 +81,6 @@ def get_activations(dataloader, model, dims=2048, device='cuda',
        query tensor.
     """
     model.eval()
-    print(nb_batches)
-
     pred_arr = np.empty((num_mods,dataloader.batch_size*nb_batches, dims))
 
     start_idx = 0

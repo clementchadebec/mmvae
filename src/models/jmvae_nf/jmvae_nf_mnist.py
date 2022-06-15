@@ -20,7 +20,7 @@ from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 
 
 from ..vae_circles import CIRCLES
-from ..nn import DoubleHeadMLP, DoubleHeadMnist
+from ..nn import DoubleHeadMLP
 from ..jmvae_nf import JMVAE_NF
 from analysis import MnistClassifier
 
@@ -106,7 +106,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         neg_entrop = negative_entropy(labels2_acc.cpu(),range=(0,10), bins=10)
 
         metrics = dict(acc2=acc2, acc1 =acc1, neg_entropy = neg_entrop)
-        general_metrics = JMVAE_NF.compute_metrics(self,epoch, to_tensor=True)
+        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch, to_tensor=True)
         update_details(metrics, general_metrics)
         return metrics
 

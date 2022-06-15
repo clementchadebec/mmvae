@@ -13,7 +13,7 @@ from torchvision import transforms
 from ..dataloaders import MultimodalBasicDataset
 
 
-from utils import get_mean, kl_divergence, add_channels
+from utils import get_mean, kl_divergence, add_channels, adjust_shape
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
 
@@ -115,10 +115,12 @@ class JMVAE_NF(nn.Module):
         with torch.no_grad():
             data = []
             pz = self.pz(*self.pz_params)
-            latents = pz.rsample(torch.Size([N]))
+            latents = pz.rsample(torch.Size([N])).squeeze()
             for d, vae in enumerate(self.vaes):
                 data.append(vae.decoder(latents)["reconstruction"])
+
         if save:
+            data = [*adjust_shape(data[0],data[1])]
             save_samples(data,'{}/generate_{:03d}.png'.format(runPath, epoch))
             wandb.log({'generate_joint' : wandb.Image('{}/generate_{:03d}.png'.format(runPath, epoch))})
         return data  # list of generations---one for each modality
@@ -134,7 +136,7 @@ class JMVAE_NF(nn.Module):
 
         # Rearrange the data
 
-        reorganized = [[data[0], torch.cat(cond_data[0][1])], [torch.cat(cond_data[1][0]), data[1]]]
+        reorganized = [[*adjust_shape(data[0],torch.cat(cond_data[0][1]))], [*adjust_shape(torch.cat(cond_data[1][0]), data[1])]]
         if save:
             save_samples(reorganized[0], '{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))
             wandb.log({'gen_from_cond_0' : wandb.Image('{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))})
@@ -214,6 +216,9 @@ class JMVAE_NF(nn.Module):
                 recon = torch.stack(recon)
                 _,_,ch,w,h = recon.shape
                 recon = recon.resize(n * 8, ch, w, h).cpu()
+                if _data.shape[1:] != recon.shape[1:]:
+                    _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
+
                 comp = torch.cat([_data, recon])
                 filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
                 save_image(comp, filename)
@@ -232,7 +237,7 @@ class JMVAE_NF(nn.Module):
 
         # _,gen_dataloader = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx, random=True)
         #
-        data = torch.stack(gen_data)
+        data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
         tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
         dataset = MultimodalBasicDataset(data, tx)
         gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)

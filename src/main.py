@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from tempfile import mkdtemp
 import random
+from tqdm import tqdm
 from copy import deepcopy
 
 
@@ -16,7 +17,6 @@ from torch import optim
 import wandb
 import models
 import objectives
-from analysis import WrapperDoubleInception3, mFID
 from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon,load_joint_vae
 from vis import plot_hist
 
@@ -111,8 +111,8 @@ if pretrained_path:
     model._pz_params = model._pz_params
 
 skip_warmup = False
-# pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-13/2022-06-13T11:08:16.189888yu6g22wt/'
-pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
+pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
+# pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 min_epoch = 1
 
 
@@ -162,7 +162,7 @@ def train(epoch, agg):
     model.train()
     b_loss = 0
     b_details = {}
-    for i, dataT in enumerate(train_loader):
+    for i, dataT in enumerate(tqdm(train_loader)):
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
         loss, details = objective(model, data,args.K, args.beta,epoch,args.warmup, args.beta_prior)

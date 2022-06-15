@@ -54,10 +54,11 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
-def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath):
+def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, ax_lim = [-4,4]):
     fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
-    ax[0].set_xlim([-4, 4])
-    ax[0].set_ylim([-4,4])
+    if ax_lim is not None:
+        ax[0].set_xlim(ax_lim)
+        ax[0].set_ylim(ax_lim)
     sc1 = ax[0].scatter(emb0[:,0],emb0[:,1], c = emb_l0)
     fig.colorbar(sc1,ax=ax[0])
     sc2 = ax[1].scatter(emb1[:,0],emb1[:,1], c = emb_l1)
@@ -155,3 +156,9 @@ def save_samples(data, filename):
 
     grids = torch.cat([make_grid(d) for d in data], dim=2)
     save_image(grids, filename)
+
+
+def save_samples_mnist_svhn(data, filename):
+
+    mnist = torch.cat([data[0] for _ in range(3)], dim=1)
+    save_samples([mnist, data[1]], filename)

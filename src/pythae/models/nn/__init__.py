@@ -6,4 +6,7 @@ In this module are stored the main Neural Networks Architectures.
 from .base_architectures import (BaseDecoder, BaseDiscriminator, BaseEncoder,
                                  BaseMetric)
 
-__all__ = ["BaseDecoder", "BaseEncoder", "BaseMetric", "BaseDiscriminator"]
+from .default_architectures import (Encoder_VAE_MLP,Decoder_AE_MLP)
+
+__all__ = ["BaseDecoder", "BaseEncoder", "BaseMetric", "BaseDiscriminator",
+           "Encoder_VAE_MLP", "Decoder_AE_MLP"]

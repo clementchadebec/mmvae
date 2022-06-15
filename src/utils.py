@@ -297,3 +297,19 @@ class add_channels(object):
 
 
 
+def adjust_shape(data_1, data_2):
+
+    # first adjust the number of channels
+    if data_1.shape[1] > data_2.shape[1]:
+        data_2 = torch.cat([data_2 for _ in range(data_1.shape[1])], dim=1)
+    elif data_2.shape[1] > data_1.shape[1]:
+        data_1 = torch.cat([data_1 for _ in range(data_2.shape[1])], dim=1)
+
+    # Then adjust w and h
+    w1,w2 = data_1.shape[2], data_2.shape[2]
+    h1,h2 = data_1.shape[3], data_2.shape[3]
+    h,w = max(h1,h2), max(w1,w2)
+    data_1 = F.pad(data_1, ((h-h1)//2, (h-h1)//2, (w-w1)//2, (w-w1)//2), mode='constant',value=0)
+    data_2 = F.pad(data_2, ((h-h2)//2, (h-h2)//2, (w-w2)//2, (w-w2)//2), 'constant', 0)
+    return data_1, data_2
+
