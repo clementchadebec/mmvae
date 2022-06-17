@@ -13,10 +13,12 @@ from .j_circles_discs import J_CIRCLES_DISCS as VAE_j_circles_discs
 from .jmvae_nf import JMVAE_NF_CIRCLES as VAE_jnf_circles_squares
 from .jmvae_nf import JMVAE_NF_MNIST as VAE_jnf_mnist_fashion
 from .jmvae_nf import JMVAE_NF_MNIST_SVHN as VAE_jnf_mnist_svhn
-
+from .multi_vaes import Multi_VAES
 
 __all__ = [VAE_mnist_svhn, VAE_mnist, VAE_svhn, VAE_cubIS, VAE_cubS,
            VAE_mnist_fashion, VAE_j_mnist_fashion,
            VAE_cubI, VAE_cubISft, VAE_cubIft,VAE_jnf_circles_squares,
            VAE_jnf_mnist_fashion,
-           VAE_jnf_mnist_svhn]
+           VAE_jnf_mnist_svhn,
+           Multi_VAES,
+           ]

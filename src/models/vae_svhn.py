@@ -81,9 +81,9 @@ class SVHN(VAE):
 
     def __init__(self, params):
         super(SVHN, self).__init__(
-            dist_dict[params['dist']],  # prior
-            dist_dict[params['dist']],  # likelihood
-            dist_dict[params['dist']],  # posterior
+            dist_dict[params.dist],  # prior
+            dist_dict[params.dist],  # likelihood
+            dist_dict[params.dist],  # posterior
             Enc(params.latent_dim),
             Dec(params.latent_dim),
             params

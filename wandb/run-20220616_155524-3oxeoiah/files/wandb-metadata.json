@@ -1,0 +1,43 @@
+{
+    "os": "Linux-5.15.0-39-generic-x86_64-with-debian-bookworm-sid",
+    "python": "3.6.8",
+    "heartbeatAt": "2022-06-16T13:55:24.966611",
+    "startedAt": "2022-06-16T13:55:24.301282",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [
+        "--model",
+        "jnf_mnist_svhn",
+        "--obj",
+        "jmvae_nf",
+        "--latent-dim",
+        "20",
+        "--beta",
+        "1",
+        "--beta-prior",
+        "1",
+        "--warmup",
+        "15",
+        "--epochs",
+        "30",
+        "--beta-rec",
+        "1",
+        "--fix-decoders",
+        "--no-nf"
+    ],
+    "state": "running",
+    "program": "src/main.py",
+    "codePath": "src/main.py",
+    "git": {
+        "remote": "git@github.com:AgatheSenellart/mmvae.git",
+        "commit": "9b51d0a10a584c5583bcc2bce25e0036bcad5b93"
+    },
+    "email": "agathe.senellart@polytechnique.edu",
+    "root": "/home/agathe/Code/vaes/mmvae/mmvae",
+    "host": "agathe-Precision-7760",
+    "username": "agathe",
+    "executable": "/home/agathe/Code/miniconda3/envs/myenv/bin/python3"
+}

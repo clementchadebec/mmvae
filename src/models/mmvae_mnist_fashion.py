@@ -9,7 +9,7 @@ from numpy import sqrt, prod
 from torch.utils.data import DataLoader
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision.utils import save_image, make_grid
-from .dataloaders import MNIST_FASHION_DATALOADER
+from dataloaders import MNIST_FASHION_DATALOADER
 
 from vis import plot_embeddings, plot_kls_df, plot_posteriors
 from .mmvae import MMVAE

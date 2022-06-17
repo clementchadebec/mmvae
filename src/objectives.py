@@ -83,7 +83,7 @@ def m_elbo_naive(model, x, K=1):
     return obj.mean(0).sum()
 
 
-def m_elbo(model, x, K=1, beta=1000):
+def m_elbo(model, x, K=1, beta=1000, epoch=1, warmup=0,beta_prior = 1):
     """Computes importance-sampled m_elbo (in notes3) for multi-modal vae """
     qz_xs, px_zs, zss = model(x)
     lpx_zs, klds = [], []
@@ -103,6 +103,9 @@ def m_elbo(model, x, K=1, beta=1000):
 
     details = {}
     return obj.mean(0).sum(), details
+
+
+
 
 
 def _m_iwae(model, x, K=1):
@@ -175,11 +178,15 @@ def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
 
-        loss = loss - F.mse_loss(
+        details[f'loss_{m}'] = F.mse_loss(
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
             ).sum(dim=-1).sum()
+
+        loss = loss - details[f'loss_{m}']
+
+
     details['loss'] = loss
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)

@@ -15,7 +15,7 @@ from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Co
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
-from ..dataloaders import MNIST_FASHION_DATALOADER
+from dataloaders import MNIST_FASHION_DATALOADER
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 
 
@@ -76,6 +76,10 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         JMVAE_NF.sample_from_conditional(self, data, runPath, epoch, n)
 
     def extract_hist_values(self, data, n_data = 8, ns = 30):
+        """ Sample ns from the conditional distribution (for each of the first n_data)
+        and compute the labels repartition in this conditional distribution (based on the
+        predefined classifiers)"""
+
         bdata = [d[:n_data] for d in data]
         samples = JMVAE_NF._sample_from_conditional(self, bdata, n=ns)
         cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
@@ -96,6 +100,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
 
         labels2, labels1 = self.extract_hist_values(data, n_data, ns)
+
+        # Create an extended classes array where each original label is replicated ns times
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
         good_samples = torch.div(labels2 - 1,3, rounding_mode='trunc') == classes_mul
         acc2 = torch.sum(good_samples)/(n_data*ns)
@@ -119,7 +125,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         plot_hist(hist_values, '{}/hist_{:03d}.png'.format(runPath, epoch), range=(0, 10))
         wandb.log({'histograms' : wandb.Image('{}/hist_{:03d}.png'.format(runPath, epoch))})
 
-    def analyse(self, data, runPath, epoch, classes=None):
+    def analyse(self, data, runPath, epoch, classes=[None, None]):
         # Visualize the joint latent space
         m, s, zxy = self.analyse_joint_posterior(data, n_samples=len(data[0]))
         zx, zy = self.analyse_uni_posterior(data,n_samples=len(data[0]))

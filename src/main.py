@@ -76,7 +76,7 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 args = parser.parse_args()
 
 # Log parameters of the experiments
-wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='disabled') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -90,11 +90,11 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # load args from disk if pretrained model path is given
-pretrained_path = ""
-# pretrained_path = "../../mnist-svhn"
-if args.pre_trained:
-    pretrained_path = args.pre_trained
-    args = torch.load(args.pre_trained + '/args.rar')
+use_pretrain = False
+pretrained_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
+if use_pretrain :
+    old_args = torch.load(pretrained_path + 'args.rar')
+    args, new_args = old_args, args
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 print(f'Cuda is {args.cuda}')
@@ -104,15 +104,10 @@ device = torch.device("cuda" if args.cuda else "cpu")
 modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
 
-
-if pretrained_path:
-    print('Loading model {} from {}'.format(model.modelName, pretrained_path))
-    model.load_state_dict(torch.load(pretrained_path + '/model.rar'))
-    model._pz_params = model._pz_params
-
 skip_warmup = False
-pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
+# pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
+pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
 min_epoch = 1
 
 
@@ -121,6 +116,13 @@ if skip_warmup:
     load_joint_vae(model,pretrained_joint_path)
     min_epoch = args.warmup
 
+if use_pretrain:
+    print('Loading model {} from {}'.format(model.modelName, pretrained_path))
+    model.load_state_dict(torch.load(pretrained_path + '/model.pt'))
+    model._pz_params = model._pz_params
+    min_epoch = args.epochs
+    args.epochs = min_epoch + new_args.epochs
+    args.warmup = min_epoch + new_args.warmup
 
 if not args.experiment:
     args.experiment = model.modelName
