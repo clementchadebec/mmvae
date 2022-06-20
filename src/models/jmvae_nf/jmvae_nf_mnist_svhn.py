@@ -70,7 +70,8 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
 
-
+        print(self.parameters)
+        1/0
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

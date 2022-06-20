@@ -76,7 +76,7 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 args = parser.parse_args()
 
 # Log parameters of the experiments
-wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='disabled') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -109,7 +109,7 @@ skip_warmup = False
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
 min_epoch = 1
-
+learning_rate = 1e-3
 
 if skip_warmup:
     print('Loading joint encoder and decoders')
@@ -145,7 +145,7 @@ torch.save(args, '{}/args.rar'.format(runPath))
 
 # preparation for training
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
-                       lr=1e-3)
+                       lr=learning_rate, amsgrad=True)
 train_loader, test_loader = model.getDataLoaders(args.batch_size, device=device)
 
 # Objective function to use on train data
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
-                optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=1e-3)
+                optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
 
             train(epoch, agg)
             test(epoch, agg)

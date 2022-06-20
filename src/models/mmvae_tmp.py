@@ -53,6 +53,8 @@ class MMVAE(nn.Module):
             for d, vae in enumerate(self.vaes):
                 if e != d:  # fill-in off-diagonal
                     px_zs[e][d] = vae.px_z(*vae.dec(zs))
+        print(qz_x, px_zs, zss)
+        1/0
         return qz_xs, px_zs, zss
 
     def generate(self, runPath, epoch, N=8, save=False):
@@ -93,41 +95,43 @@ class MMVAE(nn.Module):
 
     def reconstruct(self, data):
         self.eval()
-        with torch.no_grad():
-            _, px_zs, _ = self.forward(data)
-            # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
-            recons = [[get_mean(px_z) for px_z in r] for r in px_zs]
-        return recons
+        return
+        # with torch.no_grad():
+        #     _, px_zs, _ = self.forward(data)
+        #     # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
+        #     recons = [[get_mean(px_z) for px_z in r] for r in px_zs]
+        # return recons
 
     def analyse(self, data, K):
         """Compute all embeddings, and plot empirical posterior and prior distribution.
         It also computes KL distances between distributions"""
         self.eval()
-        with torch.no_grad():
-            qz_xs, _, zss = self.forward(data, K=K)
-            pz = self.pz(*self.pz_params) # prior
-
-            # Add prior samples to the samples from each encoder generated during the forward pass
-            # zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
-            #        *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
-
-            zss = [*[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]] # No prior samples
-            # Labels
-            zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
-            kls_df = tensors_to_df(
-                [*[kl_divergence(qz_x, pz).cpu().numpy() for qz_x in qz_xs],
-                 *[0.5 * (kl_divergence(p, q) + kl_divergence(q, p)).cpu().numpy()
-                   for p, q in combinations(qz_xs, 2)]],
-                head='KL',
-                keys=[*[r'KL$(q(z|x_{})\,||\,p(z))$'.format(i) for i in range(len(qz_xs))],
-                      *[r'J$(q(z|x_{})\,||\,q(z|x_{}))$'.format(i, j)
-                        for i, j in combinations(range(len(qz_xs)), 2)]],
-                ax_names=['Dimensions', r'KL$(q\,||\,p)$']
-            )
-
-        return torch.cat(zss, 0).cpu().numpy(), \
-            torch.cat(zsl, 0).cpu().numpy(), \
-            kls_df
+        return
+        # with torch.no_grad():
+        #     qz_xs, _, zss = self.forward(data, K=K)
+        #     pz = self.pz(*self.pz_params) # prior
+        #
+        #     # Add prior samples to the samples from each encoder generated during the forward pass
+        #     # zss = [pz.sample(torch.Size([K, data[0].size(0)])).view(-1, pz.batch_shape[-1]),
+        #     #        *[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]]
+        #
+        #     zss = [*[zs.permute(1,0,2).reshape(-1, zs.size(-1)) for zs in zss]] # No prior samples
+        #     # Labels
+        #     zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
+        #     kls_df = tensors_to_df(
+        #         [*[kl_divergence(qz_x, pz).cpu().numpy() for qz_x in qz_xs],
+        #          *[0.5 * (kl_divergence(p, q) + kl_divergence(q, p)).cpu().numpy()
+        #            for p, q in combinations(qz_xs, 2)]],
+        #         head='KL',
+        #         keys=[*[r'KL$(q(z|x_{})\,||\,p(z))$'.format(i) for i in range(len(qz_xs))],
+        #               *[r'J$(q(z|x_{})\,||\,q(z|x_{}))$'.format(i, j)
+        #                 for i, j in combinations(range(len(qz_xs)), 2)]],
+        #         ax_names=['Dimensions', r'KL$(q\,||\,p)$']
+        #     )
+        #
+        # return torch.cat(zss, 0).cpu().numpy(), \
+        #     torch.cat(zsl, 0).cpu().numpy(), \
+        #     kls_df
 
             # previously embed_umap(torch.cat(zss, 0).cpu().numpy()) but incompatibility with u_map version
 
@@ -163,59 +167,62 @@ class MMVAE(nn.Module):
 
 
 
-    def sample_from_conditional(self,data,n = 10):
+    def sample_from_conditional(self,data, runPath, epoch,n = 10):
         """output recons is a tensor with shape n_mod x n_mod x n x ch x w xh"""
 
         self.eval()
-        px_zss = [self.forward(data)[1] for _ in range(n)] # sample from qz_xs
-        if self.align != -1:
-            return self.cross_modalities_sample_unaligned(data, n)
-        with torch.no_grad():
-            # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
-            recons = [torch.stack([torch.stack([get_mean(px_z) for px_z in r]) for r in px_zs]) for px_zs in px_zss]
-            recons = torch.stack(recons).squeeze().permute(1,2,0,3,4,5)
-            print(recons.shape)
-        return recons
+        return
+        # px_zss = [self.forward(data)[1] for _ in range(n)] # sample from qz_xs
+        # if self.align != -1:
+        #     return self.cross_modalities_sample_unaligned(data, n)
+        # with torch.no_grad():
+        #     # cross-modal matrix of reconstructions : reconstruction of modality 1 given modality 2 / given modality 1 etc...
+        #     recons = [torch.stack([torch.stack([get_mean(px_z) for px_z in r]) for r in px_zs]) for px_zs in px_zss]
+        #     recons = torch.stack(recons).squeeze().permute(1,2,0,3,4,5)
+        #     print(recons.shape)
+        # return recons
 
     def compute_fid(self,gen_data, batchsize, device, dims=2048, nb_batches=20, to_tensor=False, compare_with='joint'):
-        if to_tensor:
-            tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
-        else :
-            tx = transforms.Compose([transforms.Resize((299,299)), add_channels()])
-        t,s = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
-
-        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
-        model = InceptionV3([block_idx]).to(device)
-        m1, s1 = calculate_activation_statistics(s, model, dims, device=device, nb_batches = nb_batches)
-
-        # _,gen_dataloader = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx, random=True)
+        return
+        # if to_tensor:
+        #     tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
+        # else :
+        #     tx = transforms.Compose([transforms.Resize((299,299)), add_channels()])
+        # t,s = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
         #
-        data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
-        tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
-        dataset = MultimodalBasicDataset(data, tx)
-        gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)
-
-        m2, s2 = calculate_activation_statistics(gen_dataloader, model, dims, device=device, nb_batches=nb_batches)
-        return  calculate_frechet_distance(m1, s1, m2, s2)
-
+        # block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+        # model = InceptionV3([block_idx]).to(device)
+        # m1, s1 = calculate_activation_statistics(s, model, dims, device=device, nb_batches = nb_batches)
+        #
+        # # _,gen_dataloader = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx, random=True)
+        # #
+        # data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
+        # tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
+        # dataset = MultimodalBasicDataset(data, tx)
+        # gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)
+        #
+        # m2, s2 = calculate_activation_statistics(gen_dataloader, model, dims, device=device, nb_batches=nb_batches)
+        # return  calculate_frechet_distance(m1, s1, m2, s2)
+        #
 
     def compute_metrics(self,data, runPath, epoch, freq=5, to_tensor=False):
-        print(epoch)
-        if epoch % freq != 1:
-            return {}
-        batchsize, nb_batches = 64, 100
-        fids = {}
-        if epoch <= (self.params.warmup // freq + 1) * freq:  # Compute fid between joint generation and test set
-            gen_data = self.generate(runPath, epoch, N=batchsize * nb_batches)
-            fid = self.compute_fid(gen_data, batchsize, device='cuda', dims=2048, to_tensor=to_tensor,
-                                   nb_batches=nb_batches)
-            fids['fid_joint'] = fid
-
-        # Compute fid between test set and joint distributions computed from conditional
-        if epoch >= self.params.warmup:
-            cond_gen_data = self.generate_from_conditional(runPath, epoch, N=batchsize * nb_batches)
-            for i, gen_data in enumerate(cond_gen_data):
-                fids[f'fids_{i}'] = self.compute_fid(gen_data, batchsize, device='cuda', dims=2048, to_tensor=to_tensor,
-                                                     nb_batches=nb_batches)
-
-        return fids
+        return
+        # print(epoch)
+        # if epoch % freq != 1:
+        #     return {}
+        # batchsize, nb_batches = 64, 100
+        # fids = {}
+        # if epoch <= (self.params.warmup // freq + 1) * freq:  # Compute fid between joint generation and test set
+        #     gen_data = self.generate(runPath, epoch, N=batchsize * nb_batches)
+        #     fid = self.compute_fid(gen_data, batchsize, device='cuda', dims=2048, to_tensor=to_tensor,
+        #                            nb_batches=nb_batches)
+        #     fids['fid_joint'] = fid
+        #
+        # # Compute fid between test set and joint distributions computed from conditional
+        # if epoch >= self.params.warmup:
+        #     cond_gen_data = self.generate_from_conditional(runPath, epoch, N=batchsize * nb_batches)
+        #     for i, gen_data in enumerate(cond_gen_data):
+        #         fids[f'fids_{i}'] = self.compute_fid(gen_data, batchsize, device='cuda', dims=2048, to_tensor=to_tensor,
+        #                                              nb_batches=nb_batches)
+        #
+        # return fids

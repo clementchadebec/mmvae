@@ -84,24 +84,29 @@ def m_elbo_naive(model, x, K=1):
 
 
 def m_elbo(model, x, K=1, beta=1000, epoch=1, warmup=0,beta_prior = 1):
-    """Computes importance-sampled m_elbo (in notes3) for multi-modal vae """
-    qz_xs, px_zs, zss = model(x)
+    """Computes importance-sampled m_elbo (in notes3) for multi-modal vae
+
+    Personal comment : I actually don't understand where in this function is computed the
+    log(q(z_i|x1;m) --> it feels like its missing
+    """
+    qz_xs, px_zs, zss = model(x, K=K)
     lpx_zs, klds = [], []
     for r, qz_x in enumerate(qz_xs):
         kld = kl_divergence(qz_x, model.pz(*model.pz_params))
         klds.append(kld.sum(-1))
         for d in range(len(px_zs)):
             lpx_z = px_zs[d][d].log_prob(x[d]).view(*px_zs[d][d].batch_shape[:2], -1)
-            lpx_z = (lpx_z * model.vaes[d].llik_scaling).sum(-1)
+            lpx_z = (lpx_z * model.lik_scaling[d]).sum(-1)
             if d == r:
                 lwt = torch.tensor(0.0)
             else:
-                zs = zss[d].detach()
+                zs = zss[d].detach() # the detach implements the stop-grad
                 lwt = (qz_x.log_prob(zs) - qz_xs[d].log_prob(zs).detach()).sum(-1)
             lpx_zs.append(lwt.exp() * lpx_z)
     obj = (1 / len(model.vaes)) * (torch.stack(lpx_zs).sum(0) - torch.stack(klds).sum(0))
 
-    details = {}
+    details = dict(lpx_zs00 = lpx_zs[0].sum(), lpx_zs01  = lpx_zs[1].sum(),
+                   lpx_zs10 = lpx_zs[2].sum(), lpx_zs11 = lpx_zs[3].sum())
     return obj.mean(0).sum(), details
 
 
@@ -346,14 +351,15 @@ def m_iwae_looser(model, x, K=1, beta = 0):
 
 def _m_dreg(model, x, K=1, beta=0):
     """DERG estimate for log p_\theta(x) for multi-modal vae -- fully vectorised"""
-    qz_xs, px_zs, zss = model(x, K)
-    qz_xs_ = [vae.qz_x(*[p.detach() for p in vae.qz_x_params]) for vae in model.vaes]
+    qz_xs, px_zs, zss, qz_x_params = model(x, K)
+    # Stop grad --> detach the parameters so that the gradient doesn't retropropagate on this
+    qz_xs_ = [model.qz_x(*[p.detach() for p in qz_x_params[i]]) for i in range(len(model.vaes))]
     lws = []
     for r, vae in enumerate(model.vaes):
         lpz = model.pz(*model.pz_params).log_prob(zss[r]).sum(-1)
         lqz_x = log_mean_exp(torch.stack([qz_x_.log_prob(zss[r]).sum(-1) for qz_x_ in qz_xs_]))
         lpx_z = [px_z.log_prob(x[d]).view(*px_z.batch_shape[:2], -1)
-                     .mul(model.vaes[d].llik_scaling).sum(-1)
+                     .mul(model.lik_scaling[d]).sum(-1)
                  for d, px_z in enumerate(px_zs[r])]
         lpx_z = torch.stack(lpx_z).sum(0)
         lw = lpz + lpx_z - lqz_x
