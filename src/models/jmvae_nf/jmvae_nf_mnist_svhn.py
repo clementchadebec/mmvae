@@ -12,6 +12,7 @@ from torchvision import transforms
 from utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
 from torchvision.utils import save_image
+import pythae
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
 from pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP
 from torchnet.dataset import TensorDataset
@@ -44,12 +45,22 @@ classifier1.cuda()
 classifier2.cuda()
 
 
+# Load pretrained encoders as heads for the joint_encoder
+# state_dicts = [ torch.load('../experiments/vae_mnist/encoder.pt'),
+#                 torch.load('../experiments/vae_svhn/encoder.pt')
+# ]
+# vae_configs = [torch.load('../experiments/vae_mnist/config.pt'), torch.load('../experiments/vae_svhn/config.pt')]
+state_dicts = [None, None]
+vae_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
+
+
+
 class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
     def __init__(self, params):
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
         vae_config1 = vae_config((1,28,28), params.latent_dim)
         vae_config2 = vae_config((3,32,32), params.latent_dim)
-        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers,vae_config1, vae_config2, Encoder_VAE_MLP, Encoder_VAE_SVHN)
+        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers,vae_configs[0], vae_configs[1], Encoder_VAE_MLP, Encoder_VAE_SVHN, state_dicts)
         vae = my_VAE_IAF if not params.no_nf else my_VAE
 
 
@@ -69,9 +80,8 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
+        self.lik_scaling = ((3*32*32)/(1*28*28), 1) if params.llik_scaling == 0.0 else (params.llik_scaling, 1)
 
-        print(self.parameters)
-        1/0
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

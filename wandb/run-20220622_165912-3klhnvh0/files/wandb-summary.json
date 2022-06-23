@@ -1,0 +1,1 @@
+{"train_loss": 29.42683219909668, "_timestamp": 1655909997, "_runtime": 45, "_step": 23, "samples": {"_type": "image-file", "sha256": "7078b3f086daad50c418596ebd13da438a8baa9c2689275cd165c1f6f215ca16", "size": 43847, "path": "media/images/samples_19_7078b3f086daad50c418.png", "format": "png", "width": 242, "height": 242}, "_wandb": {"runtime": 47}}

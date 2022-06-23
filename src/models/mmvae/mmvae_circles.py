@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from utils import extract_rayon
 from ..nn import Encoder_VAE_MNIST,Decoder_AE_MNIST
 
-from .vae_circles import CIRCLES
+from ..vae_circles import CIRCLES
 from .mmvae import MMVAE
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
@@ -46,13 +46,15 @@ class MMVAE_CIRCLES(MMVAE):
             vae(model_config=vae_config, encoder=encoder2, decoder=decoder2)
 
         ])
-        super(MMVAE, self).__init__(params, vaes)
-        self.modelName = 'jmvae_nf_circles_squares'
+        super(MMVAE_CIRCLES, self).__init__(params, vaes)
+        self.modelName = 'mmvae_circles_squares'
 
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
 
         self.params = params
+        self.lik_scaling = (1,1)
+
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None, random=False):
         # handle merging individual datasets appropriately in sub-class
@@ -83,7 +85,7 @@ class MMVAE_CIRCLES(MMVAE):
     def analyse_rayons(self,data, r0, r1, runPath, epoch):
         zx, zy = self.analyse_uni_posterior(data,n_samples=len(data[0]))
 
-        plot_embeddings_colorbars(zx, zy,r0,r1,'{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch))
+        plot_embeddings_colorbars(zx, zy,r0,r1,'{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch), ax_lim=None)
         wandb.log({'uni_embedding' : wandb.Image('{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch))})
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -104,7 +106,8 @@ class MMVAE_CIRCLES(MMVAE):
         return extract_rayon(samples), (0,1), 10
 
     def compute_metrics(self, data, runPath, epoch, classes=None):
-        m = MMVAE.compute_metrics(self, runPath, epoch)
+        # m = MMVAE.compute_metrics(self, runPath, epoch)
+        m = {}
         bdata = [d[:100] for d in data]
         samples = self._sample_from_conditional(bdata, n=100)
         r, range, bins = self.extract_hist_values(samples)

@@ -16,10 +16,10 @@ from pythae.models import my_VAE, VAEConfig
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
-from ..nn import Encoder_VAE_MNIST,Decoder_AE_MNIST
+from ..nn import Encoder_VAE_SVHN,Decoder_VAE_SVHN
 
 from ..vae_circles import CIRCLES
-from ..nn import DoubleHeadMLP
+from ..nn import DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
@@ -28,11 +28,11 @@ hidden_dim = 512
 
 
 
-
-
 class JMVAE_NF_CIRCLES(JMVAE_NF):
     def __init__(self, params):
-        joint_encoder = DoubleHeadMLP(32*32,32*32,hidden_dim, params.latent_dim, params.num_hidden_layers)
+        params.input_dim = input_dim
+
+        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN)
         vae = my_VAE_IAF if not params.no_nf else my_VAE
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
         flow_config = {'n_made_blocks' : 2} if not params.no_nf else {}

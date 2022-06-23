@@ -1,5 +1,5 @@
 from pydantic.dataclasses import dataclass
-from mmvae.src.pythae.config import BaseConfig
+from pythae.config import BaseConfig
 
 
 @dataclass

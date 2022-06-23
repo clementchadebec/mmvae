@@ -89,7 +89,7 @@ def m_elbo(model, x, K=1, beta=1000, epoch=1, warmup=0,beta_prior = 1):
     Personal comment : I actually don't understand where in this function is computed the
     log(q(z_i|x1;m) --> it feels like its missing
     """
-    qz_xs, px_zs, zss = model(x, K=K)
+    qz_xs, px_zs, zss,_ = model(x, K=K)
     lpx_zs, klds = [], []
     for r, qz_x in enumerate(qz_xs):
         kld = kl_divergence(qz_x, model.pz(*model.pz_params))
@@ -187,7 +187,7 @@ def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
-            ).sum(dim=-1).sum()
+            ).sum(dim=-1).sum()*model.lik_scaling[m]
 
         loss = loss - details[f'loss_{m}']
 
@@ -223,17 +223,17 @@ def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
-            ).sum(dim=-1).mean()
-    details['loss'] = loss.copy()
+            ).sum(dim=-1).sum()
+    details['loss'] = loss.item()
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
     # print(list(model.joint_encoder.parameters())[0].requires_grad)
-    details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).mean()
+    details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
     # Approximate the posterior
     if epoch >= warmup:
         # Add the unimodal elbos
         for m,vae in enumerate(model.vaes):
-            details[f'reg_{m}'] = model.vaes[m].forward(x[m]).loss
+            details[f'reg_{m}'] = model.vaes[m].forward(x[m]).loss *x[m].shape[0]
             loss -= beta*details[f'reg_{m}']
 
     return loss - beta_prior * details['kld_prior'] , details

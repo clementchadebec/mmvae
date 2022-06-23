@@ -84,7 +84,7 @@ class VAMP(VAE):
 
         encoder_output = self.encoder(x)
 
-        # we bound log_var to avoid unbounded optim
+        # we bound log_var to avoid unbounded optimizer
         mu, log_var = (
             encoder_output.embedding,
             torch.tanh(encoder_output.log_covariance),
@@ -143,7 +143,7 @@ class VAMP(VAE):
             (C,) + self.model_config.input_dim
         )
 
-        # we bound log_var to avoid unbounded optim
+        # we bound log_var to avoid unbounded optimizer
         encoder_output = self.encoder(x)
         prior_mu, prior_log_var = (
             encoder_output.embedding,

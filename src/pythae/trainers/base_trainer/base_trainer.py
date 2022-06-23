@@ -43,11 +43,11 @@ class BaseTrainer:
             parameters used for training. If None, a basic training instance of
             :class:`BaseTrainerConfig` is used. Default: None.
 
-        optimizer (~torch.optim.Optimizer): An instance of `torch.optim.Optimizer` used for
-            training. If None, a :class:`~torch.optim.Adam` optimizer is used. Default: None.
+        optimizer (~torch.optimizer.Optimizer): An instance of `torch.optimizer.Optimizer` used for
+            training. If None, a :class:`~torch.optimizer.Adam` optimizer is used. Default: None.
 
-        scheduler (~torch.optim.lr_scheduler): An instance of `torch.optim.Optimizer` used for
-            training. If None, a :class:`~torch.optim.Adam` optimizer is used. Default: None.
+        scheduler (~torch.optimizer.lr_scheduler): An instance of `torch.optimizer.Optimizer` used for
+            training. If None, a :class:`~torch.optimizer.Adam` optimizer is used. Default: None.
 
         callbacks (List[~pythae.trainers.training_callbacks.TrainingCallbacks]):
             A list of callbacks to use during training.

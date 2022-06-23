@@ -23,7 +23,7 @@ class MNIST_DL():
         train = DataLoader(datasetC('../data', train=True, download=True, transform=tx),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(datasetC('../data', train=False, download=True, transform=tx),
-                          batch_size=batch_size, shuffle=shuffle, **kwargs)
+                          batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
 
@@ -109,7 +109,7 @@ class SVHN_DL():
         train = DataLoader(datasets.SVHN(self.data_path, split='train', download=True, transform=transform),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(datasets.SVHN(self.data_path, split='test', download=True, transform=transform),
-                          batch_size=batch_size, shuffle=shuffle, **kwargs)
+                          batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
 

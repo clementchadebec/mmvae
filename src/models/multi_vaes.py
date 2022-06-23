@@ -43,8 +43,8 @@ class Multi_VAES(nn.Module):
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
             nn.Parameter(torch.ones(1, params.latent_dim), requires_grad=False)  # logvar
         ])
-
-
+        self.max_epochs=params.epochs
+        self.sampler = None
 
     @property
     def pz_params(self):
@@ -66,8 +66,11 @@ class Multi_VAES(nn.Module):
         self.eval()
         with torch.no_grad():
             data = []
-            pz = self.pz(*self.pz_params)
-            latents = pz.rsample(torch.Size([N])).squeeze()
+            if self.sampler is None:
+                pz = self.pz(*self.pz_params)
+                latents = pz.rsample(torch.Size([N])).squeeze()
+            else :
+                latents = self.sampler.sample(num_samples=N)
             for d, vae in enumerate(self.vaes):
                 data.append(vae.decoder(latents)["reconstruction"])
 

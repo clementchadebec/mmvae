@@ -54,11 +54,17 @@ class DoubleHeadMLP(nn.Module):
 
 class DoubleHeadJoint(nn.Module):
 
-    def __init__(self, hidden_dim, num_hidden_layers, params1, params2, encoder1, encoder2):
+    def __init__(self, hidden_dim, num_hidden_layers, params1, params2, encoder1, encoder2, state_dicts = [None, None]):
         super(DoubleHeadJoint, self).__init__()
 
         self.input1 = encoder1(params1)
         self.input2 = encoder2(params2)
+        if state_dicts[0] is not None:
+            print('coucou')
+            self.input1.load_state_dict(state_dicts[0])
+        if state_dicts[1] is not None:
+            print('recoucou')
+            self.input2.load_state_dict(state_dicts[1])
 
         modules = []
         modules.append(nn.Sequential(nn.Linear(2 * params1.latent_dim, hidden_dim), nn.ReLU(True)))

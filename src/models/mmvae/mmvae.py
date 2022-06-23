@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributions as dist
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from sklearn.manifold import TSNE
 import wandb
@@ -12,7 +13,8 @@ from analysis.pytorch_fid import get_activations,calculate_activation_statistics
 from analysis.pytorch_fid.inception import InceptionV3
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
-from .multi_vaes import Multi_VAES
+from ..multi_vaes import Multi_VAES
+from utils import Constants
 
 from utils import get_mean, kl_divergence, add_channels, adjust_shape
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
@@ -32,7 +34,6 @@ class MMVAE(Multi_VAES):
         self.px_z = dist_dict[params.dist]
         device = 'cuda' if params.cuda else 'cpu'
         self.px_z_std = torch.tensor(0.75).to(device)
-        self.lik_scaling = ((3*32*32)/(1*28*28), 1) if params.llik_scaling ==0 else (params.llik_scaling, 1)
 
     def forward(self, x, K=1):
         """ Using the unimodal encoders, it computes qz_xs, px_zs, zxs"""
@@ -46,7 +47,8 @@ class MMVAE(Multi_VAES):
             # print(torch.cat([x[m] for _ in range(K)]).shape)
             o =  vae(torch.cat([x[m] for _ in range(K)]))
             # print(o.mu.shape)
-            mu, std = o.mu.reshape(K,len(x[m]), -1), torch.exp(0.5*o.log_var).reshape(K,len(x[m]),-1)
+            mu =  o.mu.reshape(K,len(x[m]), -1)
+            std =  o.std.reshape(K,len(x[m]), -1)
             qz_x_params.append((mu,std))
             # print(m,torch.max(o.log_var))
             qz_xs.append(self.qz_x(mu, std))

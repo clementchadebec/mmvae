@@ -1,0 +1,76 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.17
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    m:
+    - 1: epoch
+      6:
+      - 3
+    - 1: train_loss
+      5: 1
+      6:
+      - 1
+    - 1: test_loss
+      5: 1
+      6:
+      - 1
+    - 1: samples._type
+      5: 1
+      6:
+      - 1
+    - 1: samples.sha256
+      5: 1
+      6:
+      - 1
+    - 1: samples.size
+      5: 1
+      6:
+      - 1
+    - 1: samples.path
+      5: 1
+      6:
+      - 1
+    - 1: samples.format
+      5: 1
+      6:
+      - 1
+    - 1: samples.width
+      5: 1
+      6:
+      - 1
+    - 1: samples.height
+      5: 1
+      6:
+      - 1
+    python_version: 3.6.8
+    start_time: 1655916488
+    t:
+      1:
+      - 1
+      - 5
+      - 41
+      - 51
+      - 53
+      - 55
+      2:
+      - 1
+      - 5
+      - 41
+      - 51
+      - 53
+      - 55
+      3:
+      - 7
+      - 16
+      4: 3.6.8
+      5: 0.12.17
+      8:
+      - 5
+lr:
+  desc: null
+  value: 0.001

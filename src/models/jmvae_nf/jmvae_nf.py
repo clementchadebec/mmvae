@@ -35,6 +35,7 @@ class JMVAE_NF(Multi_VAES):
         self.max_epochs = params.epochs
         self.fix_jencoder = params.fix_jencoder
         self.fix_decoders = params.fix_decoders
+        self.lik_scaling = (1,1)
 
 
 
@@ -86,7 +87,7 @@ class JMVAE_NF(Multi_VAES):
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = vae_output.loss.sum()
+            details_reg[f'recon_loss_{m}'] = vae_output.loss.sum() * self.lik_scaling[m]
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
             reg += details_reg[f'kld_{m}'] + self.beta_rec * details_reg[f'recon_loss_{m}']
 

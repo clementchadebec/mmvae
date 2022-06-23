@@ -40,12 +40,12 @@ class AdversarialTrainer(BaseTrainer):
             parameters used for training. If None, a basic training instance of
             :class:`AdversarialTrainerConfig` is used. Default: None.
 
-        autoencoder_optimizer (~torch.optim.Optimizer): An instance of `torch.optim.Optimizer`
-            used for training the autoencoder. If None, a :class:`~torch.optim.Adam` optimizer is
+        autoencoder_optimizer (~torch.optimizer.Optimizer): An instance of `torch.optimizer.Optimizer`
+            used for training the autoencoder. If None, a :class:`~torch.optimizer.Adam` optimizer is
             used. Default: None.
 
-        discriminator_optimizer (~torch.optim.Optimizer): An instance of `torch.optim.Optimizer`
-            used for training the discriminator. If None, a :class:`~torch.optim.Adam` optimizer is
+        discriminator_optimizer (~torch.optimizer.Optimizer): An instance of `torch.optimizer.Optimizer`
+            used for training the discriminator. If None, a :class:`~torch.optimizer.Adam` optimizer is
             used. Default: None.
     """
 

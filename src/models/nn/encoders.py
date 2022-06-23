@@ -72,8 +72,8 @@ class Encoder_VAE_SVHN(BaseEncoder):
         BaseEncoder.__init__(self)
         self.input_dim = (3,32,32)
         self.latent_dim = args.latent_dim
-        self.n_channels = 3
-        self.fBase = 32
+        self.n_channels = args.input_dim[0]
+        self.fBase = args.input_dim[1]
 
         self.enc = nn.Sequential(
             # input size: 3 x 32 x 32
@@ -107,8 +107,8 @@ class Decoder_VAE_SVHN(BaseDecoder):
     def __init__(self, args):
         BaseDecoder.__init__(self)
         self.latent_dim = args.latent_dim
-        self.fBase = 32
-        self.nb_channels = 3
+        self.fBase = args.input_dim[0]
+        self.nb_channels = args.input_dim[1]
 
         self.dec = nn.Sequential(
             nn.ConvTranspose2d(self.latent_dim, self.fBase * 4, 4, 1, 0, bias=True),

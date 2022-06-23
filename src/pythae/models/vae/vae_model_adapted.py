@@ -82,6 +82,7 @@ class my_VAE(BaseAE):
         mu, log_var = encoder_output.embedding, encoder_output.log_covariance
 
         std = torch.exp(0.5 * log_var)
+        # std = F.softmax(log_var, dim=-1)*log_var.size(-1) + 1e-6
         z, eps = self._sample_gauss(mu, std)
         recon_x = self.decoder(z)["reconstruction"]
 
@@ -96,7 +97,8 @@ class my_VAE(BaseAE):
             log_abs_det_jac=0,
             recon_loss=recon_loss,
             loss=loss,
-            kld=kld
+            kld=kld,
+            std=std
         )
 
         return output

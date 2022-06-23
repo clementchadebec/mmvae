@@ -18,10 +18,10 @@ from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
 from dataloaders import MNIST_SVHN_DL
-from .nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN
+from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN
 
 
-from .nn import DoubleHeadMLP, DoubleHeadJoint
+from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from .mmvae import MMVAE
 from analysis import MnistClassifier, SVHNClassifier
 
@@ -67,7 +67,8 @@ class MNIST_SVHN(MMVAE):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
-
+        print(params.llik_scaling)
+        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -108,7 +109,7 @@ class MNIST_SVHN(MMVAE):
 
         # Compute general metrics (FID)
         general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=10, to_tensor=True)
-
+        # general_metrics = {}
         # Compute cross_coherence
         labels2, labels1 = self.conditional_labels(data, n_data, ns)
         # Create an extended classes array where each original label is replicated ns times

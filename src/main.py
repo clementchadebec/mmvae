@@ -19,6 +19,7 @@ import models
 import objectives
 from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon,load_joint_vae
 from vis import plot_hist
+from models.samplers import GaussianMixtureSampler
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--experiment', type=str, default='', metavar='E',
@@ -64,7 +65,7 @@ parser.add_argument('--dist', type=str, default = 'normal',
 parser.add_argument('--beta', type=float, default=1000,
                     help='scaling factor for the regularization in vaevae loss')
 parser.add_argument('--data-path', type=str, default = '../data/')
-
+parser.add_argument('--skip-warmup', action='store_true', default=False)
 parser.add_argument('--warmup', type=int, default=0)
 parser.add_argument('--no-nf', action='store_true', default= False)
 parser.add_argument('--beta-prior', type=float, default = 1)
@@ -74,9 +75,11 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 
 # args
 args = parser.parse_args()
+learning_rate = 1e-3
 
 # Log parameters of the experiments
-wandb.init(project = args.model + '_fid', entity="asenellart", config={}, mode='online') # mode = ['online', 'offline', 'disabled']
+experiment_name = args.experiment if args.experiment != '' else args.model
+wandb.init(project = experiment_name, entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -101,15 +104,15 @@ print(f'Cuda is {args.cuda}')
 device = torch.device("cuda" if args.cuda else "cpu")
 
 # load model
+print(args.model)
 modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
 
-skip_warmup = False
+skip_warmup = args.skip_warmup
 # pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
 min_epoch = 1
-learning_rate = 1e-3
 
 if skip_warmup:
     print('Loading joint encoder and decoders')
@@ -158,7 +161,9 @@ objective = getattr(objectives,
 # t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'elbo')
 t_objective = objective
 
-# Define evaluation metrics
+# Define a sampler for generating new samples
+if hasattr(model, 'joint_encoder'):
+    model.sampler = GaussianMixtureSampler(model.joint_encoder)
 
 def train(epoch, agg):
     model.train()
@@ -185,6 +190,9 @@ def train(epoch, agg):
 
 def test(epoch, agg):
     model.eval()
+    # re-fit the sampler before computing metrics
+    if model.sampler is not None:
+        model.sampler.fit(train_loader)
     b_loss = 0
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
@@ -202,7 +210,7 @@ def test(epoch, agg):
                 if not args.no_analytics:
                     model.analyse(data, runPath, epoch, classes=classes)
                     model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
-                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares'] :
+                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
                         if epoch == 1:
                             print("Computing test histogram")
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
@@ -210,6 +218,7 @@ def test(epoch, agg):
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
 
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
+    wandb.log({'test_loss' : b_loss / len(test_loader.dataset) })
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 
 
