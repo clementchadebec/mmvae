@@ -31,11 +31,12 @@ class JMVAE_NF(Multi_VAES):
         self.joint_encoder = joint_encoder
         self.qz_xy = dist_dict[params.dist]
         self.qz_xy_params = None # populated in forward
-        self.beta_rec = params.beta_rec
+        self.beta_kl = params.beta_kl
         self.max_epochs = params.epochs
         self.fix_jencoder = params.fix_jencoder
         self.fix_decoders = params.fix_decoders
         self.lik_scaling = (1,1)
+        self.decrease_beta_kl = params.decrease_beta_kl # how much to decrease
 
 
 
@@ -87,9 +88,9 @@ class JMVAE_NF(Multi_VAES):
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = vae_output.loss.sum() * self.lik_scaling[m]
+            details_reg[f'recon_loss_{m}'] = vae_output.recon_loss.sum()
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
-            reg += details_reg[f'kld_{m}'] + self.beta_rec * details_reg[f'recon_loss_{m}']
+            reg += (self.beta_kl*details_reg[f'kld_{m}'] + details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
 
         return reg, details_reg
 
@@ -117,5 +118,10 @@ class JMVAE_NF(Multi_VAES):
         zxy = zxy.reshape(-1,zxy.size(-1))
         return m,s, zxy.cpu().numpy()
 
+
+    def step(self):
+        """ Change the hyperparameters of the models"""
+        self.beta_kl *=self.decrease_beta_kl
+        wandb.log({'beta_kl' : self.beta_kl})
 
 

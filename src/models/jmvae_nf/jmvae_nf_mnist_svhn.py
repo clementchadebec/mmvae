@@ -115,7 +115,7 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
 
 
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=30):
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100):
 
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""

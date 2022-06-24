@@ -1,0 +1,25 @@
+program : src/main.py
+method : bayes
+metric :
+  name : acc2
+  goal : maximise
+parameters :
+  beta-kl:
+    min: 0
+    max: 1
+  model :
+    value: jnf_mnist_fashion
+  obj:
+    value: jmvae_nf
+  latent-dim:
+    value : 5
+  data-path:
+    value: ../data/unbalanced/
+  warmup:
+    value: 15
+  epochs:
+    value: 30
+  fix-decoders:
+    value: True
+  skip-warmup:
+    value: True

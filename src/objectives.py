@@ -172,7 +172,7 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     details['kl1'], details['kl2'] , details['loss'] = kl1,kl2, loss
     return (loss - beta*(kl1+kl2), details) if epoch >= warmup else (loss, details)
 
-def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
+def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
         model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
         for vae in model.vaes:
@@ -205,7 +205,7 @@ def m_jmvae_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
     else :
         details['reg']=0
 
-    return (loss - beta_prior*details['kld_prior'] - beta*details['reg'], details) if epoch >= warmup \
+    return (loss - beta_prior*details['kld_prior'] - details['reg'], details) if epoch >= warmup \
         else (loss - beta_prior*details['kld_prior'], details)
 
 def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):

@@ -62,15 +62,15 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--dist', type=str, default = 'normal',
                     choices= ['normal', 'laplace'])
-parser.add_argument('--beta', type=float, default=1000,
-                    help='scaling factor for the regularization in vaevae loss')
+
 parser.add_argument('--data-path', type=str, default = '../data/')
-parser.add_argument('--skip-warmup', action='store_true', default=False)
+parser.add_argument('--skip-warmup', type=bool, default=False)
 parser.add_argument('--warmup', type=int, default=0)
 parser.add_argument('--no-nf', action='store_true', default= False)
 parser.add_argument('--beta-prior', type=float, default = 1)
-parser.add_argument('--beta-rec', type=float, default = 0.3)
-parser.add_argument('--fix-decoders', action='store_true', default=False)
+parser.add_argument('--beta-kl', type=float, default = 0.1)
+parser.add_argument('--decrease_beta_kl', type=float, default=1)
+parser.add_argument('--fix-decoders', type=bool, default=True)
 parser.add_argument('--fix-jencoder', type=bool, default=True)
 
 # args
@@ -79,7 +79,7 @@ learning_rate = 1e-3
 
 # Log parameters of the experiments
 experiment_name = args.experiment if args.experiment != '' else args.model
-wandb.init(project = experiment_name, entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name + '_fid', entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -109,9 +109,9 @@ modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
 
 skip_warmup = args.skip_warmup
-# pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
+pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
-pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
+# pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-23/2022-06-23T15:55:43.7074495t4m1g34/'
 min_epoch = 1
 
 if skip_warmup:
@@ -172,7 +172,7 @@ def train(epoch, agg):
     for i, dataT in enumerate(tqdm(train_loader)):
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
-        loss, details = objective(model, data,args.K, args.beta,epoch,args.warmup, args.beta_prior)
+        loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
         loss = -loss # minimization
         loss.backward()
         optimizer.step()
@@ -187,6 +187,8 @@ def train(epoch, agg):
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
     print('====> Epoch: {:03d} Train loss: {:.4f}, details : {}'.format(epoch, agg['train_loss'][-1], b_details))
 
+    # Change the value of the parameters
+    model.step()
 
 def test(epoch, agg):
     model.eval()
@@ -199,7 +201,7 @@ def test(epoch, agg):
             data = unpack_data(dataT, device=device)
             classes = dataT[0][1], dataT[1][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
-            loss, details = t_objective(model, data, K=args.K, beta = args.beta, beta_prior = args.beta_prior, epoch=epoch,warmup=args.warmup)
+            loss, details = t_objective(model, data, K=args.K, beta_prior = args.beta_prior, epoch=epoch,warmup=args.warmup)
             loss = -loss
             b_loss += loss.item()
             if i == 0:
