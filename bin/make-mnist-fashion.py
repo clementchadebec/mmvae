@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 import numpy as np
 import json
 
-unbalanced = False
+unbalanced = True
 # in place i the labels of fashion mnist that are associated with the number i in mnist
 
 correspondence = [[1,2,3], [4,5,6], [7,8,9]] if unbalanced else np.arange(10).reshape(-1,1)
@@ -57,9 +57,10 @@ if __name__ == '__main__':
     mnist_l, mnist_li = test_mnist.targets.sort()
     fashion_l, fashion_li = test_fashion.targets.sort()
     idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, fashion_l, fashion_li, max_d=max_d, dm=dm)
+    shuffle = torch.randperm(len(idx1))
     print('len test idx:', len(idx1), len(idx2))
-    torch.save(idx1, output_path + 'test-ms-mnist-idx.pt')
-    torch.save(idx2, output_path + 'test-ms-fashion-idx.pt')
+    torch.save(idx1[shuffle], output_path + 'test-ms-mnist-idx.pt')
+    torch.save(idx2[shuffle], output_path + 'test-ms-fashion-idx.pt')
 
 
     print(idx1[:20], idx2[:20])

@@ -205,10 +205,10 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     else :
         details['reg']=0
 
-    return (loss - beta_prior*details['kld_prior'] - details['reg'], details) if epoch >= warmup \
+    return (- details['reg'], details) if epoch >= warmup \
         else (loss - beta_prior*details['kld_prior'], details)
 
-def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
+def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
         model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
         for vae in model.vaes:
@@ -223,7 +223,7 @@ def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
-            ).sum(dim=-1).sum()
+            ).sum(dim=-1).sum()*model.lik_scaling[m]
     details['loss'] = loss.item()
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
@@ -233,8 +233,10 @@ def m_telbo_nf(model,x,K=1, beta=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
         # Add the unimodal elbos
         for m,vae in enumerate(model.vaes):
-            details[f'reg_{m}'] = model.vaes[m].forward(x[m]).loss *x[m].shape[0]
-            loss -= beta*details[f'reg_{m}']
+            o = model.vaes[m].forward(x[m])
+            details[f'recon_loss_{m}'] = o.recon_loss * x[m].shape[0]
+            details[f'kld_{m}'] = o.kld *x[m].shape[0]
+            loss -= (details[f'recon_loss_{m}'] + model.beta_kl*details[f'kld_{m}'])*model.lik_scaling[m]
 
     return loss - beta_prior * details['kld_prior'] , details
 

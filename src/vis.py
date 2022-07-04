@@ -11,7 +11,6 @@ from matplotlib.lines import Line2D
 from umap import UMAP
 from torchvision.utils import make_grid, save_image
 
-
 def custom_cmap(n):
     """Create customised colormap for scattered latent plot of n categories.
     Returns colormap object and colormap array that contains the RGB value of the colors.
@@ -54,15 +53,28 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
-def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, ax_lim = [-4,4]):
+def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, filters=None, ax_lim = [-4,4]):
+    point_shapes = ['o', '^']
+    if filters is None:
+        filters = [torch.ones_like(emb_l0)]
     fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
     if ax_lim is not None:
         ax[0].set_xlim(ax_lim)
         ax[0].set_ylim(ax_lim)
-    sc1 = ax[0].scatter(emb0[:,0],emb0[:,1], c = emb_l0)
-    fig.colorbar(sc1,ax=ax[0])
-    sc2 = ax[1].scatter(emb1[:,0],emb1[:,1], c = emb_l1)
+    for m,filter in enumerate(filters):
+        filter = filter.numpy().astype(bool)
+        emb0f, emb1f = emb0[filter], emb1[filter]
+        emb_l0f, emb_l1f = emb_l0[filter], emb_l1[filter]
+        sc1 = ax[0].scatter(emb0f[:,0],emb0f[:,1],marker=point_shapes[m], c = emb_l0f)
+        sc2 = ax[1].scatter(emb1f[:,0],emb1f[:,1],marker = point_shapes[m], c = emb_l1f)
     fig.colorbar(sc2, ax=ax[1])
+    fig.colorbar(sc1, ax=ax[0])
+    ax[0].set_xlabel(r'$z_1$')
+    ax[1].set_xlabel(r'$z_1$')
+    ax[0].set_ylabel(r'$z_2$')
+    ax[0].set_title('Rayons des carrés')
+    ax[1].set_title('Rayons des cercles')
+    plt.suptitle(r'Représentation latente $q_{\phi}(z|x,y)$')
     plt.savefig(filepath)
     plt.close()
 

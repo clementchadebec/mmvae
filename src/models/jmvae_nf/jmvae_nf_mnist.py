@@ -93,7 +93,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
         return labels2, labels1
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=200):
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100):
 
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""

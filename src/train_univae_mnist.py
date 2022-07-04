@@ -11,6 +11,7 @@ import wandb
 from os import path
 import torch
 import os
+from models.nn import Encoder_VAE_MNIST,Decoder_AE_MNIST
 
 learning_rate = 1e-3
 
@@ -23,8 +24,13 @@ my_vae_config = model_config = VAEConfig(
     latent_dim=20
 )
 
+encoder = Encoder_VAE_MNIST(my_vae_config)
+decoder = Decoder_AE_MNIST(my_vae_config)
+
 my_vae_model = my_VAE(
-    model_config=my_vae_config
+    model_config=my_vae_config,
+    encoder=encoder,
+    decoder=decoder
 )
 my_vae_model.cuda()
 

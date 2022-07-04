@@ -1,0 +1,22 @@
+wandb_version: 1
+
+beta-kl:
+  value: 0.5289559592514893
+data-path:
+  value: ../data/unbalanced/
+decrease_beta_kl:
+  value: 0.8894495691507807
+epochs:
+  value: 30
+fix-decoders:
+  value: true
+latent-dim:
+  value: 5
+model:
+  value: jnf_mnist_fashion
+obj:
+  value: jmvae_nf
+skip-warmup:
+  value: true
+warmup:
+  value: 15

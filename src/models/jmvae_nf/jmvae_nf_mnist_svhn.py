@@ -19,7 +19,7 @@ from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
 from dataloaders import MNIST_SVHN_DL
-from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN
+from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN, TwoStepsDecoder
 
 
 from ..vae_circles import CIRCLES
@@ -30,6 +30,7 @@ from analysis import MnistClassifier, SVHNClassifier
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
 hidden_dim = 512
+pretrained_vaes = False
 
 # Define the classifiers for analysis
 classifier1, classifier2 = MnistClassifier(), SVHNClassifier()
@@ -46,12 +47,19 @@ classifier2.cuda()
 
 
 # Load pretrained encoders as heads for the joint_encoder
-# state_dicts = [ torch.load('../experiments/vae_mnist/encoder.pt'),
-#                 torch.load('../experiments/vae_svhn/encoder.pt')
-# ]
-# vae_configs = [torch.load('../experiments/vae_mnist/config.pt'), torch.load('../experiments/vae_svhn/config.pt')]
-state_dicts = [None, None]
-vae_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
+if pretrained_vaes :
+    pretrained_encoders = [ torch.load('../experiments/vae_mnist/encoder.pt'),
+                torch.load('../experiments/vae_svhn/encoder.pt')
+    ]
+    pre_configs = [torch.load('../experiments/vae_mnist/config.pt'), torch.load('../experiments/vae_svhn/config.pt')]
+    pretrained_decoders = [ torch.load('../experiments/vae_mnist/decoder.pt'),
+                torch.load('../experiments/vae_svhn/decoder.pt')]
+
+
+# Or use random initialized ones
+else :
+    pretrained_encoders, pretrained_decoders = [None, None], [None, None]
+    pre_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
 
 
 
@@ -60,20 +68,26 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
         vae_config1 = vae_config((1,28,28), params.latent_dim)
         vae_config2 = vae_config((3,32,32), params.latent_dim)
-        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers,vae_configs[0], vae_configs[1], Encoder_VAE_MLP, Encoder_VAE_SVHN, state_dicts)
+        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers,pre_configs[0], pre_configs[1],
+                                        Encoder_VAE_MLP ,
+                                        Encoder_VAE_SVHN,
+                                        pretrained_encoders)
+
         vae = my_VAE_IAF if not params.no_nf else my_VAE
 
 
-        encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2) # Standard MLP for
+        encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
         # encoder1, encoder2 = None, None
         decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
+        # decoder1 = TwoStepsDecoder(Decoder_AE_MNIST,pre_configs[0], pretrained_decoders[0], params)
+        # decoder2 = TwoStepsDecoder(Decoder_VAE_SVHN, pre_configs[1], pretrained_decoders[1], params)
         # decoder1, decoder2 = None, None
 
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
             vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)
-
         ])
+
         super(JMVAE_NF_MNIST_SVHN, self).__init__(params, joint_encoder, vaes)
         self.modelName = 'jmvae_nf_mnist_svhn'
         self.data_path = params.data_path
@@ -115,13 +129,13 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
 
 
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100):
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100, freq=10):
 
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
 
         # Compute general metrics (FID)
-        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch,freq=10, to_tensor=True)
+        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch,freq=freq, to_tensor=True)
 
         # Compute cross_coherence
         labels2, labels1 = self.conditional_labels(data, n_data, ns)

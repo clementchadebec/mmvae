@@ -16,7 +16,7 @@ from analysis.pytorch_fid import get_activations,calculate_activation_statistics
 from analysis.pytorch_fid.inception import InceptionV3
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
-
+from umap import UMAP
 
 from utils import get_mean, kl_divergence, add_channels, adjust_shape
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
@@ -27,7 +27,8 @@ dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1,32,32)
 
 
-
+reducer = UMAP
+# reducer = TSNE
 
 class Multi_VAES(nn.Module):
     def __init__(self,params, vaes):
@@ -45,6 +46,7 @@ class Multi_VAES(nn.Module):
         ])
         self.max_epochs=params.epochs
         self.sampler = None
+        self.save_format = '.png'
 
     @property
     def pz_params(self):
@@ -76,8 +78,9 @@ class Multi_VAES(nn.Module):
 
         if save:
             data = [*adjust_shape(data[0],data[1])]
-            save_samples(data,'{}/generate_{:03d}.png'.format(runPath, epoch))
-            wandb.log({'generate_joint' : wandb.Image('{}/generate_{:03d}.png'.format(runPath, epoch))})
+            file = ('{}/generate_{:03d}'+self.save_format).format(runPath, epoch)
+            save_samples(data,file)
+            wandb.log({'generate_joint' : wandb.Image(file)})
         return data  # list of generations---one for each modality
 
     def generate_from_conditional(self,runPath, epoch, N=10, save=False):
@@ -94,10 +97,12 @@ class Multi_VAES(nn.Module):
 
         reorganized = [[*adjust_shape(data[0],torch.cat(cond_data[0][1]))], [*adjust_shape(torch.cat(cond_data[1][0]), data[1])]]
         if save:
-            save_samples(reorganized[0], '{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))
-            wandb.log({'gen_from_cond_0' : wandb.Image('{}/gen_from_cond_0_{:03d}.png'.format(runPath, epoch))})
-            save_samples(reorganized[1], '{}/gen_from_cond_1_{:03d}.png'.format(runPath, epoch))
-            wandb.log({'gen_from_cond_1' : wandb.Image('{}/gen_from_cond_1_{:03d}.png'.format(runPath, epoch))})
+            file = ('{}/gen_from_cond_0_{:03d}'+self.save_format).format(runPath, epoch)
+            save_samples(reorganized[0], file)
+            wandb.log({'gen_from_cond_0' : wandb.Image(file)})
+            file = ('{}/gen_from_cond_1_{:03d}'+self.save_format).format(runPath, epoch)
+            save_samples(reorganized[1],file )
+            wandb.log({'gen_from_cond_1' : wandb.Image(file)})
 
         return reorganized
 
@@ -112,16 +117,18 @@ class Multi_VAES(nn.Module):
         zx, zy = self.analyse_uni_posterior(data, n_samples=len(data[0]))
 
         if self.params.latent_dim > 2:
-            zxy = TSNE().fit_transform(zxy)
-            zx = TSNE().fit_transform(zx)
-            zy = TSNE().fit_transform(zy)
+            zxy = reducer().fit_transform(zxy)
+            zx = reducer().fit_transform(zx)
+            zy = reducer().fit_transform(zy)
 
-        plot_embeddings_colorbars(zxy, zxy, classes[0], classes[1],
-                                  "{}/joint_embedding_{:03d}.png".format(runPath, epoch), ax_lim=None)
-        wandb.log({'joint_embedding': wandb.Image("{}/joint_embedding_{:03d}.png".format(runPath, epoch))})
-        plot_embeddings_colorbars(zx, zy, classes[0], classes[1], "{}/uni_embedding_{:03d}.png".format(runPath, epoch),
+        file = ("{}/joint_embedding_{:03d}" + self.save_format).format(runPath, epoch)
+        plot_embeddings_colorbars(zxy, zxy, classes[0], classes[1],file
+                                  , ax_lim=None)
+        wandb.log({'joint_embedding': wandb.Image(file)})
+        file = ("{}/uni_embedding_{:03d}" + self.save_format).format(runPath, epoch)
+        plot_embeddings_colorbars(zx, zy, classes[0], classes[1], file,
                                   ax_lim=None)
-        wandb.log({'uni_embedding': wandb.Image("{}/uni_embedding_{:03d}.png".format(runPath, epoch))})
+        wandb.log({'uni_embedding': wandb.Image(file)})
 
     def analyse_uni_posterior(self, data, n_samples):
         bdata = [d[:n_samples] for d in data]
@@ -134,8 +141,9 @@ class Multi_VAES(nn.Module):
         bdata = [d[:n_samples] for d in data]
         #zsamples[m] is of size N, n_samples, latent_dim
         zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).__getitem__('z') for _ in range(N)]) for m in range(self.mod)]
-        plot_samples_posteriors(zsamples, '{}/samplepost_{:03d}.png'.format(runPath, epoch), None)
-        wandb.log({'sample_posteriors' : wandb.Image('{}/samplepost_{:03d}.png'.format(runPath, epoch))})
+        file = ('{}/samplepost_{:03d}' + self.save_format).format(runPath, epoch)
+        plot_samples_posteriors(zsamples, file, None)
+        wandb.log({'sample_posteriors' : wandb.Image(file)})
         return
 
 
@@ -199,7 +207,7 @@ class Multi_VAES(nn.Module):
 
 
     def compute_metrics(self,runPath, epoch, freq = 5, to_tensor=False):
-        if epoch%freq != 1:
+        if (epoch%freq != 0 and epoch!=1) or self.params.no_analytics :
             return {}
         batchsize,nb_batches = 64,100
         fids = {}

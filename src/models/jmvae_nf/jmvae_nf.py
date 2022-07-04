@@ -37,6 +37,8 @@ class JMVAE_NF(Multi_VAES):
         self.fix_decoders = params.fix_decoders
         self.lik_scaling = (1,1)
         self.decrease_beta_kl = params.decrease_beta_kl # how much to decrease
+        self.ratio_kl_recon = [None,None]
+        self.no_recon = params.no_recon # if we want to omit the reconstruction term in the loss (jmvae loss)
 
 
 
@@ -88,9 +90,14 @@ class JMVAE_NF(Multi_VAES):
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = vae_output.recon_loss.sum()
+            details_reg[f'recon_loss_{m}'] = vae_output.recon_loss.sum() * x[m].shape[0] # already the negative log conditional expectation
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
-            reg += (self.beta_kl*details_reg[f'kld_{m}'] + details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
+            if self.ratio_kl_recon[m] is None:
+                if self.no_recon :
+                    self.ratio_kl_recon[m] = 0
+                else:
+                    self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+            reg += (self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
 
         return reg, details_reg
 
@@ -119,9 +126,10 @@ class JMVAE_NF(Multi_VAES):
         return m,s, zxy.cpu().numpy()
 
 
-    def step(self):
+    def step(self, epoch):
         """ Change the hyperparameters of the models"""
-        self.beta_kl *=self.decrease_beta_kl
+        if epoch >= self.params.warmup :
+            self.beta_kl *=self.decrease_beta_kl
         wandb.log({'beta_kl' : self.beta_kl})
 
 

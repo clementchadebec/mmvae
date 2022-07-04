@@ -5,7 +5,8 @@ import os
 import torch
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
-
+from datasets import CIRCLES_DATASET
+from numpy.random import randint
 
 
 class MNIST_DL():
@@ -62,7 +63,7 @@ class MNIST_FASHION_DATALOADER():
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_mnist_fashion, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
 
@@ -146,5 +147,43 @@ class MNIST_SVHN_DL():
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test
+
+class CIRCLES_DL():
+
+    def __init__(self, type, data_path):
+        self.type = type
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
+        kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
+        # create datasets
+        train_set = CIRCLES_DATASET(self.data_path + self.type + '_train.pt', self.data_path + 'labels_train.pt',
+                                    self.data_path + 'r_' + self.type + '_train.pt',
+                                    transforms=transform)
+        test_set = CIRCLES_DATASET(self.data_path + self.type + '_test.pt', self.data_path + 'labels_test.pt',
+                                   self.data_path + 'r_' + self.type + '_test.pt',
+                                   transforms=transform)
+        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test
+
+class CIRCLES_SQUARES_DL():
+
+    def __init__(self, data_path):
+        self.data_path=data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
+        # load base datasets
+        t1, s1 = CIRCLES_DL('squares', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        t2, s2 = CIRCLES_DL('circles', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+
+        train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
+        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=False, **kwargs)
+
         return train, test

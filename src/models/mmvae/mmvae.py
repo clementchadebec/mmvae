@@ -81,5 +81,6 @@ class MMVAE(Multi_VAES):
         zxy = zxy.reshape(-1,zxy.size(-1))
         return m,None, zxy.cpu().numpy()
 
-
+    def step(self, epoch):
+        return
 

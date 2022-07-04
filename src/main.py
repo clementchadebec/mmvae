@@ -46,8 +46,7 @@ parser.add_argument('--latent-dim', type=int, default=20, metavar='L',
                     help='latent dimensionality (default: 20)')
 parser.add_argument('--num-hidden-layers', type=int, default=1, metavar='H',
                     help='number of hidden layers in enc and dec (default: 1)')
-parser.add_argument('--pre-trained', type=str, default="",
-                    help='path to pre-trained model (train from scratch if empty)')
+parser.add_argument('--use-pretrain', type=str, default='')
 parser.add_argument('--learn-prior', action='store_true', default=False,
                     help='learn model prior parameters')
 parser.add_argument('--logp', action='store_true', default=False,
@@ -68,10 +67,13 @@ parser.add_argument('--skip-warmup', type=bool, default=False)
 parser.add_argument('--warmup', type=int, default=0)
 parser.add_argument('--no-nf', action='store_true', default= False)
 parser.add_argument('--beta-prior', type=float, default = 1)
-parser.add_argument('--beta-kl', type=float, default = 0.1)
-parser.add_argument('--decrease_beta_kl', type=float, default=1)
+parser.add_argument('--beta-kl', type=float, default = 1)
+parser.add_argument('--decrease-beta-kl', type=float, default=1)
 parser.add_argument('--fix-decoders', type=bool, default=True)
 parser.add_argument('--fix-jencoder', type=bool, default=True)
+parser.add_argument('--no-recon', type=bool, default=False)
+parser.add_argument('--freq_analytics', type=int, default=5)
+parser.add_argument('--eval-mode', action='store_true', default=False)
 
 # args
 args = parser.parse_args()
@@ -79,7 +81,8 @@ learning_rate = 1e-3
 
 # Log parameters of the experiments
 experiment_name = args.experiment if args.experiment != '' else args.model
-wandb.init(project = experiment_name + '_fid', entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
+wand_mode = 'online' if not args.eval_mode else 'disabled'
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -93,11 +96,16 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # load args from disk if pretrained model path is given
-use_pretrain = False
-pretrained_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-16/2022-06-16T15:02:10.6960796vhvxbx3/'
+use_pretrain = args.use_pretrain != ''
+pretrained_path = args.use_pretrain
 if use_pretrain :
     old_args = torch.load(pretrained_path + 'args.rar')
     args, new_args = old_args, args
+    min_epoch = args.epochs
+    args.epochs = min_epoch + new_args.epochs
+    args.warmup = min_epoch + new_args.warmup
+    args.eval_mode = new_args.eval_mode
+    args.freq_analytics = new_args.freq_analytics
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 print(f'Cuda is {args.cuda}')
@@ -109,9 +117,10 @@ modelC = getattr(models, 'VAE_{}'.format(args.model))
 model = modelC(args).to(device)
 
 skip_warmup = args.skip_warmup
-pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
+# pretrained_joint_path = '../experiments/jmvae_nf_mnist/2022-06-15/2022-06-15T09:53:04.9472623yb2z1h0/'
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
-# pretrained_joint_path = '../experiments/jmvae_nf_mnist_svhn/2022-06-23/2022-06-23T15:55:43.7074495t4m1g34/'
+# pretrained_joint_path = '../experiments/clean_mnist_svhn/2022-06-29/2022-06-29T11:41:41.132687__5qri92/'
+pretrained_joint_path = '../experiments/jmvae/2022-06-28/2022-06-28T17:25:01.03903846svjh2d/'
 min_epoch = 1
 
 if skip_warmup:
@@ -123,9 +132,7 @@ if use_pretrain:
     print('Loading model {} from {}'.format(model.modelName, pretrained_path))
     model.load_state_dict(torch.load(pretrained_path + '/model.pt'))
     model._pz_params = model._pz_params
-    min_epoch = args.epochs
-    args.epochs = min_epoch + new_args.epochs
-    args.warmup = min_epoch + new_args.warmup
+
 
 if not args.experiment:
     args.experiment = model.modelName
@@ -182,13 +189,13 @@ def train(epoch, agg):
         # print('after update_det',b_details['loss'])
         if args.print_freq > 0 and i % args.print_freq == 0:
             print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details['loss_0']/b_details['loss_1']))
-    b_details = {k : b_details[k]/len(train_loader.dataset) for k in b_details.keys()}
+    b_details = {k + '_train': b_details[k]/len(train_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
     print('====> Epoch: {:03d} Train loss: {:.4f}, details : {}'.format(epoch, agg['train_loss'][-1], b_details))
 
     # Change the value of the parameters
-    model.step()
+    model.step(epoch)
 
 def test(epoch, agg):
     model.eval()
@@ -196,6 +203,7 @@ def test(epoch, agg):
     if model.sampler is not None:
         model.sampler.fit(train_loader)
     b_loss = 0
+    b_details = {}
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
@@ -204,21 +212,26 @@ def test(epoch, agg):
             loss, details = t_objective(model, data, K=args.K, beta_prior = args.beta_prior, epoch=epoch,warmup=args.warmup)
             loss = -loss
             b_loss += loss.item()
+            update_details(b_details, details)
+
             if i == 0:
                 wandb.log({'epoch' : epoch})
-                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                wandb.log(model.compute_metrics(data, runPath, epoch, classes, freq=args.freq_analytics))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
-                if not args.no_analytics:
+                if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
                     model.analyse(data, runPath, epoch, classes=classes)
-                    model.analyse_posterior(data, n_samples=8, runPath=runPath, epoch=epoch, ticks=ticks)
+                    model.analyse_posterior(data, n_samples=1, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
+                    model.generate(runPath, epoch, N=32, save=True)
+                    model.generate_from_conditional(runPath, epoch, N=32, save=True)
                     if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
                         if epoch == 1:
                             print("Computing test histogram")
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
                             plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
-                        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch)
-
+                        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
+    b_details = {k + '_test': b_details[k] / len(test_loader.dataset) for k in b_details.keys()}
+    wandb.log(b_details)
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     wandb.log({'test_loss' : b_loss / len(test_loader.dataset) })
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
@@ -240,6 +253,9 @@ def estimate_log_marginal(K):
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
+        if args.eval_mode :
+            test(1,agg)
+            1/0
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
@@ -249,8 +265,6 @@ if __name__ == '__main__':
             test(epoch, agg)
             save_model(model, runPath + '/model.pt')
             save_vars(agg, runPath + '/losses.pt')
-            with torch.no_grad():
-                model.generate(runPath, epoch, N=32, save=True)
-                model.generate_from_conditional(runPath, epoch, N=32, save=True)
+
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

@@ -82,10 +82,10 @@ class MMVAE_CIRCLES(MMVAE):
 
 
 
-    def analyse_rayons(self,data, r0, r1, runPath, epoch):
+    def analyse_rayons(self,data, r0, r1, runPath, epoch, filters=[None,None]):
         zx, zy = self.analyse_uni_posterior(data,n_samples=len(data[0]))
 
-        plot_embeddings_colorbars(zx, zy,r0,r1,'{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch), ax_lim=None)
+        plot_embeddings_colorbars(zx, zy,r0,r1,'{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch), ax_lim=None, filters=filters)
         wandb.log({'uni_embedding' : wandb.Image('{}/embedding_rayon_uni{:03}.png'.format(runPath,epoch))})
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -105,8 +105,8 @@ class MMVAE_CIRCLES(MMVAE):
         samples = torch.cat([torch.stack(samples[0][1]), torch.stack(samples[1][0])], dim=1)
         return extract_rayon(samples), (0,1), 10
 
-    def compute_metrics(self, data, runPath, epoch, classes=None):
-        # m = MMVAE.compute_metrics(self, runPath, epoch)
+    def compute_metrics(self, data, runPath, epoch, classes=None, freq=10):
+        m = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
         m = {}
         bdata = [d[:100] for d in data]
         samples = self._sample_from_conditional(bdata, n=100)
