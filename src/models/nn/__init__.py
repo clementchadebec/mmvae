@@ -1,4 +1,4 @@
-from .encoders import Encoder_VAE_MNIST,Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN, TwoStepsDecoder
+from .encoders import Encoder_VAE_MNIST,Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 from .joint_encoders import BaseEncoder,DoubleHeadMLP, DoubleHeadJoint
 __all__ = ['Encoder_VAE_MNIST',
            'Decoder_AE_MNIST',
@@ -7,5 +7,6 @@ __all__ = ['Encoder_VAE_MNIST',
            'DoubleHeadJoint',
            'Encoder_VAE_SVHN',
            'Decoder_VAE_SVHN',
-           'TwoStepsDecoder'
+           'TwoStepsDecoder',
+           'TwoStepsEncoder'
            ]

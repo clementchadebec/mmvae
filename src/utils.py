@@ -234,6 +234,20 @@ def update_details(dict1, dict2):
         else :
             dict1[k] = dict2[k]
 
+def update_dict_list(dict1, dict2):
+    for k in dict2.keys():
+        if k in dict1.keys():
+            dict1[k].append(dict2[k])
+        else :
+            dict1[k] = [dict2[k]]
+
+def get_mean_std(dict):
+    return { k : torch.mean(dict[k]) for k in dict.keys()}, {k : torch.std(dict[k]) for k in dict.keys()}
+
+def print_mean_std(dict_mean, dict_std):
+    for k in dict_mean.keys():
+        print(k, f' {dict_mean[k]} +- {dict_std[k]}')
+
 def tensor_classes_labels(l1, l2, l1_names, l2_names):
     """ Transform labels that are tuples (l1[i], l2[i]) to int"""
     vl1, vl2 = len(np.unique(l1)), len(np.unique(l2))

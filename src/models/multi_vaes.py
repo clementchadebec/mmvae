@@ -17,7 +17,8 @@ from analysis.pytorch_fid.inception import InceptionV3
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
 from umap import UMAP
-
+from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import accuracy_score
 from utils import get_mean, kl_divergence, add_channels, adjust_shape
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
@@ -106,7 +107,7 @@ class Multi_VAES(nn.Module):
 
         return reorganized
 
-    def analyse_joint_posterior(selfdata, n_samples = 10):
+    def analyse_joint_posterior(self,data, n_samples = 10):
         raise "analyse_joint_posterior must be defined in the subclass"
 
 
@@ -115,6 +116,11 @@ class Multi_VAES(nn.Module):
         # Visualize the joint latent space
         m, s, zxy = self.analyse_joint_posterior(data, n_samples=len(data[0]))
         zx, zy = self.analyse_uni_posterior(data, n_samples=len(data[0]))
+
+        # Fit a classifier on the latent space and see the accuracy
+        if self.train_latents is not None:
+            latent_acc = self.classify_latent(self.train_latents[0], self.train_latents[1],zxy,classes[0])
+            wandb.log({'latent_acc' : latent_acc})
 
         if self.params.latent_dim > 2:
             zxy = reducer().fit_transform(zxy)
@@ -129,6 +135,16 @@ class Multi_VAES(nn.Module):
         plot_embeddings_colorbars(zx, zy, classes[0], classes[1], file,
                                   ax_lim=None)
         wandb.log({'uni_embedding': wandb.Image(file)})
+
+
+
+
+    def classify_latent(self,z_train,t_train,z_test,t_test):
+        cl = SGDClassifier(loss='hinge',penalty='l2')
+        cl.fit(z_train.cpu(),t_train.cpu())
+        y_pred = cl.predict(z_test)
+        return accuracy_score(y_pred,t_test)
+
 
     def analyse_uni_posterior(self, data, n_samples):
         bdata = [d[:n_samples] for d in data]
@@ -188,7 +204,7 @@ class Multi_VAES(nn.Module):
             tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
         else :
             tx = transforms.Compose([transforms.Resize((299,299)), add_channels()])
-        t,s = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
+        t,s,v = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
 
         block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
         model = InceptionV3([block_idx]).to(device)
@@ -210,18 +226,22 @@ class Multi_VAES(nn.Module):
         if (epoch%freq != 0 and epoch!=1) or self.params.no_analytics :
             return {}
         batchsize,nb_batches = 64,100
-        fids = {}
+        metrics = {}
         if epoch <= (self.params.warmup//freq + 1)*freq: # Compute fid between joint generation and test set
             gen_data = self.generate(runPath, epoch, N = batchsize*nb_batches)
             fid = self.compute_fid(gen_data,batchsize, device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
-            fids['fid_joint'] = fid
+            metrics['fid_joint'] = fid
 
         # Compute fid between test set and joint distributions computed from conditional
         if epoch >= self.params.warmup:
             cond_gen_data = self.generate_from_conditional(runPath, epoch, N = batchsize*nb_batches)
             for i,gen_data in enumerate(cond_gen_data):
-                fids[f'fids_{i}'] = self.compute_fid(gen_data,batchsize,device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
+                metrics[f'fids_{i}'] = self.compute_fid(gen_data,batchsize,device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
 
-        return fids
+        # If the model has classifiers compute the joint coherence
+
+        return metrics
+
+
 
 

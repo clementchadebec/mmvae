@@ -36,6 +36,29 @@ class GaussianMixtureSampler():
         self.n_components = n_components
         self.device = device
 
+    def fit_from_latents(self,mu):
+
+        self.is_fitted = True
+        if self.n_components > mu.shape[0]:
+            self.n_components = mu.shape[0]
+            logger.warning(
+                f"Setting the number of component to {mu.shape[0]} since"
+                "n_components > n_samples when fitting the gmm"
+            )
+
+        gmm = mixture.GaussianMixture(
+            n_components=self.n_components,
+            covariance_type="full",
+            max_iter=2000,
+            verbose=0,
+            tol=1e-3,
+        )
+        gmm.fit(mu.cpu().detach())
+
+        self.gmm = gmm
+
+
+
     def fit(self, train_loader):
         """Method to fit the sampler from the training data
 

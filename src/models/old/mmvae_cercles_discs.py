@@ -15,6 +15,7 @@ from vis import plot_embeddings, plot_kls_df, plot_posteriors, plot_embeddings_c
 from .mmvae import MMVAE
 from .vae_circles import CIRCLES
 from utils import tensor_classes_labels
+from dataloaders import CIRCLES_SQUARES_DL
 
 data_path = '../data/circles_and_discs/'
 
@@ -48,18 +49,9 @@ class CIRCLES_DISCS(MMVAE):
             raise RuntimeError('Generate transformed indices with the script in bin')
 
         # load base datasets
-        t1, s1 = CIRCLES.getDataLoaders(batch_size, ty0, shuffle, device, data_path=self.data_path)
-        t2, s2 = CIRCLES.getDataLoaders(batch_size,ty1, shuffle, device, data_path=self.data_path)
+        train, test, eval = CIRCLES_SQUARES_DL(self.data_path).getDataLoaders(batch_size,shuffle,device)
 
-        train_circles_discs = TensorDataset([t1.dataset,t2.dataset])
-        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
-
-
-        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
-
-        return train, test
+        return train, test, eval
 
     def generate(self, runPath, epoch):
         N = 64

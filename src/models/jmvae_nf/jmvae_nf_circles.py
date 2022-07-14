@@ -43,7 +43,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
     def __init__(self, params):
         params.input_dim = input_dim
 
-        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN)
+        joint_encoder = DoubleHeadJoint(hidden_dim, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN, params)
         vae = my_VAE_IAF if not params.no_nf else my_VAE
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
         flow_config = {'n_made_blocks' : 2} if not params.no_nf else {}
@@ -68,8 +68,8 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         # handle merging individual datasets appropriately in sub-class
         # load base datasets
         dl = CIRCLES_SQUARES_DL(self.data_path)
-        train, test=dl.getDataLoaders(batch_size, shuffle, device, transform)
-        return train, test
+        train, test, val = dl.getDataLoaders(batch_size, shuffle, device, transform)
+        return train, test, val
 
     def analyse_rayons(self,data, r0, r1, runPath, epoch, filters):
         m,s,zxy = self.analyse_joint_posterior(data,n_samples=len(data[0]))
@@ -117,5 +117,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         r, range, bins = self.extract_hist_values(samples)
         sm =  {'neg_entropy' : negative_entropy(r.cpu(), range, bins), 'acc0' : acc0, 'acc1' : acc1}
         update_details(sm,m)
+
+        print('Eval metrics : ', sm)
         return sm
 

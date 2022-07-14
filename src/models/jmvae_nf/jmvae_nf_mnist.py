@@ -42,6 +42,9 @@ classifier2.eval()
 classifier1.cuda()
 classifier2.cuda()
 
+def fashion_labels_to_mnist(f_labels):
+    return torch.div(f_labels - 1,3, rounding_mode='trunc')
+
 
 class JMVAE_NF_MNIST(JMVAE_NF):
     def __init__(self, params):
@@ -67,10 +70,12 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
+        self.classifier1 = classifier1
+        self.classifier2 = classifier2
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
-        train, test = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
-        return train, test
+        train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        return train, test, val
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
         JMVAE_NF.sample_from_conditional(self, data, runPath, epoch, n)
@@ -93,7 +98,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
         return labels2, labels1
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100):
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
 
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
@@ -103,7 +108,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
         # Create an extended classes array where each original label is replicated ns times
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
-        good_samples = torch.div(labels2 - 1,3, rounding_mode='trunc') == classes_mul
+        good_samples = fashion_labels_to_mnist(labels2) == classes_mul
         acc2 = torch.sum(good_samples)/(n_data*ns)
         acc1 = torch.sum(labels1 == classes_mul)/(n_data*ns)
 
@@ -111,8 +116,19 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         labels2_acc = good_samples*labels2
         neg_entrop = negative_entropy(labels2_acc.cpu(),range=(0,10), bins=10)
 
+
+
         metrics = dict(acc2=acc2, acc1 =acc1, neg_entropy = neg_entrop)
-        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch, to_tensor=True)
+        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch, to_tensor=True, freq=freq)
+
+        # Compute joint coherence :
+        data = self.generate(runPath, epoch, N=100)
+        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
+        labels_fashion = torch.argmax(self.classifier2(data[1]), dim=1)
+
+        joint_acc = torch.sum(labels_mnist == fashion_labels_to_mnist(labels_fashion)) / 100
+        metrics['joint_coherence'] = joint_acc
+
         update_details(metrics, general_metrics)
         return metrics
 
@@ -140,7 +156,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         plot_embeddings_colorbars(zx,zy,classes[0], classes[1], "{}/uni_embedding_{:03d}.png".format(runPath,epoch))
         wandb.log({'uni_embedding' : wandb.Image("{}/uni_embedding_{:03d}.png".format(runPath,epoch))})
         # Analyse histograms of conditional samples
-        super().analyse(data, runPath, epoch)
+        super().analyse(data, runPath, epoch, classes=classes)
         self.conditional_dist(data, runPath, epoch, n=100)
 
 

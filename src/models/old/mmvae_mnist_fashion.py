@@ -36,8 +36,8 @@ class MNIST_FASHION(MMVAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
-        train,test = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device)
-        return train, test
+        train,test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device)
+        return train, test, val
 
     def generate(self, runPath, epoch):
         N = 64

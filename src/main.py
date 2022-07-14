@@ -17,7 +17,8 @@ from torch import optim
 import wandb
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon,load_joint_vae
+from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon\
+    ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
 
@@ -45,7 +46,7 @@ parser.add_argument('--epochs', type=int, default=10, metavar='E',
 parser.add_argument('--latent-dim', type=int, default=20, metavar='L',
                     help='latent dimensionality (default: 20)')
 parser.add_argument('--num-hidden-layers', type=int, default=1, metavar='H',
-                    help='number of hidden layers in enc and dec (default: 1)')
+                    help='number of hidden layers in enc and dec (default: 2)')
 parser.add_argument('--use-pretrain', type=str, default='')
 parser.add_argument('--learn-prior', action='store_true', default=False,
                     help='learn model prior parameters')
@@ -82,7 +83,8 @@ learning_rate = 1e-3
 # Log parameters of the experiments
 experiment_name = args.experiment if args.experiment != '' else args.model
 wand_mode = 'online' if not args.eval_mode else 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
+# wand_mode = 'disabled'
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -107,9 +109,9 @@ if use_pretrain :
     args.eval_mode = new_args.eval_mode
     args.freq_analytics = new_args.freq_analytics
 
-args.cuda = not args.no_cuda and torch.cuda.is_available()
-print(f'Cuda is {args.cuda}')
-device = torch.device("cuda" if args.cuda else "cpu")
+args.device = 'cuda' if (not args.no_cuda and torch.cuda.is_available()) else 'cpu'
+print(f'Device is {args.device}')
+device = torch.device(args.device)
 
 # load model
 print(args.model)
@@ -156,7 +158,13 @@ torch.save(args, '{}/args.rar'.format(runPath))
 # preparation for training
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                        lr=learning_rate, amsgrad=True)
-train_loader, test_loader = model.getDataLoaders(args.batch_size, device=device)
+train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
+print(f"Train : {len(train_loader.dataset)},"
+      f"Test : {len(test_loader.dataset)},"
+      f"Val : {len(val_loader.dataset)}")
+
+if args.eval_mode:
+    test_loader = val_loader
 
 # Objective function to use on train data
 objective = getattr(objectives,
@@ -199,9 +207,11 @@ def train(epoch, agg):
 
 def test(epoch, agg):
     model.eval()
+    # Compute all train latents
+    model.compute_all_train_latents(train_loader)
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
-        model.sampler.fit(train_loader)
+        model.sampler.fit_from_latents(model.train_latents[0])
     b_loss = 0
     b_details = {}
     with torch.no_grad():
@@ -213,15 +223,14 @@ def test(epoch, agg):
             loss = -loss
             b_loss += loss.item()
             update_details(b_details, details)
-
             if i == 0:
                 wandb.log({'epoch' : epoch})
-                wandb.log(model.compute_metrics(data, runPath, epoch, classes, freq=args.freq_analytics))
+                wandb.log(model.compute_metrics(data, runPath,epoch, classes,freq=args.freq_analytics))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
                     model.analyse(data, runPath, epoch, classes=classes)
-                    model.analyse_posterior(data, n_samples=1, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
+                    model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
                     model.generate(runPath, epoch, N=32, save=True)
                     model.generate_from_conditional(runPath, epoch, N=32, save=True)
                     if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
@@ -235,6 +244,42 @@ def test(epoch, agg):
     agg['test_loss'].append(b_loss / len(test_loader.dataset))
     wandb.log({'test_loss' : b_loss / len(test_loader.dataset) })
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
+
+
+def eval(epoch):
+    """Compute all metrics on the entire test dataset"""
+
+    model.eval()
+    # Compute all train latents
+    model.compute_all_train_latents(train_loader)
+    # re-fit the sampler before computing metrics
+    if model.sampler is not None:
+        model.sampler.fit_from_latents(model.train_latents[0])
+    b_metrics = {}
+    with torch.no_grad():
+        for i, dataT in enumerate(test_loader):
+            data = unpack_data(dataT, device=device)
+            classes = dataT[0][1], dataT[1][1]
+            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch, classes, freq=1))
+            if i == 0:
+                model.sample_from_conditional(data, runPath, epoch)
+                model.reconstruct(data, runPath, epoch)
+                if not args.no_analytics and (epoch % args.freq_analytics == 0 or epoch == 1):
+                    model.analyse(data, runPath, epoch, classes=classes)
+                    model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=None, N=100)
+                    model.generate(runPath, epoch, N=32, save=True)
+                    model.generate_from_conditional(runPath, epoch, N=32, save=True)
+                    if args.model in ['circles_discs', 'j_circles_discs', 'jnf_circles_squares', 'circles_squares']:
+                        if epoch == 1:
+                            print("Computing test histogram")
+                            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
+                            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
+                        model.analyse_rayons(data, dataT[0][2], dataT[1][2], runPath, epoch,
+                                             [dataT[0][1], 1 - dataT[0][1]])
+
+    m_metrics, s_metrics = get_mean_std(b_metrics)
+    print_mean_std(m_metrics,s_metrics)
+    return
 
 
 def estimate_log_marginal(K):
@@ -254,7 +299,7 @@ if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
         if args.eval_mode :
-            test(1,agg)
+            eval(1)
             1/0
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :

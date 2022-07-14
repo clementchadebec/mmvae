@@ -71,8 +71,8 @@ class MNIST_SVHN(MMVAE):
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
-        return train, test
+        train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        return train, test, val
 
     def conditional_labels(self, data, n_data=8, ns=30):
         """ Sample ns from the conditional distribution (for each of the first n_data)

@@ -54,30 +54,29 @@ class DoubleHeadMLP(nn.Module):
 
 class DoubleHeadJoint(nn.Module):
 
-    def __init__(self, hidden_dim, num_hidden_layers, params1, params2, encoder1, encoder2, state_dicts = [None, None]):
+    def __init__(self, hidden_dim, params1, params2, encoder1, encoder2,args, state_dicts = [None, None]):
         super(DoubleHeadJoint, self).__init__()
 
         self.input1 = encoder1(params1)
         self.input2 = encoder2(params2)
         if state_dicts[0] is not None:
-            print('coucou')
+            print('Loading input1 network for the joint encoder')
             self.input1.load_state_dict(state_dicts[0])
         if state_dicts[1] is not None:
-            print('recoucou')
+            print('Loading input2 network for the joint encoder')
             self.input2.load_state_dict(state_dicts[1])
 
         modules = []
-        modules.append(nn.Sequential(nn.Linear(2 * params1.latent_dim, hidden_dim), nn.ReLU(True)))
-        modules.extend([extra_hidden_layer(hidden_dim) for _ in range(num_hidden_layers - 1)])
+        modules.append(nn.Sequential(nn.Linear(params1.latent_dim + params2.latent_dim, hidden_dim), nn.ReLU(True)))
+        modules.extend([extra_hidden_layer(hidden_dim) for _ in range(args.num_hidden_layers - 1)])
         self.enc = nn.Sequential(*modules)
-        self.fc21 = nn.Linear(hidden_dim, params1.latent_dim)
-        self.fc22 = nn.Linear(hidden_dim, params1.latent_dim)
+        self.fc21 = nn.Linear(hidden_dim, args.latent_dim)
+        self.fc22 = nn.Linear(hidden_dim, args.latent_dim)
 
     def forward(self, x):
         x0 = self.input1.forward(x[0])[0]
         x1 = self.input2.forward(x[1])[0]
         e = self.enc(torch.cat([x0, x1], dim=1))  # flatten data
         lv = torch.exp(0.5 * self.fc22(e))
-
         return self.fc21(e), lv + Constants.eta
 

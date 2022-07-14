@@ -14,12 +14,12 @@ from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posterior
 from torchvision.utils import save_image
 import pythae
 from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
-from pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP
+from pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP, Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
 from dataloaders import MNIST_SVHN_DL
-from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN, TwoStepsDecoder
+from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 
 
 from ..vae_circles import CIRCLES
@@ -61,23 +61,39 @@ else :
     pretrained_encoders, pretrained_decoders = [None, None], [None, None]
     pre_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
 
-
+load_dcca_encoders = True
+dcca_encoders = [torch.load('../dcca/mnist_svhnmodel1.pt'), torch.load('../dcca/mnist_svhnmodel2.pt')]
+dcca_configs = [VAEConfig((1,28,28), 15), VAEConfig((3,32,32), 15)]
 
 class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
     def __init__(self, params):
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
-        vae_config1 = vae_config((1,28,28), params.latent_dim)
-        vae_config2 = vae_config((3,32,32), params.latent_dim)
-        joint_encoder = DoubleHeadJoint(hidden_dim, params.num_hidden_layers,pre_configs[0], pre_configs[1],
+
+        # Define the joint encoder
+        joint_encoder = DoubleHeadJoint(hidden_dim,pre_configs[0], pre_configs[1],
                                         Encoder_VAE_MLP ,
                                         Encoder_VAE_SVHN,
+                                        params,
                                         pretrained_encoders)
 
         vae = my_VAE_IAF if not params.no_nf else my_VAE
 
+        # Define the unimodal encoders
+        vae_config1 = vae_config((1, 28, 28), params.latent_dim)
+        vae_config2 = vae_config((3, 32, 32), params.latent_dim)
+        if load_dcca_encoders:
 
-        encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
-        # encoder1, encoder2 = None, None
+            e1, e2 = Encoder_VAE_MLP(dcca_configs[0]), Encoder_VAE_SVHN(dcca_configs[1])
+            e1.load_state_dict(dcca_encoders[0])
+            e2.load_state_dict(dcca_encoders[1])
+            # For reusing the heads of the joint encoders as starters for the unimodal encoders
+            encoder1 = TwoStepsEncoder(e1, params)
+            encoder2 = TwoStepsEncoder(e2, params)
+        else :
+
+            encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
+
+        # Define the decoders
         decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
         # decoder1 = TwoStepsDecoder(Decoder_AE_MNIST,pre_configs[0], pretrained_decoders[0], params)
         # decoder2 = TwoStepsDecoder(Decoder_VAE_SVHN, pre_configs[1], pretrained_decoders[1], params)
@@ -98,8 +114,8 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
-        return train, test
+        train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        return train, test, val
 
     def conditional_labels(self, data, n_data=8, ns=30):
         """ Sample ns from the conditional distribution (for each of the first n_data)
@@ -145,13 +161,11 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         acc1 = torch.sum(classes_mul == labels1)/(n_data*ns)
 
         metrics = dict(accuracy1 = acc1, accuracy2 = acc2)
-
-        # Compute joint-coherence
         data = self.generate(runPath, epoch, N=100)
         labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
         labels_svhn = torch.argmax(classifier2(data[1]), dim=1)
 
-        joint_acc = torch.sum(labels_mnist == labels_svhn)/100
+        joint_acc = torch.sum(labels_mnist == labels_svhn) / 100
         metrics['joint_coherence'] = joint_acc
         update_details(metrics, general_metrics)
 

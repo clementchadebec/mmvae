@@ -6,8 +6,7 @@ import torch
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
 from datasets import CIRCLES_DATASET
-from numpy.random import randint
-
+from torch.utils.data import random_split
 
 class MNIST_DL():
     def __init__(self, data_path, type):
@@ -61,10 +60,14 @@ class MNIST_FASHION_DATALOADER():
             ResampleDataset(s2.dataset, lambda d, i: s_fashion[i], size=len(s_fashion))
         ])
 
+        val_set, test_set = random_split(test_mnist_fashion,
+                                         [len(test_mnist_fashion)//2, len(test_mnist_fashion)-len(test_mnist_fashion)//2])
+
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_fashion, batch_size=batch_size, shuffle=False, **kwargs)
-        return train, test
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
 
 
 
@@ -145,10 +148,15 @@ class MNIST_SVHN_DL():
             ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
         ])
 
+        val_set, test_set = random_split(test_mnist_svhn,
+                                         [len(test_mnist_svhn) // 2,
+                                          len(test_mnist_svhn) - len(test_mnist_svhn) // 2])
+
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=False, **kwargs)
-        return train, test
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
 
 class CIRCLES_DL():
 
@@ -182,8 +190,12 @@ class CIRCLES_SQUARES_DL():
         train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
         test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
 
+        val_set, test_set = random_split(test_circles_discs,
+                                         [len(test_circles_discs) // 2,
+                                          len(test_circles_discs) - len(test_circles_discs) // 2])
+
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_circles_discs, batch_size=batch_size, shuffle=False, **kwargs)
-
-        return train, test
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val

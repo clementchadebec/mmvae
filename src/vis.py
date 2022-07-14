@@ -8,7 +8,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 from matplotlib.lines import Line2D
-from umap import UMAP
+# from umap import UMAP
 from torchvision.utils import make_grid, save_image
 
 def custom_cmap(n):
@@ -109,12 +109,18 @@ def plot_samples_posteriors(zsamples, filepath, labels, ticks = None):
     fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
     ax[0].set_xlim([-4, 4])
     ax[0].set_ylim([-4,4])
+    ax[0].set_xlabel(r'$z_1$')
+    ax[1].set_xlabel(r'$z_1$')
+    ax[0].set_ylabel(r'$z_2$')
+    ax[1].set_ylabel(r'$z_2$')
+
     for m, zs in enumerate(zsamples):
         zs = zs.permute(1,0,2)
         for i, z in enumerate(zs):
             ax[m].scatter(z[:,0].cpu(), z[:,1].cpu(), label=i)
-    plt.legend()
-    plt.suptitle("Samples from q(z|x), q(z|y) for different x,y")
+    ax[0].set_title(r'Samples from $q_{\phi_1}(z|x)$ for several $x$')
+    ax[1].set_title(r'Samples from $q_{\phi_2}(z|y)$ for several $y$')
+    plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight')
 
 

@@ -13,8 +13,8 @@ from analysis.pytorch_fid.inception import InceptionV3
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
 from ..multi_vaes import Multi_VAES
-
-from utils import get_mean, kl_divergence, add_channels, adjust_shape
+from tqdm import tqdm
+from utils import get_mean, kl_divergence, add_channels, adjust_shape, unpack_data
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
 
@@ -39,7 +39,7 @@ class JMVAE_NF(Multi_VAES):
         self.decrease_beta_kl = params.decrease_beta_kl # how much to decrease
         self.ratio_kl_recon = [None,None]
         self.no_recon = params.no_recon # if we want to omit the reconstruction term in the loss (jmvae loss)
-
+        self.train_latents = None
 
 
     def forward(self, x):
@@ -47,7 +47,6 @@ class JMVAE_NF(Multi_VAES):
                 qz_xy, pxy_z, z"""
 
         self.qz_xy_params = self.joint_encoder(x)
-
         qz_xy = self.qz_xy(*self.qz_xy_params)
         z_xy = qz_xy.rsample()
         recons = []
@@ -131,5 +130,18 @@ class JMVAE_NF(Multi_VAES):
         if epoch >= self.params.warmup :
             self.beta_kl *=self.decrease_beta_kl
         wandb.log({'beta_kl' : self.beta_kl})
+
+
+    def compute_all_train_latents(self,train_loader):
+        mu = []
+        labels = []
+        with torch.no_grad():
+            for i, dataT in enumerate(tqdm(train_loader)):
+                data = unpack_data(dataT, device=self.params.device)
+                mu_data = self.joint_encoder(data)[0]
+                mu.append(mu_data)
+                labels.append(dataT[0][1].to(self.params.device))
+
+        self.train_latents = torch.cat(mu), torch.cat(labels)
 
 

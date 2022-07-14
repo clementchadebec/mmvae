@@ -173,4 +173,40 @@ class TwoStepsDecoder(BaseDecoder):
         return x
 
 
+class TwoStepsEncoder(BaseEncoder):
+
+    def __init__(self, pretrained_encoder,args):
+
+        BaseEncoder.__init__(self)
+        self.first_encoder = pretrained_encoder
+        self.hidden_dim = 512
+        self.num_hidden = 3
+        self.latent_dim = args.latent_dim
+        self.modules = [
+            nn.Linear(self.first_encoder.latent_dim, self.hidden_dim),
+            nn.ReLU()
+        ]
+        for i in range(self.num_hidden - 1):
+            self.modules.extend([
+                nn.Linear(self.hidden_dim, self.hidden_dim),
+                nn.ReLU()
+            ])
+        self.sec_encoder = nn.Sequential(*self.modules)
+        self.embedding = nn.Linear(self.hidden_dim, self.latent_dim)
+        self.log_var = nn.Linear(self.hidden_dim, self.latent_dim)
+        self.first_encoder.requires_grad_(False)
+
+    def forward(self,x):
+
+        with torch.no_grad():
+            h = self.first_encoder(x).embedding
+        h1 = self.sec_encoder(h)
+        out = ModelOutput(
+            embedding = self.embedding(h1),
+            log_covariance = self.log_var(h1)
+        )
+        return out
+
+
+
 
