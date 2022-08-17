@@ -16,24 +16,27 @@
 #python3 src/main.py --experiment jmvae_fid --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares/ --skip-warmup True --eval-mode --use-pretrain '../experiments/jmvae/2022-06-28/2022-06-28T16:20:36.890838aby5rthj/'
 
 # JMVAE-NF no recon term
-#python3 src/main.py --experiment jmvae_fid --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares/ --skip-warmup True --no-recon True --eval-mode --use-pretrain '../experiments/jmvae/2022-06-30/2022-06-30T13:39:29.893742hog5i_9f/'
+#python3 src/main.py --experiment jmvae_fid --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares/ --skip-warmup True --no-recon True  #--use-pretrain '../experiments/jmvae/2022-06-30/2022-06-30T13:39:29.893742hog5i_9f/'
 
 # MMVAE
 #python3 src/main.py --experiment jmvae_fid --model circles_squares --obj dreg --dist normal --latent-dim 2 --epochs 30 --K 10 --data-path ../data/circles_squares/ --no-nf
 
 ########################################################################################################################
-################################################# MNIST-FASHION ########################################################
+###########################offline###################### MNIST-FASHION ########################################################
 ########################################################################################################################
 
 # JMVAE
-python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion --obj jmvae_nf --no-nf --latent-dim 5 --data-path ../data/unbalanced/ --warmup 15 --epochs 30 --no-recon True --eval-mode --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-07-13/2022-07-13T14:43:32.776808szbp5eef/'
+#python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion --obj jmvae_nf --no-nf --latent-dim 5 --data-path ../data/unbalanced/ --warmup 15 --epochs 30 --no-recon True --eval-mode --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-07-13/2022-07-13T14:43:32.776808szbp5eef/'
 
+# MMVAE
+#python3 src/main.py --experiment jnf_mnist_fashion_fid --model mnist_fashion --obj dreg --dist laplace --latent-dim 5 --epochs 30 --K 10 --data-path ../data/unbalanced/ --no-nf
 
 ########################################################################################################################
 ################################################## MNIST-SVHN ##########################################################
 ########################################################################################################################
 
-
+# JMVAE original formulation
+#python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn --obj jmvae_nf --latent-dim 20 --epochs 50 --beta-prior 1 --beta-kl 0.1 --decrease-beta-kl 1.1 --warmup 30 --skip-warmup True --fix-jencoder False --fix-decoders False --no-nf --no-recon True
 
 # JMVAE-NF
 #python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --beta-kl 0.5 --decrease-beta-kl 0.85
@@ -46,6 +49,18 @@ python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion
 
 # JMVAE-NF no recon term
 #python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --no-recon True --skip-warmup True
+
+# JMVAE-NF-DCCA with reconstruction term
+#python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True
+
+########################################################################################################################
+########################################### CIRCLES-SQUARES INVERSE ####################################################
+########################################################################################################################
+
+# JMVAE-NF
+python3 src/main.py --experiment inverse --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares_inverse/
+
+
 
 
 #python3 src/main.py --experiment empty_full --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta 1 --data-path ../data/empty_full_bk/  --beta-prior 1 --warmup 15 --epochs 30 --beta-rec 1 --fix-decoders --no-nf

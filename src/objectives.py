@@ -208,6 +208,7 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     return (- details['reg'], details) if epoch >= warmup \
         else (loss - beta_prior*details['kld_prior'], details)
 
+
 def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
         model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder

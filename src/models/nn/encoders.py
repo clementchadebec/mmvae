@@ -72,7 +72,7 @@ class Decoder_AE_MNIST(BaseDecoder):
 class Encoder_VAE_SVHN(BaseEncoder):
     def __init__(self, args):
         BaseEncoder.__init__(self)
-        self.input_dim = (3,32,32)
+        self.input_dim = args.input_dim
         self.latent_dim = args.latent_dim
         self.n_channels = args.input_dim[0]
         self.fBase = 32
@@ -96,6 +96,7 @@ class Encoder_VAE_SVHN(BaseEncoder):
 
     def forward(self, x :  torch.Tensor):
         e = self.enc(x)
+        print(self.n_channels, e.shape)
         mu = self.c1(e).reshape(-1, self.latent_dim)
         lv = self.c2(e).reshape(-1, self.latent_dim)
         output = ModelOutput(
@@ -174,7 +175,7 @@ class TwoStepsDecoder(BaseDecoder):
 
 
 class TwoStepsEncoder(BaseEncoder):
-
+    """Defines a two-step encoder, with the first step being pretrained and requires no grad"""
     def __init__(self, pretrained_encoder,args):
 
         BaseEncoder.__init__(self)

@@ -67,8 +67,8 @@ class MNIST_SVHN(MMVAE):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
-        print(params.llik_scaling)
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        self.to_tensor = True
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -102,13 +102,13 @@ class MNIST_SVHN(MMVAE):
 
 
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=30):
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100, freq=10):
 
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
 
         # Compute general metrics (FID)
-        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=10, to_tensor=True)
+        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq, to_tensor=True)
         # general_metrics = {}
         # Compute cross_coherence
         labels2, labels1 = self.conditional_labels(data, n_data, ns)

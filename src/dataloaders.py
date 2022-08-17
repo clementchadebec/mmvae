@@ -8,6 +8,11 @@ from torchvision import datasets, transforms
 from datasets import CIRCLES_DATASET
 from torch.utils.data import random_split
 
+
+##########################################################################################################
+#################################### UNIMODAL DATALOADERS ################################################
+
+
 class MNIST_DL():
     def __init__(self, data_path, type):
         self.type = type
@@ -26,6 +31,97 @@ class MNIST_DL():
                           batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
+class BasicDataset(torch.utils.data.Dataset):
+
+    def __init__(self, data, transform = None):
+
+        self.data = data # shape len_data x ch x w x h
+        self.transform = transform
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, item):
+        sample = self.data[item]
+        if self.transform is not None:
+            sample = self.transform(sample)
+
+        return sample, 0 # We return 0 as label to have a dataset that is homogeneous with the other datasets
+
+class SVHN_DL():
+
+    def __init__(self, data_path = '../data'):
+        self.data_path = data_path
+        return
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
+        kwargs = {'num_workers': 8, 'pin_memory': True} if device == 'cuda' else {}
+
+        train = DataLoader(datasets.SVHN('/home/agathe/Code/Datasets/svhn', split='train', download=True, transform=transform),
+                           batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(datasets.SVHN('/home/agathe/Code/Datasets/svhn', split='test', download=True, transform=transform),
+                          batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test
+
+class CIRCLES_DL():
+
+    def __init__(self, type, data_path):
+        self.type = type
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
+        kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
+        # create datasets
+        train_set = CIRCLES_DATASET(self.data_path + self.type + '_train.pt', self.data_path + 'labels_train.pt',
+                                    self.data_path + 'r_' + self.type + '_train.pt',
+                                    transforms=transform)
+        test_set = CIRCLES_DATASET(self.data_path + self.type + '_test.pt', self.data_path + 'labels_test.pt',
+                                   self.data_path + 'r_' + self.type + '_test.pt',
+                                   transforms=transform)
+        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test
+
+
+########################################################################################################################
+####################################### MULTIMODAL DATALOADERS #########################################################
+
+class MultimodalBasicDataset(torch.utils.data.Dataset):
+
+    def __init__(self, data, transform):
+        # data of shape n_mods x len_data x ch x w x h
+        self.lenght = len(data[0])
+        self.datasets = [BasicDataset(d, transform) for d in data ]
+
+    def __len__(self):
+        return self.lenght
+
+    def __getitem__(self, item):
+        return tuple(d[item] for d in self.datasets)
+
+class CIRCLES_SQUARES_DL():
+
+    def __init__(self, data_path):
+        self.data_path=data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
+        # load base datasets
+        t1, s1 = CIRCLES_DL('squares', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        t2, s2 = CIRCLES_DL('circles', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+
+        train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
+        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
+
+        # Split the test and val with always the same seed for reproducibility
+        val_set, test_set = random_split(test_circles_discs,
+                                         [len(test_circles_discs) // 2,
+                                          len(test_circles_discs) - len(test_circles_discs) // 2],
+                                         generator=torch.Generator().manual_seed(42))
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
 
 class MNIST_FASHION_DATALOADER():
 
@@ -61,61 +157,16 @@ class MNIST_FASHION_DATALOADER():
         ])
 
         val_set, test_set = random_split(test_mnist_fashion,
-                                         [len(test_mnist_fashion)//2, len(test_mnist_fashion)-len(test_mnist_fashion)//2])
+                                         [len(test_mnist_fashion)//2,
+                                          len(test_mnist_fashion)-len(test_mnist_fashion)//2],
+                                         generator=torch.Generator().manual_seed(42)
+                                         )
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
-
-
-
-class BasicDataset(torch.utils.data.Dataset):
-
-    def __init__(self, data, transform = None):
-
-        self.data = data # shape len_data x ch x w x h
-        self.transform = transform
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, item):
-        sample = self.data[item]
-        if self.transform is not None:
-            sample = self.transform(sample)
-
-        return sample, 0 # We return 0 as label to have a dataset that is homogeneous with the other datasets
-
-class MultimodalBasicDataset(torch.utils.data.Dataset):
-
-    def __init__(self, data, transform):
-        # data of shape n_mods x len_data x ch x w x h
-        self.lenght = len(data[0])
-        self.datasets = [BasicDataset(d, transform) for d in data ]
-
-    def __len__(self):
-        return self.lenght
-
-    def __getitem__(self, item):
-        return tuple(d[item] for d in self.datasets)
-
-
-class SVHN_DL():
-
-    def __init__(self, data_path = '../data'):
-        self.data_path = data_path
-        return
-
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
-        kwargs = {'num_workers': 8, 'pin_memory': True} if device == 'cuda' else {}
-
-        train = DataLoader(datasets.SVHN(self.data_path, split='train', download=True, transform=transform),
-                           batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.SVHN(self.data_path, split='test', download=True, transform=transform),
-                          batch_size=batch_size, shuffle=False, **kwargs)
-        return train, test
-
 
 class MNIST_SVHN_DL():
 
@@ -148,54 +199,16 @@ class MNIST_SVHN_DL():
             ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
         ])
 
+        # Split between test and validation while fixing the seed to ensure that we always have the same sets
         val_set, test_set = random_split(test_mnist_svhn,
                                          [len(test_mnist_svhn) // 2,
-                                          len(test_mnist_svhn) - len(test_mnist_svhn) // 2])
+                                          len(test_mnist_svhn) - len(test_mnist_svhn) // 2],
+                                         generator=torch.Generator().manual_seed(42))
+
+
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
         train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
-        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
-        return train, test, val
-
-class CIRCLES_DL():
-
-    def __init__(self, type, data_path):
-        self.type = type
-        self.data_path = data_path
-
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
-        kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
-        # create datasets
-        train_set = CIRCLES_DATASET(self.data_path + self.type + '_train.pt', self.data_path + 'labels_train.pt',
-                                    self.data_path + 'r_' + self.type + '_train.pt',
-                                    transforms=transform)
-        test_set = CIRCLES_DATASET(self.data_path + self.type + '_test.pt', self.data_path + 'labels_test.pt',
-                                   self.data_path + 'r_' + self.type + '_test.pt',
-                                   transforms=transform)
-        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
-        return train, test
-
-class CIRCLES_SQUARES_DL():
-
-    def __init__(self, data_path):
-        self.data_path=data_path
-
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
-        # load base datasets
-        t1, s1 = CIRCLES_DL('squares', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
-        t2, s2 = CIRCLES_DL('circles', self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
-
-        train_circles_discs = TensorDataset([t1.dataset, t2.dataset])
-        test_circles_discs = TensorDataset([s1.dataset, s2.dataset])
-
-        val_set, test_set = random_split(test_circles_discs,
-                                         [len(test_circles_discs) // 2,
-                                          len(test_circles_discs) - len(test_circles_discs) // 2])
-
-        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_circles_discs, batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val

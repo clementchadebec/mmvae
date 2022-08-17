@@ -10,6 +10,7 @@ def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     for l in l1.unique():  # assuming both have same idxs
         l_idx1, l_idx2 = idx1[l1 == l], idx2[l2 == l]
         n = min(l_idx1.size(0), l_idx2.size(0), max_d)
+        print(n)
         l_idx1, l_idx2 = l_idx1[:n], l_idx2[:n]
         for _ in range(dm):
             _idx1.append(l_idx1[torch.randperm(n)])

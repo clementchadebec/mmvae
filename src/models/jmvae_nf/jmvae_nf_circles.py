@@ -63,6 +63,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
 
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
+        self.to_tensor = False
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
         # handle merging individual datasets appropriately in sub-class
@@ -105,7 +106,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
 
         preds1 = classifier2(torch.stack(samples[0][1]))
         preds0 = classifier1(torch.stack(samples[1][0]))
-        print(preds0.shape)
+
         labels0 = torch.argmax(preds0, dim=-1).reshape(100, 100)
         labels1 = torch.argmax(preds1, dim=-1).reshape(100, 100)
         classes_mul = torch.stack([classes[0][:100] for _ in np.arange(100)]).cuda()

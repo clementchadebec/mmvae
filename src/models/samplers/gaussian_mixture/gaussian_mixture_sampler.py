@@ -30,9 +30,8 @@ class GaussianMixtureSampler():
     """
 
     def __init__(
-        self, encoder, n_components = 10, device='cuda'
+        self, n_components = 10, device='cuda'
     ):
-        self.encoder = encoder
         self.n_components = n_components
         self.device = device
 
@@ -59,43 +58,6 @@ class GaussianMixtureSampler():
 
 
 
-    def fit(self, train_loader):
-        """Method to fit the sampler from the training data
-
-        Args:
-            train_data (torch.Tensor): The train data needed to retreive the training embeddings
-                    and fit the mixture in the latent space. Must be of shape n_imgs x im_channels x ...
-                    and in range [0-1]
-        """
-        self.is_fitted = True
-
-        mu = []
-
-        with torch.no_grad():
-            for i,dataT in enumerate(tqdm(train_loader)):
-                data = unpack_data(dataT, device=self.device)
-                mu_data = self.encoder(data)[0]
-                mu.append(mu_data)
-
-        mu = torch.cat(mu)
-
-        if self.n_components > mu.shape[0]:
-            self.n_components = mu.shape[0]
-            logger.warning(
-                f"Setting the number of component to {mu.shape[0]} since"
-                "n_components > n_samples when fitting the gmm"
-            )
-
-        gmm = mixture.GaussianMixture(
-            n_components=self.n_components,
-            covariance_type="full",
-            max_iter=2000,
-            verbose=0,
-            tol=1e-3,
-        )
-        gmm.fit(mu.cpu().detach())
-
-        self.gmm = gmm
 
     def sample(
         self,

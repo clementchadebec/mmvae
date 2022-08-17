@@ -54,9 +54,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
         vae_config = vae_config(input_dim, params.latent_dim)
 
-        # encoder1, encoder2 = Encoder_VAE_MNIST(vae_config), Encoder_VAE_MNIST(vae_config)
         encoder1, encoder2 = None, None
-        # decoder1, decoder2 = Decoder_AE_MNIST(vae_config), Decoder_AE_MNIST(vae_config)
         decoder1, decoder2 = None, None
 
         vaes = nn.ModuleList([
@@ -70,8 +68,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
-        self.classifier1 = classifier1
-        self.classifier2 = classifier2
+        self.to_tensor = True
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
         train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -123,8 +120,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
         # Compute joint coherence :
         data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
-        labels_fashion = torch.argmax(self.classifier2(data[1]), dim=1)
+        labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
+        labels_fashion = torch.argmax(classifier2(data[1]), dim=1)
 
         joint_acc = torch.sum(labels_mnist == fashion_labels_to_mnist(labels_fashion)) / 100
         metrics['joint_coherence'] = joint_acc

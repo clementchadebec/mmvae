@@ -61,7 +61,7 @@ else :
     pretrained_encoders, pretrained_decoders = [None, None], [None, None]
     pre_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
 
-load_dcca_encoders = True
+load_dcca_encoders = False
 dcca_encoders = [torch.load('../dcca/mnist_svhnmodel1.pt'), torch.load('../dcca/mnist_svhnmodel2.pt')]
 dcca_configs = [VAEConfig((1,28,28), 15), VAEConfig((3,32,32), 15)]
 
@@ -111,7 +111,7 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3*32*32)/(1*28*28), 1) if params.llik_scaling == 0.0 else (params.llik_scaling, 1)
-
+        self.to_tensor = True
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

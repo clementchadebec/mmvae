@@ -74,7 +74,6 @@ parser.add_argument('--fix-decoders', type=bool, default=True)
 parser.add_argument('--fix-jencoder', type=bool, default=True)
 parser.add_argument('--no-recon', type=bool, default=False)
 parser.add_argument('--freq_analytics', type=int, default=5)
-parser.add_argument('--eval-mode', action='store_true', default=False)
 
 # args
 args = parser.parse_args()
@@ -82,7 +81,7 @@ learning_rate = 1e-3
 
 # Log parameters of the experiments
 experiment_name = args.experiment if args.experiment != '' else args.model
-wand_mode = 'online' if not args.eval_mode else 'disabled'
+wand_mode = 'online'
 # wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
@@ -106,7 +105,6 @@ if use_pretrain :
     min_epoch = args.epochs
     args.epochs = min_epoch + new_args.epochs
     args.warmup = min_epoch + new_args.warmup
-    args.eval_mode = new_args.eval_mode
     args.freq_analytics = new_args.freq_analytics
 
 args.device = 'cuda' if (not args.no_cuda and torch.cuda.is_available()) else 'cpu'
@@ -163,8 +161,6 @@ print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
       f"Val : {len(val_loader.dataset)}")
 
-if args.eval_mode:
-    test_loader = val_loader
 
 # Objective function to use on train data
 objective = getattr(objectives,
@@ -173,12 +169,10 @@ objective = getattr(objectives,
                     + ('_looser' if (args.looser and args.obj != 'elbo') else ''))
 
 # Objective function to use on test data
-# t_objective = getattr(objectives, ('m_' if hasattr(model, 'vaes') else '') + 'elbo')
 t_objective = objective
 
 # Define a sampler for generating new samples
-if hasattr(model, 'joint_encoder'):
-    model.sampler = GaussianMixtureSampler(model.joint_encoder)
+model.sampler = GaussianMixtureSampler()
 
 def train(epoch, agg):
     model.train()
@@ -207,15 +201,16 @@ def train(epoch, agg):
 
 def test(epoch, agg):
     model.eval()
-    # Compute all train latents
-    model.compute_all_train_latents(train_loader)
+
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
+        # Compute all train latents
+        model.compute_all_train_latents(train_loader)
         model.sampler.fit_from_latents(model.train_latents[0])
     b_loss = 0
     b_details = {}
     with torch.no_grad():
-        for i, dataT in enumerate(test_loader):
+        for i, dataT in enumerate(val_loader):
             data = unpack_data(dataT, device=device)
             classes = dataT[0][1], dataT[1][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
@@ -239,47 +234,14 @@ def test(epoch, agg):
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
                             plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
-    b_details = {k + '_test': b_details[k] / len(test_loader.dataset) for k in b_details.keys()}
+    b_details = {k + '_test': b_details[k] / len(val_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
-    agg['test_loss'].append(b_loss / len(test_loader.dataset))
-    wandb.log({'test_loss' : b_loss / len(test_loader.dataset) })
+    agg['test_loss'].append(b_loss / len(val_loader.dataset))
+    wandb.log({'test_loss' : b_loss / len(val_loader.dataset) })
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
 
 
-def eval(epoch):
-    """Compute all metrics on the entire test dataset"""
 
-    model.eval()
-    # Compute all train latents
-    model.compute_all_train_latents(train_loader)
-    # re-fit the sampler before computing metrics
-    if model.sampler is not None:
-        model.sampler.fit_from_latents(model.train_latents[0])
-    b_metrics = {}
-    with torch.no_grad():
-        for i, dataT in enumerate(test_loader):
-            data = unpack_data(dataT, device=device)
-            classes = dataT[0][1], dataT[1][1]
-            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch, classes, freq=1))
-            if i == 0:
-                model.sample_from_conditional(data, runPath, epoch)
-                model.reconstruct(data, runPath, epoch)
-                if not args.no_analytics and (epoch % args.freq_analytics == 0 or epoch == 1):
-                    model.analyse(data, runPath, epoch, classes=classes)
-                    model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=None, N=100)
-                    model.generate(runPath, epoch, N=32, save=True)
-                    model.generate_from_conditional(runPath, epoch, N=32, save=True)
-                    if args.model in ['circles_discs', 'j_circles_discs', 'jnf_circles_squares', 'circles_squares']:
-                        if epoch == 1:
-                            print("Computing test histogram")
-                            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
-                            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
-                        model.analyse_rayons(data, dataT[0][2], dataT[1][2], runPath, epoch,
-                                             [dataT[0][1], 1 - dataT[0][1]])
-
-    m_metrics, s_metrics = get_mean_std(b_metrics)
-    print_mean_std(m_metrics,s_metrics)
-    return
 
 
 def estimate_log_marginal(K):
@@ -287,20 +249,18 @@ def estimate_log_marginal(K):
     model.eval()
     marginal_loglik = 0
     with torch.no_grad():
-        for dataT in test_loader:
+        for dataT in val_loader:
             data = unpack_data(dataT, device=device)
             marginal_loglik += -t_objective(model, data, K).item()
 
-    marginal_loglik /= len(test_loader.dataset)
+    marginal_loglik /= len(val_loader.dataset)
     print('Marginal Log Likelihood (IWAE, K = {}): {:.4f}'.format(K, marginal_loglik))
 
 
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
-        if args.eval_mode :
-            eval(1)
-            1/0
+
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")

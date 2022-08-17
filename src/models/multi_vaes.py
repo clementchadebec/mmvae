@@ -12,8 +12,9 @@ import torch.distributions as dist
 from torch.utils.data import DataLoader
 from sklearn.manifold import TSNE
 import wandb
-from analysis.pytorch_fid import get_activations,calculate_activation_statistics,calculate_frechet_distance
+from analysis.pytorch_fid import get_activations,calculate_fid_from_embeddings
 from analysis.pytorch_fid.inception import InceptionV3
+import analysis.prd as prd
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
 from umap import UMAP
@@ -48,6 +49,8 @@ class Multi_VAES(nn.Module):
         self.max_epochs=params.epochs
         self.sampler = None
         self.save_format = '.png'
+        self.to_tensor = None # to define in each subclass. It says if the data must be formatted to tensor.
+        self.ref_activations = None
 
     @property
     def pz_params(self):
@@ -86,7 +89,7 @@ class Multi_VAES(nn.Module):
 
     def generate_from_conditional(self,runPath, epoch, N=10, save=False):
         """ Generate samples using the bayes formula : p(x,y) = p(x)p(y|x).
-        First sampling a modality from the prior then the other one fro mthe conditinal distribution"""
+        First sampling a modality from the prior then the other one from the conditinal distribution"""
 
         # First step : generate samples from prior --> p(x), p(y)
         data = self.generate(runPath, epoch, N=N)
@@ -199,49 +202,116 @@ class Multi_VAES(nn.Module):
                 save_image(comp, filename)
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
-    def compute_fid(self,gen_data, batchsize, device, dims=2048, nb_batches=20, to_tensor=False, compare_with='joint'):
-        if to_tensor:
+    # def compute_fid(self,gen_data, batchsize, device, dims=2048, nb_batches=20):
+    #     """
+    #     -- gen_data is a dataloader of paired images
+    #     -- batchsize is the size that is used for computing FID embedding (make sure it divides the lenght of the
+    #     dataloader to not lose any samples
+    #
+    #     returns : the fid score computed between gen data and the test data (loaded with model.GetDataloaders)
+    #
+    #     """
+    #     if self.to_tensor:
+    #         tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
+    #     else :
+    #         tx = transforms.Compose([transforms.Resize((299,299)), add_channels()])
+    #     t,s,v = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
+    #
+    #     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+    #     model = InceptionV3([block_idx]).to(device)
+    #     m1, s1 = calculate_activation_statistics(s, model, dims, device=device, nb_batches = nb_batches)
+    #
+    #     data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
+    #     tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
+    #     dataset = MultimodalBasicDataset(data, tx)
+    #     gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)
+    #
+    #     m2, s2 = calculate_activation_statistics(gen_dataloader, model, dims, device=device, nb_batches=nb_batches)
+    #     return  calculate_frechet_distance(m1, s1, m2, s2)
+
+    def compute_fid_prd(self, gen_data, batchsize, device, dims=2048, nb_batches=20, num_clusters=20):
+        """
+        Compute the prd data between the gen_data given as input and the reference data that is the test dataloader.
+        """
+
+        # Defines the transformations to format the images for the Inception network
+        if self.to_tensor:
             tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299,299)), add_channels()])
         else :
             tx = transforms.Compose([transforms.Resize((299,299)), add_channels()])
+
+        # Load the reference data
         t,s,v = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx)
-
-        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
-        model = InceptionV3([block_idx]).to(device)
-        m1, s1 = calculate_activation_statistics(s, model, dims, device=device, nb_batches = nb_batches)
-
-        # _,gen_dataloader = self.getDataLoaders(batch_size=batchsize,shuffle = True, device=device, transform=tx, random=True)
-        #
+        # Create a dataloader with the formatted generated data
         data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
         tx = transforms.Compose([ transforms.Resize((299,299)), add_channels()])
         dataset = MultimodalBasicDataset(data, tx)
         gen_dataloader = DataLoader(dataset,batch_size=batchsize, shuffle = True)
 
-        m2, s2 = calculate_activation_statistics(gen_dataloader, model, dims, device=device, nb_batches=nb_batches)
-        return  calculate_frechet_distance(m1, s1, m2, s2)
+        # Define the model to compute the embeddings
+        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+        model = InceptionV3([block_idx]).to(device)
 
+        # Compute embeddings
+        ref_act = get_activations(s,model, dims=dims, device=device, nb_batches=nb_batches) # numpy array
+        gen_act = get_activations(gen_dataloader, model, dims=dims, device=device, nb_batches=nb_batches)
 
+        # Compute prd
+        prd_data = prd.compute_prd_from_embedding(ref_act, gen_act, num_clusters=num_clusters)
 
-    def compute_metrics(self,runPath, epoch, freq = 5, to_tensor=False):
-        if (epoch%freq != 0 and epoch!=1) or self.params.no_analytics :
-            return {}
-        batchsize,nb_batches = 64,100
-        metrics = {}
-        if epoch <= (self.params.warmup//freq + 1)*freq: # Compute fid between joint generation and test set
-            gen_data = self.generate(runPath, epoch, N = batchsize*nb_batches)
-            fid = self.compute_fid(gen_data,batchsize, device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
-            metrics['fid_joint'] = fid
+        # Compute fid
+        fid = calculate_fid_from_embeddings(ref_act,gen_act)
+        return  prd.compute_prd_from_embedding(ref_act, gen_act, num_clusters=num_clusters)
+
+    def compute_prd_metrics(self,runPath, epoch):
+        """Compute the three multimodal versions of PRD : on the joint generation and on the two conditional
+                generation"""
+        print("Starting to compute PRD metrics")
+
+        batchsize, nb_batches = 64, 100
+
+        # Compute fid between joint generation and test set
+        gen_data = self.generate(runPath, epoch, N=batchsize * nb_batches)
+        prd_data = self.compute_prd(gen_data, batchsize, device='cuda', dims=2048,
+                               nb_batches=nb_batches)
+        prd.plot([prd_data],out_path = '{}/prd_plot_joint_{:03d}.png'.format(runPath, epoch))
 
         # Compute fid between test set and joint distributions computed from conditional
-        if epoch >= self.params.warmup:
-            cond_gen_data = self.generate_from_conditional(runPath, epoch, N = batchsize*nb_batches)
-            for i,gen_data in enumerate(cond_gen_data):
-                metrics[f'fids_{i}'] = self.compute_fid(gen_data,batchsize,device='cuda',dims=2048,to_tensor=to_tensor, nb_batches=nb_batches)
+        cond_gen_data = self.generate_from_conditional(runPath, epoch, N=batchsize * nb_batches)
+        for i, gen_data in enumerate(cond_gen_data):
+            prd_data = self.compute_prd(gen_data, batchsize, device='cuda', dims=2048,
+                                                    nb_batches=nb_batches)
+            prd.plot([prd_data], out_path='{}/prd_plot_{}_{:03d}.png'.format(runPath,i, epoch))
 
-        # If the model has classifiers compute the joint coherence
+        return
+
+    def compute_fids_metrics(self,runPath, epoch):
+        """Compute the three multimodal versions of FID : on the joint generation and on the two conditional
+        generation"""
+
+        batchsize,nb_batches = 64,100
+        metrics = {}
+
+         # Compute fid between joint generation and test set
+        gen_data = self.generate(runPath, epoch, N = batchsize*nb_batches)
+        fid = self.compute_fid(gen_data,batchsize, device='cuda',dims=2048, nb_batches=nb_batches)
+        metrics['fid_joint'] = fid
+
+        # Compute fid between test set and joint distributions computed from conditional
+        cond_gen_data = self.generate_from_conditional(runPath, epoch, N = batchsize*nb_batches)
+        for i,gen_data in enumerate(cond_gen_data):
+            metrics[f'fids_{i}'] = self.compute_fid(gen_data,batchsize,device='cuda',dims=2048, nb_batches=nb_batches)
+
 
         return metrics
 
+    def compute_metrics(self, runPath, epoch, freq = 5,):
+        if epoch%freq != 0 and epoch !=1:
+            return {}
+        else :
+            dict = self.compute_fids_metrics(runPath, epoch)
+            self.compute_prd_metrics(runPath, epoch)
+            return dict
 
 
 

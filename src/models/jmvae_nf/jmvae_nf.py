@@ -17,6 +17,7 @@ from tqdm import tqdm
 from utils import get_mean, kl_divergence, add_channels, adjust_shape, unpack_data
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
+import torch.nn.functional as F
 
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
@@ -38,8 +39,9 @@ class JMVAE_NF(Multi_VAES):
         self.lik_scaling = (1,1)
         self.decrease_beta_kl = params.decrease_beta_kl # how much to decrease
         self.ratio_kl_recon = [None,None]
-        self.no_recon = params.no_recon # if we want to omit the reconstruction term in the loss (jmvae loss)
+        self.no_recon = params.no_recon if hasattr(params, 'no_recon') else False# if we want to omit the reconstruction term in the loss (jmvae loss)
         self.train_latents = None
+
 
 
     def forward(self, x):
@@ -89,7 +91,7 @@ class JMVAE_NF(Multi_VAES):
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = vae_output.recon_loss.sum() * x[m].shape[0] # already the negative log conditional expectation
+            details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
             if self.ratio_kl_recon[m] is None:
                 if self.no_recon :
@@ -99,6 +101,10 @@ class JMVAE_NF(Multi_VAES):
             reg += (self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
 
         return reg, details_reg
+
+    def compute_recon_loss(self,x,recon,m):
+        return F.mse_loss(x.reshape(x.shape[0],-1),
+                          recon.reshape(x.shape[0],-1),reduction='sum')
 
 
     def reconstruct(self, data, runPath,epoch):

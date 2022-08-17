@@ -224,6 +224,15 @@ def calculate_fid_given_paths(paths, batch_size, device, dims, num_workers=1):
 
     return fid_value
 
+def calculate_fid_from_embeddings(emb1, emb2):
+
+    m1 = np.mean(emb1, axis=0)
+    m2 = np.mean(emb2, axis=0)
+    cov1 = np.cov(emb1, rowvar=False)
+    cov2 = np.cov(emb2, rowvar=False)
+
+    return calculate_frechet_distance(m1,cov1,m2, cov2)
+
 
 def main():
     args = parser.parse_args()

@@ -242,7 +242,7 @@ def update_dict_list(dict1, dict2):
             dict1[k] = [dict2[k]]
 
 def get_mean_std(dict):
-    return { k : torch.mean(dict[k]) for k in dict.keys()}, {k : torch.std(dict[k]) for k in dict.keys()}
+    return { k : torch.mean(torch.tensor(dict[k])) for k in dict.keys()}, {k : torch.std(torch.tensor(dict[k])) for k in dict.keys()}
 
 def print_mean_std(dict_mean, dict_std):
     for k in dict_mean.keys():

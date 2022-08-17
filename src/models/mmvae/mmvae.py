@@ -14,12 +14,13 @@ from analysis.pytorch_fid.inception import InceptionV3
 from torchvision import transforms
 from dataloaders import MultimodalBasicDataset
 from ..multi_vaes import Multi_VAES
-from utils import Constants
+from utils import Constants, unpack_data
+from numpy.random import randint
 
 from utils import get_mean, kl_divergence, add_channels, adjust_shape
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
-
+from tqdm import tqdm
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1,32,32)
@@ -32,8 +33,9 @@ class MMVAE(Multi_VAES):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
         self.px_z = dist_dict[params.dist]
-        device = 'cuda' if params.cuda else 'cpu'
+        device = params.device
         self.px_z_std = torch.tensor(0.75).to(device)
+        self.train_latents = None
 
     def forward(self, x, K=1):
         """ Using the unimodal encoders, it computes qz_xs, px_zs, zxs"""
@@ -84,3 +86,14 @@ class MMVAE(Multi_VAES):
     def step(self, epoch):
         return
 
+    def compute_all_train_latents(self, train_loader):
+        mu = []
+        labels = []
+        with torch.no_grad():
+            for i, dataT in enumerate(tqdm(train_loader)):
+                data = unpack_data(dataT, device=self.params.device)
+                idx = randint(2) # q(z|x,y) = 1/2(q(z|x) + q(z|y))
+                mu_data = self.vaes[idx].encoder(data[idx])[0]
+                mu.append(mu_data)
+                labels.append(dataT[0][1].to(self.params.device))
+        self.train_latents = torch.cat(mu), torch.cat(labels)
