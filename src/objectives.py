@@ -183,11 +183,13 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
 
-        details[f'loss_{m}'] = F.mse_loss(
+        F_loss = F.mse_loss if model.loss == 'mse' else F.l1_loss
+
+        details[f'loss_{m}'] = F_loss(
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
-            ).sum(dim=-1).sum()*model.lik_scaling[m]
+            ).sum()*model.lik_scaling[m]
 
         loss = loss - details[f'loss_{m}']
 

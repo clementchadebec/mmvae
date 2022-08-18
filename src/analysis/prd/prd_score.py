@@ -311,3 +311,16 @@ def plot(precision_recall_pairs, labels=None, out_path=None,
   else:
     plt.savefig(out_path, bbox_inches='tight', dpi=dpi)
     plt.close()
+
+
+def plot_beta_pairs(f_beta, f_beta_inv,labels, outpath=None):
+
+  fig, ax = plt.subplots()
+  for i in range(len(f_beta)):
+    ax.scatter(f_beta[i], f_beta_inv[i], label=labels[i])
+  ax.legend()
+  if outpath is not None:
+    plt.savefig(outpath, bbox_inches='tight')
+  plt.close()
+
+

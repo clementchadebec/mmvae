@@ -74,6 +74,7 @@ parser.add_argument('--fix-decoders', type=bool, default=True)
 parser.add_argument('--fix-jencoder', type=bool, default=True)
 parser.add_argument('--no-recon', type=bool, default=False)
 parser.add_argument('--freq_analytics', type=int, default=5)
+parser.add_argument('--loss', type=str, default = 'mse')
 
 # args
 args = parser.parse_args()

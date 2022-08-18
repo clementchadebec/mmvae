@@ -69,6 +69,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
         self.to_tensor = True
+        # self.classifier1 = classifier1
+        # self.classifier2 = classifier2
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
         train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -116,7 +118,7 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
 
         metrics = dict(acc2=acc2, acc1 =acc1, neg_entropy = neg_entrop)
-        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch, to_tensor=True, freq=freq)
+        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch, freq=freq)
 
         # Compute joint coherence :
         data = self.generate(runPath, epoch, N=100)

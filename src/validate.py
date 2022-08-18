@@ -93,6 +93,9 @@ print(f"Train : {len(train_loader.dataset)},"
 # Define a sampler for generating new samples
 model.sampler = GaussianMixtureSampler()
 
+# Define the number of clusters to use in PRD analysis
+num_clusters = 5
+print(f'Number of clusters in PRD computation is {num_clusters}')
 
 def eval():
     """Compute all metrics on the entire test dataset"""
@@ -119,10 +122,8 @@ def eval():
 
         for i in range(1):
             # Compute fids 10 times to have a std
-            update_dict_list(b_metrics,model.compute_fids_metrics(epoch=0, runPath=runPath))
+            update_dict_list(b_metrics,model.compute_all_fids_prd(epoch=0, runPath=runPath, num_clusters=num_clusters))
 
-        # Compute PRD metrics
-        model.compute_prd_metrics(epoch=0, runPath=runPath)
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
     print_mean_std(m_metrics,s_metrics)
