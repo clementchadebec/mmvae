@@ -8,17 +8,20 @@ from tempfile import mkdtemp
 import random
 from tqdm import tqdm
 from copy import deepcopy
-from torchvision.utils import save_image
+
+from analysis.pytorch_fid import wrapper_inception
+from analysis import GenerativeQualityAssesser
 
 import numpy as np
 import torch
 from torch import optim
+from torchvision import transforms
+
 
 import wandb
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon\
-    ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
+from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon, add_channels,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
 
@@ -93,9 +96,14 @@ print(f"Train : {len(train_loader.dataset)},"
 # Define a sampler for generating new samples
 model.sampler = GaussianMixtureSampler()
 
-# Define the number of clusters to use in PRD analysis
-num_clusters = 5
-print(f'Number of clusters in PRD computation is {num_clusters}')
+# Define the parameters for assessing quality
+batchsize,n_samples = 64, 64*100
+encoders = [wrapper_inception(), wrapper_inception()]
+tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+gen_tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+t, s, v = model.getDataLoaders(batchsize, transform=tx, device=device)
+nb_clusters = 5
+assesser = GenerativeQualityAssesser(encoders, batchsize,n_samples,nb_clusters,s, [2048,2048])
 
 def eval():
     """Compute all metrics on the entire test dataset"""
@@ -122,7 +130,7 @@ def eval():
 
         for i in range(1):
             # Compute fids 10 times to have a std
-            update_dict_list(b_metrics,model.compute_all_fids_prd(epoch=0, runPath=runPath, num_clusters=num_clusters))
+            update_dict_list(b_metrics,model.assess_quality(assesser,gen_tx,runPath))
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

@@ -1,13 +1,18 @@
 """ Define a class for assessing the quality of a generative model using
 FID and PRD analysis with a defined encoder and parameters"""
 
-from pytorch_fid import get_activations
 import numpy as np
 from tqdm import tqdm
 from utils import unpack_data
 import torch
-import prd
-from pytorch_fid import calculate_fid_from_embeddings
+import analysis.prd as prd
+from analysis.pytorch_fid import calculate_fid_from_embeddings
+from torch import nn
+from utils import adjust_shape
+from dataloaders import MultimodalBasicDataset
+from torch.utils.data import DataLoader
+from analysis.pytorch_fid import InceptionV3, get_activations
+
 
 class GenerativeQualityAssesser():
 
@@ -26,10 +31,12 @@ class GenerativeQualityAssesser():
         # Compute the reference activations
 
         self.ref_activations = self.get_activations(ref_dataloader)
+        # self.check_activations()
 
     def get_activations(self, dataloader):
-
-        pred_arr = [np.empty(self.n_samples,d) for d in self.dims]
+        for encoder in self.encoders:
+            encoder.eval()
+        pred_arr = [np.empty((self.n_samples,d)) for d in self.dims]
 
         start_idx = 0
 
@@ -40,8 +47,6 @@ class GenerativeQualityAssesser():
             for m in range(len(self.encoders)):
                 with torch.no_grad():
                     pred = self.encoders[m](batch[m]) # batchsize x dims[m]
-
-                pred = pred.cpu().numpy()
 
                 pred_arr[m][start_idx:start_idx + pred.shape[0]] = pred
 
@@ -68,6 +73,7 @@ class GenerativeQualityAssesser():
         # Compute fid
         fid = calculate_fid_from_embeddings(self.ref_activations, gen_act)
 
+
         if compute_unimodal:
             prd_data0 = prd.compute_prd_from_embedding(self.ref_activations[:, :2048], gen_act[:, :2048],
                                                        num_clusters=self.nb_clusters)
@@ -79,6 +85,25 @@ class GenerativeQualityAssesser():
             return fid, prd_data, fid0, prd_data0, fid1, prd_data1
 
         return fid, prd_data
+
+    def check_activations(self):
+        # Sanity check :
+        print('Fid distance with itself ', calculate_fid_from_embeddings(self.ref_activations, self.ref_activations))
+
+        # Define the model to compute the embeddings
+        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+        model = InceptionV3([block_idx]).to(self.device)
+
+        # Compute embeddings
+        ref_activations = get_activations(self.ref_data, model, dims=2048, nb_batches=self.nb_batches)
+        print(ref_activations[:2], self.ref_activations[:2])
+        1/0
+    def GenerateDataloader(self, gen_data, transform):
+
+        # Create a dataloader with the formatted generated data
+        data = torch.stack(adjust_shape(gen_data[0], gen_data[1]))
+        dataset = MultimodalBasicDataset(data, transform)
+        return DataLoader(dataset, batch_size=self.batchsize, shuffle=True)
 
 
 

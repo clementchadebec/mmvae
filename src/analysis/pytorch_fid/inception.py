@@ -326,3 +326,22 @@ class FIDInceptionE_2(torchvision.models.inception.InceptionE):
 
         outputs = [branch1x1, branch3x3, branch3x3dbl, branch_pool]
         return torch.cat(outputs, 1)
+
+
+class wrapper_inception(nn.Module):
+
+    def __init__(self, dims=2048, device='cuda'):
+        super().__init__()
+        self.dims = dims
+        self.block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+        self.model = InceptionV3([self.block_idx]).to(device)
+
+
+
+    def forward(self, x):
+
+        pred = self.model(x)[0]
+        return pred.squeeze(3).squeeze(2).cpu().numpy()
+
+
+
