@@ -205,7 +205,7 @@ class Multi_VAES(nn.Module):
                 save_image(comp, filename)
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
-    def assess_quality(self, assesser, gen_transform,  runPath=None, epoch=0):
+    def assess_quality(self, assesser,  runPath=None, epoch=0):
 
         """Compute the three multimodal versions of FID and PRD : on the joint generation and on the two conditional
                         generation"""
@@ -213,7 +213,8 @@ class Multi_VAES(nn.Module):
 
         # Compute fid between joint generation and test set
         gen_data = self.generate(runPath, epoch, assesser.n_samples)
-        gen_dataloader = assesser.GenerateDataloader(gen_data, gen_transform)
+        gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
+        print(assesser.gen_transform)
         fid, prd_data, fid0, prd0, fid1, prd1 = assesser.compute_fid_prd(gen_dataloader, compute_unimodal=True)
 
         list_prds = [prd_data]
@@ -222,7 +223,7 @@ class Multi_VAES(nn.Module):
         # Compute fid between test set and joint distributions computed from conditional
         cond_gen_data = self.generate_from_conditional(runPath, epoch, N=assesser.n_samples)
         for i, gen_data in enumerate(cond_gen_data):
-            gen_dataloader = assesser.GenerateDataloader(gen_data, gen_transform)
+            gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
             fid, prd_data = assesser.compute_fid_prd(gen_dataloader)
             list_prds.append(prd_data)
             metrics[f'fids_{i}'] = fid

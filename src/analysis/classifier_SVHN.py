@@ -87,7 +87,6 @@ if __name__ == '__main__':
     train_loader, test_loader = SVHN_DL().getDataLoaders(batch_size, shuffle, tx)
 
     item, label = next(iter(train_loader))
-    print(item.max(), len(train_loader.dataset))
 
     model = SVHNClassifier()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)

@@ -266,7 +266,7 @@ class BaseAE(nn.Module):
             raise BadInheritanceError(
                 (
                     "Decoder must inherit from BaseDecoder class from "
-                    "pythae.models.base_architectures.BaseDecoder. Refer to documentation."
+                    "my_pythae.models.base_architectures.BaseDecoder. Refer to documentation."
                 )
             )
         self.decoder = decoder

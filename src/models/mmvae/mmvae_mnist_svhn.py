@@ -12,8 +12,8 @@ from torchvision import transforms
 from utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
 from torchvision.utils import save_image
-from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
-from pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP
+from my_pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
+from my_pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon
@@ -108,7 +108,7 @@ class MNIST_SVHN(MMVAE):
         they are well distributed in that class"""
 
         # Compute general metrics (FID)
-        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq, to_tensor=True)
+        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq)
         # general_metrics = {}
         # Compute cross_coherence
         labels2, labels1 = self.conditional_labels(data, n_data, ns)

@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn as nn
-from pythae.models.nn import (BaseDecoder, BaseDiscriminator, BaseEncoder,
+from my_pythae.models.nn import (BaseDecoder, BaseDiscriminator, BaseEncoder,
                                         BaseMetric)
 from utils import Constants
 from ..base.base_utils import ModelOutput

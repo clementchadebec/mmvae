@@ -3,7 +3,7 @@ FID and PRD analysis with a defined encoder and parameters"""
 
 import numpy as np
 from tqdm import tqdm
-from utils import unpack_data
+from utils import unpack_data, add_channels
 import torch
 import analysis.prd as prd
 from analysis.pytorch_fid import calculate_fid_from_embeddings
@@ -12,9 +12,14 @@ from utils import adjust_shape
 from dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
 from analysis.pytorch_fid import InceptionV3, get_activations
-
+from torchvision import transforms
+from analysis.pytorch_fid.inception import wrapper_inception
+from analysis.pytorch_fid.custom_encoders import wrapper_pythae_model
+import pythae
+from pythae.models import AutoModel
 
 class GenerativeQualityAssesser():
+    gen_transform = None  # to be defined in each subclass
 
     def __init__(self, encoders,batchsize, n_samples,nb_clusters, ref_dataloader, dims, device ='cuda'):
         """
@@ -75,29 +80,17 @@ class GenerativeQualityAssesser():
 
 
         if compute_unimodal:
-            prd_data0 = prd.compute_prd_from_embedding(self.ref_activations[:, :2048], gen_act[:, :2048],
+            prd_data0 = prd.compute_prd_from_embedding(self.ref_activations[:, :self.dims[0]], gen_act[:, :self.dims[0]],
                                                        num_clusters=self.nb_clusters)
-            prd_data1 = prd.compute_prd_from_embedding(self.ref_activations[:, 2048:], gen_act[:, 2048:],
+            prd_data1 = prd.compute_prd_from_embedding(self.ref_activations[:, self.dims[0]:], gen_act[:, self.dims[0]:],
                                                        num_clusters=self.nb_clusters)
-            fid0 = calculate_fid_from_embeddings(self.ref_activations[:, :2048], gen_act[:, :2048])
-            fid1 = calculate_fid_from_embeddings(self.ref_activations[:, 2048:], gen_act[:, 2048:])
+            fid0 = calculate_fid_from_embeddings(self.ref_activations[:, :self.dims[0]], gen_act[:, :self.dims[0]])
+            fid1 = calculate_fid_from_embeddings(self.ref_activations[:, self.dims[0]:], gen_act[:, self.dims[0]:])
 
             return fid, prd_data, fid0, prd_data0, fid1, prd_data1
 
         return fid, prd_data
 
-    def check_activations(self):
-        # Sanity check :
-        print('Fid distance with itself ', calculate_fid_from_embeddings(self.ref_activations, self.ref_activations))
-
-        # Define the model to compute the embeddings
-        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
-        model = InceptionV3([block_idx]).to(self.device)
-
-        # Compute embeddings
-        ref_activations = get_activations(self.ref_data, model, dims=2048, nb_batches=self.nb_batches)
-        print(ref_activations[:2], self.ref_activations[:2])
-        1/0
     def GenerateDataloader(self, gen_data, transform):
 
         # Create a dataloader with the formatted generated data
@@ -107,8 +100,44 @@ class GenerativeQualityAssesser():
 
 
 
+class Inception_quality_assess(GenerativeQualityAssesser):
+
+    batchsize = 64
+    n_samples = 100*64
+    gen_transform = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+    nb_clusters = 5
+    dims = [2048,2048]
+    name = 'Inception_quality_assess'
+
+    def __init__(self, model):
+        encoders = [wrapper_inception(), wrapper_inception()]
+        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+        t, s, v = model.getDataLoaders(self.batchsize, transform=tx) # get the test dataset as dataloader
+        super().__init__(encoders, self.batchsize, self.n_samples,self.nb_clusters,s,self.dims)
 
 
 
 
+class custom_mnist_fashion(GenerativeQualityAssesser):
 
+    batchsize = 64
+    n_samples = 100*64
+    gen_transform = None
+    nb_clusters = 20
+    dims = [16,16]
+    name = 'custom_mnist_fashion'
+    device = 'cuda'
+
+    def __init__(self, model):
+        mnist_vae = AutoModel.load_from_folder(
+            '/home/agathe/Code/vaes/benchmark_VAE/my_model/MNIST_cnn_vae_training_22_08/final_model/')
+        fashion_vae = AutoModel.load_from_folder(
+            '/home/agathe/Code/vaes/benchmark_VAE/my_model/FashionMnist_cnn_vae_training_19_08/final_model/')
+
+        mnist_vae.to(self.device)
+        fashion_vae.to(self.device)
+        encoders = [wrapper_pythae_model(mnist_vae),wrapper_pythae_model(fashion_vae)]
+        tx = transforms.ToTensor()
+        t,s,v = model.getDataLoaders(self.batchsize, transform = tx)
+        print(torch.max(s.dataset[0][0][0]),torch.max(s.dataset[0][1][0]) )
+        super(custom_mnist_fashion, self).__init__(encoders, self.batchsize,self.n_samples,self.nb_clusters,s,self.dims)

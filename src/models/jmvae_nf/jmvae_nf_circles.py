@@ -11,8 +11,8 @@ import numpy as np
 from utils import get_mean, kl_divergence, negative_entropy, update_details
 from vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
-from pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config
-from pythae.models import my_VAE, VAEConfig
+from my_pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config
+from my_pythae.models import my_VAE, VAEConfig
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torch.utils.data import DataLoader
 from utils import extract_rayon

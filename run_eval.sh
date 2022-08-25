@@ -18,7 +18,7 @@
 #python3 src/validate.py --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/'
 
 # MMVAE
-python3 src/validate.py --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/'
+#python3 src/validate.py --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/'
 
 # MMVAE normal
 #python3 src/validate.py --use-pretrain '../experiments/jnf_mnist_fashion_fid/2022-08-17/2022-08-17T14:45:16.110386ht_hugh6/'

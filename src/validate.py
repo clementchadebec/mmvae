@@ -10,7 +10,7 @@ from tqdm import tqdm
 from copy import deepcopy
 
 from analysis.pytorch_fid import wrapper_inception
-from analysis import GenerativeQualityAssesser
+from analysis import Inception_quality_assess, custom_mnist_fashion
 
 import numpy as np
 import torch
@@ -97,14 +97,8 @@ print(f"Train : {len(train_loader.dataset)},"
 model.sampler = GaussianMixtureSampler()
 
 # Define the parameters for assessing quality
-batchsize,n_samples = 64, 64*100
-encoders = [wrapper_inception(), wrapper_inception()]
-tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-gen_tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-t, s, v = model.getDataLoaders(batchsize, transform=tx, device=device)
-nb_clusters = 5
-assesser = GenerativeQualityAssesser(encoders, batchsize,n_samples,nb_clusters,s, [2048,2048])
-
+assesser = Inception_quality_assess(model)
+# assesser = custom_mnist_fashion(model)
 def eval():
     """Compute all metrics on the entire test dataset"""
 
@@ -130,7 +124,7 @@ def eval():
 
         for i in range(1):
             # Compute fids 10 times to have a std
-            update_dict_list(b_metrics,model.assess_quality(assesser,gen_tx,runPath))
+            update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

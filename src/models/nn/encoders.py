@@ -1,8 +1,8 @@
 # Define custom encoders architectures for the VAEs
 import torch
 from torch import nn
-from pythae.models.nn import BaseEncoder, BaseDecoder
-from pythae.models.base.base_utils import ModelOutput
+from my_pythae.models.nn import BaseEncoder, BaseDecoder
+from my_pythae.models.base.base_utils import ModelOutput
 
 
 class Encoder_VAE_MNIST(BaseEncoder):
@@ -209,5 +209,43 @@ class TwoStepsEncoder(BaseEncoder):
         return out
 
 
+########################################################################################################################
+################################################## OASIS DATASET #######################################################
+
+
+class encoder_OASIS(nn.Module):
+
+    def __init__(self, args):
+        super(encoder_OASIS, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(args.input_dim,1000), nn.ReLU(),
+            nn.Linear(1000,400), nn.ReLU(),
+        )
+        self.mu = nn.Linear(400,args.latent_dim,bias=True)
+        self.lcov = nn.Linear(400,args.latent_dim, bias=True)
+
+    def forward(self, x: torch.Tensor):
+        h1 = self.layers(x)
+        output = ModelOutput(
+            embedding=self.mu(h1),
+            log_covariance=self.lcov(h1)
+        )
+        return output
+
+
+class decoder_OASIS(nn.Module):
+
+    # To define
+    def __init__(self, args):
+        super(decoder_OASIS, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(args.latent_dim,400), nn.ReLU(),
+            nn.Linear(400,1000), nn.ReLU(),
+            nn.Linear(1000, args.input_dim), nn.Sigmoid()
+        )
+
+    def forward(self, z: torch.Tensor):
+        output = ModelOutput(reconstruction=self.layers(z))
+        return output
 
 
