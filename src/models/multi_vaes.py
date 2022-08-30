@@ -213,25 +213,31 @@ class Multi_VAES(nn.Module):
 
         # Compute fid between joint generation and test set
         gen_data = self.generate(runPath, epoch, assesser.n_samples)
+        # Save the generated data
         gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
-        print(assesser.gen_transform)
-        fid, prd_data, fid0, prd0, fid1, prd1 = assesser.compute_fid_prd(gen_dataloader, compute_unimodal=True)
+        rd = assesser.compute_fid_prd(gen_dataloader, runPath, compute_unimodal=True)
 
-        list_prds = [prd_data]
-        metrics = {'fid_joint': fid, 'unifid0': fid0, 'unifid1': fid1}
+        list_prds, prd0, prd1 = [rd['prd_data']], rd['prd_data0'], rd['prd_data1']
+        metrics = {'fid_joint': rd['fid'], 'unifid0': rd['fid0'], 'unifid1': rd['fid1']}
 
         # Compute fid between test set and joint distributions computed from conditional
         cond_gen_data = self.generate_from_conditional(runPath, epoch, N=assesser.n_samples)
         for i, gen_data in enumerate(cond_gen_data):
             gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
-            fid, prd_data = assesser.compute_fid_prd(gen_dataloader)
-            list_prds.append(prd_data)
-            metrics[f'fids_{i}'] = fid
+            rd = assesser.compute_fid_prd(gen_dataloader, runPath)
+            list_prds.append(rd['prd_data'])
+            metrics[f'fids_{i}'] = rd['fid']
+            # save concatenation of activations
+            np.save(f'{runPath}/concat_activ_{i}.npy', rd['concat_activations'])
 
         np.save('{}/prd_data_{}.npy'.format(runPath, epoch), list_prds)
         np.save('{}/uniprd_data_{}.npy'.format(runPath, epoch), [prd0, prd1])
         prd.plot(list_prds, out_path='{}/prd_plot_{:03d}.png'.format(runPath, epoch),
                  labels=['Joint', 'Cond on 0', 'Cond on 1'])
+
+        # Plot unimodal prds
+        prd.plot([prd0,prd1], outpath='{}/uni_prd_plot.png'.format(runPath), labels=['Modality 0', 'Modality 1'],
+                 legend_loc = 'upper right')
 
         return metrics
 

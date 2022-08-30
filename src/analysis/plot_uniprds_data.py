@@ -3,7 +3,7 @@
 import argparse
 import numpy as np
 import glob, os
-from prd import plot
+from prd import plot, prd_to_max_f_beta_pair, plot_beta_pairs
 
 parser = argparse.ArgumentParser(description='Compare PRD plots for several models')
 
@@ -21,7 +21,14 @@ for model in info.list:
 # Plot
 for i,type in enumerate(['Modalité 0', 'Modalité 1']):
     prds_to_plot = []
+    f_beta = []
+    f_beta_inv = []
     for j, name in enumerate(info.names):
         prds_to_plot.append(prds[j][i])
+        precision, recall = prds[j][i]
+        fbeta, fbetainv = prd_to_max_f_beta_pair(precision, recall)
+        f_beta.append(fbeta)
+        f_beta_inv.append(fbetainv)
     plot(prds_to_plot, labels = info.names, out_path='../experiments/comparison/prd_compare_{}.png'.format(type),)
+    plot_beta_pairs(f_beta, f_beta_inv, info.names, outpath = '../experiments/comparison/f_beta_pairs_{}.png'.format(type))
 

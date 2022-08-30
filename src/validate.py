@@ -98,6 +98,8 @@ model.sampler = GaussianMixtureSampler()
 
 # Define the parameters for assessing quality
 assesser = Inception_quality_assess(model)
+# assesser.check_activations(runPath)
+
 # assesser = custom_mnist_fashion(model)
 def eval():
     """Compute all metrics on the entire test dataset"""
@@ -125,6 +127,9 @@ def eval():
         for i in range(1):
             # Compute fids 10 times to have a std
             update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
+
+            cond_gen_data = model.generate_from_conditional(runPath, 0, N = assesser.n_samples)
+            np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data )
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

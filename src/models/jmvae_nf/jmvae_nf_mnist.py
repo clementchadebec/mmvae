@@ -69,8 +69,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
         self.to_tensor = True
-        # self.classifier1 = classifier1
-        # self.classifier2 = classifier2
+        self.classifier1 = classifier1
+        self.classifier2 = classifier2
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
         train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

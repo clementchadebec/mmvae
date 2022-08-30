@@ -37,7 +37,7 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
 
     cmap_obj, cmap_arr = custom_cmap(n=len(labels))
     plt.figure(figsize=(15,10))
-    plt.scatter(emb[:, 0], emb[:, 1], c=emb_l, cmap=cmap_obj, s=25, alpha=0.8, edgecolors='none')
+    plt.scatter(emb[:, 0], emb[:, 1], c=emb_l, cmap=cmap_obj, s=25, alpha=0.3, edgecolors='none')
     l_elems = [Line2D([0], [0], marker='o', color=cm, label=l, alpha=0.5, linestyle='None')
                for (cm, l) in zip(cmap_arr, labels)]
     plt.legend(frameon=False, loc=2, handles=l_elems)

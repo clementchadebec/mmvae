@@ -25,10 +25,14 @@
 # TELBO
 
 # Compare PRD plots
-#python3 src/analysis/plot_prds_data.py -l ../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/ ../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/ -n jmvae_nf mmvae
+python3 src/analysis/plot_prds_data.py -l ../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/ ../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/ -n jmvae_nf mmvae
 
 # Compare unimodal PRD plots
-#python3 src/analysis/plot_uniprds_data.py -l ../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/ ../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/ -n jmvae jmvae_nf mmvae
+#python3 src/analysis/plot_uniprds_data.py -l ../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/ ../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/ -n jmvae_nf mmvae
+
+# Compare Inception embeddings
+#python3 src/analysis/plot_inception_embeddings.py -l ../experiments/jnf_mnist_fashion_fid/2022-06-27/2022-06-27T12:55:38.6541363kwsc2fu/ ../experiments/jnf_mnist_fashion_fid/2022-07-19/2022-07-19T14:00:34.606762zyv9i0ca/ ../experiments/jnf_mnist_fashion_fid/2022-07-13/2022-07-13T14:43:32.776808szbp5eef/
+
 ########################################################################################################################
 ################################################## MNIST-SVHN ##########################################################
 ########################################################################################################################

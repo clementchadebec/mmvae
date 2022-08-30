@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.15.0-46-generic-x86_64-with-debian-bookworm-sid",
+    "python": "3.6.10",
+    "heartbeatAt": "2022-08-25T14:02:56.019600",
+    "startedAt": "2022-08-25T14:02:54.877089",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "src/train_oasis_classifier.py",
+    "codePath": "src/train_oasis_classifier.py",
+    "git": {
+        "remote": "git@github.com:AgatheSenellart/mmvae.git",
+        "commit": "8dbfde74c8835559db455b0b761d121cba937da4"
+    },
+    "email": "agathe.senellart@polytechnique.edu",
+    "root": "/home/agathe/Code/vaes/mmvae/mmvae",
+    "host": "agathe-Precision-7760",
+    "username": "agathe",
+    "executable": "/home/agathe/Code/miniconda3/envs/myenv/bin/python3"
+}

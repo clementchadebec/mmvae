@@ -9,7 +9,7 @@ from numpy import prod, sqrt
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.utils import save_image, make_grid
-from datasets import CIRCLES_DATASET
+from dataloaders import CIRCLES_DATASET
 from utils import Constants
 from vis import plot_embeddings, plot_kls_df
 from .vae import VAE

@@ -13,10 +13,11 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from utils import add_channels
 import wandb
+from sklearn.model_selection import StratifiedKFold
 
 img_dir = '/home/agathe/Code/datasets/OASIS-1_dataset/preprocessed'
 train_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/train_unbalanced.tsv',  sep='\t')
-val_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/test_unbalanced.tsv', sep='\t')
+test_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/test_unbalanced.tsv', sep='\t')
 
 
 
@@ -34,6 +35,8 @@ class select_slice(object):
     def __call__(self, pic):
         slice = 60 if not self.eval_mode else 60 + np.random.randint(-5,5)
         return pic[:,:,:,60]
+
+
 
 
 
@@ -158,10 +161,14 @@ def compute_metrics(ground_truth, prediction):
 
 if __name__ == '__main__':
 
+    # Create 5 k-folds to correctly evaluate the model performance
+    kf = StratifiedKFold(n_splits=5)
+    kf.get_n_splits(train_df.index.values, train_df['diagnosis'] == 'AD')
+
     transf = transforms.Compose([select_slice(), add_channels()])
 
-    train_data = MRIDataset(img_dir, train_df, transform=transf)
-    val_data = MRIDataset(img_dir, val_df, transform=transf)
+
+    test_data = MRIDataset(img_dir, test_df, transform=transf)
 
 
     model = create_model().cuda()
@@ -169,21 +176,29 @@ if __name__ == '__main__':
     learning_rate = 10 ** -4
     n_epochs = 20
 
-    train_dataloader = DataLoader(train_data, batch_size=batchsize, shuffle=True, num_workers=8)
-    val_dataloader = DataLoader(val_data, batch_size=batchsize, shuffle=False, num_workers=8)
+    wandb.init(project='train_oasis_classifier', entity='asenellart',
+               config={'lr': learning_rate, 'n_epochs': n_epochs})
 
-    wandb.init(project = 'train_oasis_classifier', entity='asenellart',
-               config={'lr' : learning_rate,'n_epochs' : n_epochs})
+    test_loader = DataLoader(test_data, batch_size=batchsize, shuffle=False, num_workers=8)
+    all_folds_metrics = []
+    for train_index, val_index in kf.split(train_df):
+        ftrain = train_df.loc[train_index].reset_index()
+        fvalid = train_df.loc[val_index].reset_index()
+        train_data = MRIDataset(img_dir, ftrain, transform=transf)
+        val_data = MRIDataset(img_dir,fvalid,transform=transf)
+        train_dataloader = DataLoader(train_data, batch_size=batchsize, shuffle=True, num_workers=8)
+        val_dataloader = DataLoader(val_data, batch_size=batchsize, shuffle=False,num_workers=8)
+
+        criterion = nn.CrossEntropyLoss(reduction='sum')
+        optimizer = torch.optim.Adam(model.parameters(), learning_rate)
+        scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 
 
+        best_model = trainer(model, criterion, n_epochs,train_dataloader, val_dataloader)
 
-    criterion = nn.CrossEntropyLoss(reduction='sum')
-    optimizer = torch.optim.Adam(model.parameters(), learning_rate)
-    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+        # Test
+        result_df, results_metrics = test(best_model,test_loader, criterion, 0)
+        all_folds_metrics.append(results_metrics)
+        print('Fold test results : ', results_metrics)
 
-
-    best_model = trainer(model, criterion, n_epochs,train_dataloader, val_dataloader)
-
-    # Test
-    result_df, results_metrics = test(best_model,val_dataloader, criterion, 0)
-    print(results_metrics)
+    print(all_folds_metrics)
