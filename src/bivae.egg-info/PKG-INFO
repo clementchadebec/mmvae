@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: bivae
+Version: 0.0.1
+Summary: Bimodal variational Autoencoders in Python
+Home-page: https://github.com/AgatheSenellart/mmvae
+Author: Agathe Senellart (HekA team INRIA)
+Author-email: agathe.senellart@inria.fr
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+
+# Bimodal variational autoencodeurs - MMVAE models, JMVAE, JMVAE-NF-DCCA
+
+

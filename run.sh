@@ -32,7 +32,7 @@
 #python3 src/main.py --experiment jnf_mnist_fashion_fid --model mnist_fashion --obj dreg --dist normal --latent-dim 5 --epochs 30 --K 10 --data-path ../data/unbalanced/ --no-nf
 
 # JMVAE-NF
-python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion --obj jmvae_nf --latent-dim 5 --data-path ../data/unbalanced/ --warmup 15 --epochs 30 --loss 'l1'
+#python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion --obj jmvae_nf --latent-dim 5 --data-path ../data/unbalanced/ --warmup 15 --epochs 30 --loss 'l1'
 
 ########################################################################################################################
 ################################################## MNIST-SVHN ##########################################################
@@ -55,6 +55,9 @@ python3 src/main.py --experiment jnf_mnist_fashion_fid --model jnf_mnist_fashion
 
 # JMVAE-NF-DCCA with reconstruction term
 #python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True
+
+# JMVAE-NF-DCCA with no reconstruction term
+python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True --no-recon True
 
 ########################################################################################################################
 ########################################### CIRCLES-SQUARES INVERSE ####################################################
