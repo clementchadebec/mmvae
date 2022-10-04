@@ -234,7 +234,7 @@ class Multi_VAES(nn.Module):
                  labels=['Joint', 'Cond on 0', 'Cond on 1'])
 
         # Plot unimodal prds
-        prd.plot([prd0,prd1], outpath='{}/uni_prd_plot.png'.format(runPath), labels=['Modality 0', 'Modality 1'],
+        prd.plot([prd0,prd1], out_path='{}/uni_prd_plot.png'.format(runPath), labels=['Modality 0', 'Modality 1'],
                  legend_loc = 'upper right')
 
         return metrics

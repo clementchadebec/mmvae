@@ -21,6 +21,7 @@ from utils import Logger, Timer, save_model, save_vars, unpack_data, update_deta
     ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
+from bivae.analysis import compute_accuracies
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--experiment', type=str, default='', metavar='E',
@@ -221,7 +222,9 @@ def test(epoch, agg):
             update_details(b_details, details)
             if i == 0:
                 wandb.log({'epoch' : epoch})
-                wandb.log(model.compute_metrics(data, runPath,epoch, classes,freq=args.freq_analytics))
+                # Compute accuracies
+                acc = compute_accuracies(model,model.classifier1,model.classifier2,data,classes,n_data=100,ns=100)
+                wandb.log(acc)
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):

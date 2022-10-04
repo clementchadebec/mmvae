@@ -48,7 +48,7 @@
 #python3 src/validate.py --use-pretrain '../experiments/mmvae_mnist_svhn/2022-06-20/2022-06-20T18:39:18.5986649k3o_d2e/'
 
 # JMVAE-NF-DCCA-no-recon
-python3 src/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-07-06/2022-07-06T14:50:16.455935b4yig7bt/'
+python3 src/bivae/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-10-03/2022-10-03T16:40:02.881385cdcfscvu/'
 
 # JMVAE-NF-DCCA
 #python3 src/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-07-20/2022-07-20T10:22:05.309847keje2c1k/'

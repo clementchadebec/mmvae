@@ -120,13 +120,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
         return labels2, labels1
 
-    def conditional_dist(self, data, runPath, epoch, n=20):
-        """ Plot the conditional distribution of the labels that was computed with
-        conditional labels """
-        hist_values = torch.cat(self.extract_hist_values(data), dim=0)
 
-        plot_hist(hist_values, '{}/hist_{:03d}.png'.format(runPath, epoch), range=(0, 10))
-        wandb.log({'histograms' : wandb.Image('{}/hist_{:03d}.png'.format(runPath, epoch))})
 
 
 
