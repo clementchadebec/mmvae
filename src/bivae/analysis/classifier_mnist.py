@@ -49,8 +49,24 @@ class MnistClassifier(nn.Module) :
         return f
 
 
+def load_pretrained_mnist(device = 'cuda'):
+    # Define the classifiers for analysis
+    classifier = MnistClassifier()
+    path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
 
+    classifier.load_state_dict(torch.load(path1))
+    classifier.eval()
+    classifier.to(device)
+    return classifier
 
+def load_pretrained_fashion(device='cuda'):
+    classifier = MnistClassifier()
+    path1 = '../experiments/classifier_fashion/2022-06-09/model_4.pt'
+
+    classifier.load_state_dict(torch.load(path1))
+    classifier.eval()
+    classifier.to(device)
+    return classifier
 
 
 ##############################################################################################################

@@ -37,6 +37,7 @@ class JMVAE_NF(Multi_VAES):
 
 
 
+
     def forward(self, x):
         """ Using the joint encoder, it computes the latent representation and returns
                 qz_xy, pxy_z, z"""

@@ -17,6 +17,7 @@ from .jmvae_nf import JMVAE_NF_MNIST_SVHN as VAE_jnf_mnist_svhn
 from .multi_vaes import Multi_VAES
 from .mmvae import MMVAE_MNIST as VAE_mnist_fashion
 from .jmvae_nf import JMVAE_NF_DCCA_MNIST_SVHN as VAE_jnf_mnist_svhn_dcca
+from .jmvae_nf import JMVAE_NF_MNIST_CONTOUR as VAE_jnf_mnist_contour
 
 __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
@@ -25,5 +26,6 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_jnf_mnist_svhn',
             'VAE_mnist_fashion',
             'VAE_jnf_mnist_svhn_dcca',
+            'VAE_jnf_mnist_contour'
 
             ]

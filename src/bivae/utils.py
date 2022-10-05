@@ -9,10 +9,7 @@ import torch
 import torch.distributions as dist
 import torch.nn.functional as F
 from torch import Tensor
-from torchvision import transforms
 
-
-from datasets import CUBImageFt
 
 
 # Classes
@@ -327,3 +324,8 @@ def adjust_shape(data_1, data_2):
     data_2 = F.pad(data_2, ((h-h2)//2, (h-h2)//2, (w-w2)//2, (w-w2)//2), 'constant', 0)
     return data_1, data_2
 
+def entropy(model, data, n = 20):
+    bdata = [d[:n] for d in data]
+    samples = model._sample_from_conditional(bdata, n=100)
+    r, range, bins = model.extract_hist_values(samples)
+    return negative_entropy(r, range, bins)

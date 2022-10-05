@@ -57,7 +57,18 @@
 #python3 src/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True
 
 # JMVAE-NF-DCCA with no reconstruction term
-python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True --no-recon True
+#python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True --no-recon True
+
+
+
+########################################################################################################################
+########################################## MNIST-CONTOUR ###############################################################
+########################################################################################################################
+
+python3 src/bivae/main.py --experiment contour --model jnf_mnist_contour --obj jmvae_nf --latent-dim 15 --warmup 15 --epochs 30 --beta-prior 1
+
+
+
 
 ########################################################################################################################
 ########################################### CIRCLES-SQUARES INVERSE ####################################################

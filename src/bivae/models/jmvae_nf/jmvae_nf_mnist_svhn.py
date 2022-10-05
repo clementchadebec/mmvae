@@ -22,7 +22,7 @@ from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoSteps
 from ..vae_circles import CIRCLES
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
-from analysis import MnistClassifier, SVHNClassifier
+from bivae.analysis import MnistClassifier, SVHNClassifier, compute_accuracies
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -58,12 +58,12 @@ else :
     pretrained_encoders, pretrained_decoders = [None, None], [None, None]
     pre_configs = [VAEConfig((1,28,28), 20), VAEConfig((3,32,32), 20)]
 
-load_dcca_encoders = False
-dcca_encoders = [torch.load('../dcca/mnist_svhnmodel1.pt'), torch.load('../dcca/mnist_svhnmodel2.pt')]
-dcca_configs = [VAEConfig((1,28,28), 15), VAEConfig((3,32,32), 15)]
 
 class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
     def __init__(self, params):
+
+        self.shape_mod1,self.shape_mod2 = (1,28,28),(3,32,32)
+
         vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
 
         # Define the joint encoder
@@ -78,17 +78,8 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         # Define the unimodal encoders
         vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 32, 32), params.latent_dim)
-        if load_dcca_encoders:
 
-            e1, e2 = Encoder_VAE_MLP(dcca_configs[0]), Encoder_VAE_SVHN(dcca_configs[1])
-            e1.load_state_dict(dcca_encoders[0])
-            e2.load_state_dict(dcca_encoders[1])
-            # For reusing the heads of the joint encoders as starters for the unimodal encoders
-            encoder1 = TwoStepsEncoder(e1, params)
-            encoder2 = TwoStepsEncoder(e2, params)
-        else :
-
-            encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
+        encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
 
         # Define the decoders
         decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
@@ -116,59 +107,17 @@ class JMVAE_NF_MNIST_SVHN(JMVAE_NF):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
 
-    def conditional_labels(self, data, n_data=8, ns=30):
-        """ Sample ns from the conditional distribution (for each of the first n_data)
-        and compute the labels repartition in this conditional distribution (based on the
-        predefined classifiers)"""
-
-        bdata = [d[:n_data] for d in data]
-        samples = JMVAE_NF._sample_from_conditional(self, bdata, n=ns)
-        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
-
-        # Compute the labels
-        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, 3, 32, 32))  # 8*n x 10
-        labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
-
-        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, 1, 28, 28))  # 8*n x 10
-        labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
-
-        return labels2, labels1
-
-    def conditional_dist(self, data, runPath, epoch, n=20):
-        """ Plot the conditional distribution of the labels that was computed with
-        conditional labels """
-        hist_values = torch.cat(self.extract_hist_values(data), dim=0)
-
-        plot_hist(hist_values, '{}/hist_{:03d}.png'.format(runPath, epoch), range=(0, 10))
-        wandb.log({'histograms' : wandb.Image('{}/hist_{:03d}.png'.format(runPath, epoch))})
-
-
-
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100, freq=10):
-
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
 
-        # Compute general metrics (FID)
-        general_metrics = JMVAE_NF.compute_metrics(self,runPath,epoch,freq=freq, to_tensor=True)
+        general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+        accuracies = compute_accuracies(self, classifier1, classifier2, data, classes, n_data, ns)
 
-        # Compute cross_coherence
-        labels2, labels1 = self.conditional_labels(data, n_data, ns)
-        # Create an extended classes array where each original label is replicated ns times
-        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
-        acc2 = torch.sum(classes_mul == labels2)/(n_data*ns)
-        acc1 = torch.sum(classes_mul == labels1)/(n_data*ns)
+        update_details(accuracies, general_metrics)
+        return accuracies
 
-        metrics = dict(accuracy1 = acc1, accuracy2 = acc2)
-        data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
-        labels_svhn = torch.argmax(classifier2(data[1]), dim=1)
 
-        joint_acc = torch.sum(labels_mnist == labels_svhn) / 100
-        metrics['joint_coherence'] = joint_acc
-        update_details(metrics, general_metrics)
-
-        return metrics
 
 
 

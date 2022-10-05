@@ -1,4 +1,3 @@
-import pathlib
 
 import numpy as np
 from tqdm import tqdm
@@ -11,10 +10,10 @@ import wandb
 from torch.utils.data import BatchSampler, SequentialSampler, RandomSampler
 
 
-from linear_cca import linear_cca
-from dataloaders import MNIST_SVHN_DL
-from DeepCCAModels import DeepCCA_MNIST_SVHN
-from utils import load_data, svm_classify_svhn, unpack_data, visualize_umap, save_encoders
+from bivae.dcca.linear_cca import linear_cca
+from bivae.dataloaders import MNIST_SVHN_DL
+from bivae.dcca.models import DeepCCA_MNIST_SVHN
+from bivae.dcca.utils import  svm_classify_svhn, unpack_data, visualize_umap, save_encoders
 
 torch.set_default_tensor_type(torch.DoubleTensor)
 

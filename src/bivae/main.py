@@ -223,8 +223,7 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                acc = compute_accuracies(model,model.classifier1,model.classifier2,data,classes,n_data=100,ns=100)
-                wandb.log(acc)
+                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
@@ -238,6 +237,7 @@ def test(epoch, agg):
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
                             plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
                         model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
+
     b_details = {k + '_test': b_details[k] / len(val_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
     agg['test_loss'].append(b_loss / len(val_loader.dataset))

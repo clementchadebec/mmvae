@@ -13,39 +13,32 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 from bivae.my_pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
 
-from bivae.dataloaders import MNIST_FASHION_DATALOADER
+from bivae.dataloaders import MNIST_FASHION_DL
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 
 
 from ..vae_circles import CIRCLES
 from ..nn import DoubleHeadMLP
 from ..jmvae_nf import JMVAE_NF
-from analysis import MnistClassifier
+from bivae.analysis import MnistClassifier
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1, 28, 28)
 
 hidden_dim = 512
 
-# Define the classifiers for analysis
-classifier1, classifier2 = MnistClassifier(), MnistClassifier()
-path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
-path2 = '../experiments/classifier_fashion/2022-06-09/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+
 
 def fashion_labels_to_mnist(f_labels):
     return torch.div(f_labels - 1,3, rounding_mode='trunc')
 
 
 class JMVAE_NF_MNIST(JMVAE_NF):
+
+    shape_mod1, shape_mod2 = (1,28,28), (1,28,28)
+
     def __init__(self, params):
+
         # joint_encoder = DoubleHeadMnist(hidden_dim, params.num_hidden_layers,params)
         joint_encoder = DoubleHeadMLP(28 * 28, 28 * 28, hidden_dim, params.latent_dim, 1)
         vae = my_VAE_IAF if not params.no_nf else my_VAE

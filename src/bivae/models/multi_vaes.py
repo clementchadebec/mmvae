@@ -43,13 +43,14 @@ class Multi_VAES(nn.Module):
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
             nn.Parameter(torch.ones(1, params.latent_dim), requires_grad=False)  # logvar
         ])
-        self.max_epochs=params.epochs
+        self.max_epochs = params.epochs
         self.sampler = None
         self.save_format = '.png'
         self.to_tensor = None # to define in each subclass. It says if the data must be formatted to tensor.
         self.ref_activations = None
         self.loss = params.loss if hasattr(params, 'loss') else 'mse'
         self.eval_mode = False
+
 
 
     @property

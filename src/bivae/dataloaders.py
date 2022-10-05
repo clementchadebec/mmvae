@@ -7,6 +7,7 @@ from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
+from bivae.data.transforms import contour_transform
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -131,9 +132,9 @@ class SVHN_DL():
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
         kwargs = {'num_workers': 8, 'pin_memory': True} if device == 'cuda' else {}
 
-        train = DataLoader(datasets.SVHN('/home/agathe/Code/Datasets/svhn', split='train', download=True, transform=transform),
+        train = DataLoader(datasets.SVHN('/home/agathe/Code/datasets/svhn', split='train', download=True, transform=transform),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.SVHN('/home/agathe/Code/Datasets/svhn', split='test', download=True, transform=transform),
+        test = DataLoader(datasets.SVHN('/home/agathe/Code/datasets/svhn', split='test', download=True, transform=transform),
                           batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
@@ -186,7 +187,7 @@ class CIRCLES_SQUARES_DL():
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
 
-class MNIST_FASHION_DATALOADER():
+class MNIST_FASHION_DL():
 
     def __init__(self, data_path):
         self.data_path = data_path
@@ -325,5 +326,40 @@ class MNIST_OASIS_DL():
         test = DataLoader(test_mnist_oasis, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
+class MNIST_CONTOUR_DL():
+
+    def __init__(self, data_path='/home/agathe/Code/datasets'):
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=None):
+
+
+        # load base datasets
+
+        # Simple MNIST dataset
+        t1,s1 = MNIST_DL(self.data_path,'numbers').getDataLoaders(batch_size,shuffle,device, transform)
+        # Dataset with Canny Transform
+        t2,s2 = MNIST_DL(self.data_path,'numbers').getDataLoaders(batch_size,shuffle,device, contour_transform)
+
+
+        train_mnist_fashion = TensorDataset([
+            t1.dataset,t2.dataset
+        ])
+
+        test_mnist_fashion = TensorDataset([
+            s1.dataset,s2.dataset
+        ])
+
+        val_set, test_set = random_split(test_mnist_fashion,
+                                         [len(test_mnist_fashion)//2,
+                                          len(test_mnist_fashion)-len(test_mnist_fashion)//2],
+                                         generator=torch.Generator().manual_seed(42)
+                                         )
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+        train = DataLoader(train_mnist_fashion, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
 
 

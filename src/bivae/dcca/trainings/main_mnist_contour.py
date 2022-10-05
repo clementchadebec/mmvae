@@ -5,14 +5,13 @@ import time
 from pathlib import Path
 
 
-import torch
 import wandb
 from torch.utils.data import BatchSampler, SequentialSampler, RandomSampler
 
 
 from bivae.dcca.linear_cca import linear_cca
-from bivae.dataloaders import MNIST_SVHN_DL
-from bivae.dcca.models import DeepCCA_MNIST_SVHN
+from bivae.dataloaders import *
+from bivae.dcca.models import *
 from bivae.dcca.utils import  svm_classify_svhn, unpack_data, visualize_umap, save_encoders
 
 torch.set_default_tensor_type(torch.DoubleTensor)
@@ -34,11 +33,7 @@ class Solver():
 
         self.outdim_size = outdim_size
 
-        wandb.init(project = 'DCCA_mnist_svhn', entity = 'asenellart', config = {'batch_size' : batch_size,
-                                                                                 'learning_rate': learning_rate,
-                                                                                 'reg_par' : reg_par,
-                                                                                 'linear_cca' : linear_cca is not None},
-                   mode = 'online')
+
         print('Solver initialized')
 
     def fit(self, train_loader, vx1=None, vx2=None, tx1=None, tx2=None, checkpoint=None):
@@ -154,15 +149,15 @@ if __name__ == '__main__':
 
     print(torch.cuda.is_available())
 
-
     ############
     # Parameters Section
 
     device = torch.device('cuda')
+    mod_name_1, mod_name_2 = 'MNIST', 'MNIST_CONTOUR'
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('./')
+    save_to = Path('../dcca/mnist_contour/')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
@@ -171,14 +166,20 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 10
+    epoch_num = 30
     batch_size = 800
-    train_loader,test_loader = MNIST_SVHN_DL('/home/agathe/Code/vaes/mmvae/data').getDataLoaders(batch_size=batch_size)
+    train_loader,test_loader, val = MNIST_CONTOUR_DL('/home/agathe/Code/vaes/mmvae/data').getDataLoaders(batch_size=batch_size)
 
 
     # the regularization parameter of the network
     # seems necessary to avoid the gradient exploding especially when non-saturating activations are used
     reg_par = 1e-5
+
+    wandb.init(project='DCCA_mnist_contour', entity='asenellart', config={'batch_size': batch_size,
+                                                                          'learning_rate': learning_rate,
+                                                                          'reg_par': reg_par,
+                                                                          'linear_cca': linear_cca is not None},
+               mode='online')
 
     # specifies if all the singular values should get used to calculate the correlation or just the top outdim_size ones
     # if one option does not work for a network or dataset, try the other one
@@ -192,7 +193,7 @@ if __name__ == '__main__':
 
 
     # Building, training, and producing the new features by DCCA
-    model = DeepCCA_MNIST_SVHN(outdim_size, use_all_singular_values, device=device).double()
+    model = DeepCCA_MNIST_CONTOUR(outdim_size, use_all_singular_values, device=device).double()
     l_cca = None
     if apply_linear_cca:
         l_cca = linear_cca()
@@ -207,8 +208,8 @@ if __name__ == '__main__':
     losses, outputs_t =  solver.test(train_loader, use_linear_cca=apply_linear_cca)
     losses, outputs_s = solver.test(test_loader, use_linear_cca=apply_linear_cca)
     test_acc = svm_classify_svhn(outputs_t, outputs_s, C=0.01)
-    wandb.log({'embedding_svhn' : visualize_umap(outputs_s[1], outputs_s[2])})
-    wandb.log({'embedding_mnist' : visualize_umap(outputs_s[0], outputs_s[2])})
-    print("Accuracy on view svhn (test data) is:", test_acc*100.0)
+    wandb.log({mod_name_1 : visualize_umap(outputs_s[1], outputs_s[2])})
+    wandb.log({mod_name_2 : visualize_umap(outputs_s[0], outputs_s[2])})
+    print("Accuracy on view 2 (test data) is:", test_acc*100.0)
     # Saving new features in a gzip pickled file specified by save_to
 

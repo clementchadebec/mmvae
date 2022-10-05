@@ -12,7 +12,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 from bivae.my_pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
 
-from bivae.dataloaders import MNIST_FASHION_DATALOADER
+from bivae.dataloaders import MNIST_FASHION_DL
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 
 

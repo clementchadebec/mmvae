@@ -3,22 +3,20 @@ FID and PRD analysis with a defined encoder and parameters"""
 
 import numpy as np
 from tqdm import tqdm
-from utils import unpack_data, add_channels
+from bivae.utils import unpack_data, add_channels, adjust_shape
 import torch
-import analysis.prd as prd
-from analysis.pytorch_fid import calculate_fid_from_embeddings
+from bivae.analysis import prd
+from bivae.analysis.pytorch_fid import calculate_fid_from_embeddings
 from torch import nn
-from utils import adjust_shape
-from dataloaders import MultimodalBasicDataset
+from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
-from analysis.pytorch_fid import InceptionV3, get_activations
 from torchvision import transforms
-from analysis.pytorch_fid.inception import wrapper_inception
-from analysis.pytorch_fid.custom_encoders import wrapper_pythae_model
+from bivae.analysis.pytorch_fid.inception import wrapper_inception
+from bivae.analysis.pytorch_fid.custom_encoders import wrapper_pythae_model
 import pythae
 from pythae.models import AutoModel
 from umap import UMAP
-from vis import plot_embeddings
+from bivae.vis import plot_embeddings
 
 class GenerativeQualityAssesser():
     gen_transform = None  # to be defined in each subclass

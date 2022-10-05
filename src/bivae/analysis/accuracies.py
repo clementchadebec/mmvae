@@ -17,10 +17,10 @@ def conditional_labels(model,classifier1,classifier2, data, n_data=8, ns=30):
     cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
 
     # Compute the labels
-    preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, 3, 32, 32))  # 8*n x 10
+    preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *model.shape_mod2))  # 8*n x 10
     labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
 
-    preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, 1, 28, 28))  # 8*n x 10
+    preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *model.shape_mod1))  # 8*n x 10
     labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
 
     return labels2, labels1
