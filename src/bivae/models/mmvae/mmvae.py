@@ -152,6 +152,58 @@ class MMVAE(Multi_VAES):
         return {'likelihood' : ll/len(data[0])}
 
 
+    def compute_joint_ll_from_uni(self, data, cond_mod, K=1000, batch_size_K=100):
+
+        '''
+        Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with the same approximation as in MVAE, JMVAE :
+
+        ln p(x|y) = ln E_{q(z|y)}( p(x,y,z)/q(z|y) ) - ln E_{p(z)}(p(y|z))
+
+        Each term is computed using importance sampling
+
+        '''
+
+        o = self.vaes[cond_mod].encoder(data[cond_mod])
+        qz_xy_params = (o['embedding'], torch.exp(0.5 * o['log_covariance']))
+
+        qz_xs = self.qz_x(*qz_xy_params)
+        # Sample from the conditional encoder distribution
+        z_x = qz_xs.rsample([K]).permute(1, 0, 2)  # n_data_points,K,latent_dim
+
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            ln_pxs = []
+            while stop_index <= K:
+                latents = z_x[i][start_idx:stop_index]
+
+                lpxs_z = 0
+                # Compute p(x|z) for z in latents and for each modality m
+                for m, vae in enumerate(self.vaes):
+                    mus = self.vaes[m].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
+                    x_m = data[m][i]  # (nb_channels, w, h)
+                    lpxs_z += -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
+                        2 * np.pi)
+
+
+                # Prior distribution p(z)
+                lpz = torch.sum(self.pz(*self.pz_params).log_prob(latents), dim=-1)
+
+                # Compute the log prob of the posterior q(z|cond_mod)
+                lqz_cond_mod = self.qz_x(qz_xy_params[0][i], qz_xy_params[1][i]).log_prob(latents)
+                lqz_cond_mod = torch.sum(lqz_cond_mod, dim=-1)
+
+                ln_pxs.append(torch.logsumexp(lpxs_z + + lpz - lqz_cond_mod, dim=0))
+
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0)
+
+        return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
+
+
     def compute_conditional_likelihood(self,data, cond_mod, gen_mod,K=1000,batch_size_K = 100):
 
         '''
@@ -192,10 +244,8 @@ class MMVAE(Multi_VAES):
 
         return {f'cond_likelihood_{cond_mod}_{gen_mod}' : ll/len(data[0])}
 
-    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
 
-        metrics = self.compute_conditional_likelihood(data, 0,1, K, batch_size_K)
-        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
-        return metrics
+
+
 
 

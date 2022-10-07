@@ -96,6 +96,58 @@ class JMVAE_NF(Multi_VAES):
 
         return reg, details_reg
 
+    def compute_joint_ll_from_uni(self, data, cond_mod, K=1000, batch_size_K = 100):
+
+        '''
+                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
+
+                ln p(x,y) = \sum_{z ~ q(z|y)} ln p(x|z)p(y|z)p(z)/q(z|y)
+
+                '''
+
+
+        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            lnpxs = []
+            repeated_data_point = torch.stack(batch_size_K * [data[cond_mod][i]]) # batch_size_K, n_channels, h, w
+
+            while stop_index <= K:
+
+                # Encode with the conditional VAE
+                output = self.vaes[cond_mod](repeated_data_point)
+                latents = output.z  # (batchsize_K, latent_dim)
+
+                # Decode in each modality
+                lpxy_z = 0
+                for m, vae in enumerate(self.vaes):
+                    recon = self.vaes[m].decoder(latents).reconstruction
+
+                    # Compute lnp(y|z)
+                    lpxy_z += -0.5 * torch.sum((recon - data[m][i])**2, dim=(1, 2, 3)) - np.prod(data[m][i].shape) / 2 * np.log(
+                        2 * np.pi)
+
+                # Compute lpz
+                prior = self.pz(*self.pz_params)
+                lpz = torch.sum(prior.log_prob(latents), dim=-1)
+
+                # Finally compute lqz_x
+                mu, log_var, z0 = output.mu, output.log_var, output.z0
+                log_q_z0 = (-0.5 * (log_var + np.log(2 * np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(
+                    dim=1)
+                lqz_x = log_q_z0 - output.log_abs_det_jac
+
+                lnpxs.append(torch.logsumexp(lpxy_z + lpz - lqz_x,dim=0))
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+
+        return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
+
+
     def compute_recon_loss(self,x,recon,m):
         return F.mse_loss(x.reshape(x.shape[0],-1),
                           recon.reshape(x.shape[0],-1),reduction='sum')
@@ -218,10 +270,10 @@ class JMVAE_NF(Multi_VAES):
                 recon = self.vaes[gen_mod].decoder(latents).reconstruction
 
                 # Compute lnp(y|z)
-                lp = ()
+                lpx_z = -0.5 * torch.sum((recon - data[gen_mod][i])**2, dim=(1, 2, 3)) - np.prod(data[gen_mod][i].shape) / 2 * np.log(
+                    2 * np.pi)
 
-
-
+                lnpxs.append(torch.logsumexp(lpx_z,dim=0))
                 # next batch
                 start_idx += batch_size_K
                 stop_index += batch_size_K
@@ -231,8 +283,3 @@ class JMVAE_NF(Multi_VAES):
         return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
 
 
-    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
-
-        metrics = self.compute_conditional_likelihood(data, 0,1, K, batch_size_K)
-        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
-        return metrics

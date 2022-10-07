@@ -245,6 +245,64 @@ class Multi_VAES(nn.Module):
         return {}
 
 
+    def compute_uni_ll_from_prior(self, data, mod, K=1000, batch_size_K = 100):
+
+        '''Compute an estimate of ln(p(x)) = ln E_{p(z)}(p(x|z)) with monte carlo sampling'''
+
+        prior = self.pz(*self.pz_params)
+        z = prior.rsample([len(data[0]), K]).squeeze(-2) # n_data_points, K, latent_dim
+
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            ln_pxs = []
+            while stop_index <= K:
+
+                latents = z[i][start_idx:stop_index]
+
+                # Compute p(x|z) for z in latents and for each modality m
+                mus = self.vaes[mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
+                x_m = data[mod][i]  # (nb_channels, w, h)
+                lpx_z = -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
+                    2 * np.pi)
+
+
+                ln_pxs.append(torch.logsumexp(lpx_z, dim=0))
+
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0)
+
+        return {f'uni_from_prior_{mod}': ll / len(data[0])}
+
+
+    def compute_conditional_likelihood_bis(self,data, cond_mod, gen_mod,K=1000,batch_size_K = 100):
+
+        '''
+        Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with the same approximation as in MVAE, JMVAE :
+
+        ln p(x|y) = ln E_{q(z|y)}( p(x,y,z)/q(z|y) ) - ln E_{p(z)}(p(y|z))
+
+        Each term is computed using importance sampling
+
+        '''
+
+        # Compute the first term
+        t1 = self.compute_joint_ll_from_uni(data, cond_mod, K, batch_size_K)[f'joint_ll_from_{cond_mod}']
+        t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
+
+        return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
+
+
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+
+        metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
+        update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
+        return metrics
+
+
 
 
 

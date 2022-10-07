@@ -24,6 +24,7 @@ import objectives
 from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon, add_channels,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--use-pretrain', type=str, default='')
@@ -108,10 +109,10 @@ def eval():
 
     b_metrics = {}
     with torch.no_grad():
-        for i, dataT in enumerate(test_loader):
+        for i, dataT in enumerate(tqdm(test_loader)):
             data = unpack_data(dataT, device=device)
-            update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=200))
-
+            update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=1000))
+            update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=1000))
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
     print_mean_std(m_metrics,s_metrics)
