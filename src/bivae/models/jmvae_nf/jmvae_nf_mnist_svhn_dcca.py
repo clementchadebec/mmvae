@@ -84,7 +84,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         self.to_tensor = True
 
         # Set the classifiers
-        self.classifier1, self.classifier2 = classifier1, classifier2
+        # self.classifier1, self.classifier2 = classifier1, classifier2
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

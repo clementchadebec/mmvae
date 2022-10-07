@@ -8,7 +8,7 @@ import wandb
 
 from ..multi_vaes import Multi_VAES
 from tqdm import tqdm
-from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape, unpack_data
+from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape, unpack_data, update_details
 from torchvision.utils import save_image
 import torch.nn.functional as F
 
@@ -145,3 +145,94 @@ class JMVAE_NF(Multi_VAES):
         self.train_latents = torch.cat(mu), torch.cat(labels)
 
 
+    def compute_joint_likelihood(self,data, K=1000, batch_size_K=100):
+
+        # First compute all the parameters of the joint posterior q(z|x,y)
+        self.qz_xy_params = self.joint_encoder(data)
+        qz_xy = self.qz_xy(*self.qz_xy_params)
+
+        # Then sample K samples for each distribution
+        z_xy = qz_xy.rsample([K]) # (K, n_data_points, latent_dim)
+        z_xy = z_xy.permute(1,0,2)
+
+        # Then iter on each datapoint to compute the iwae estimate of ln(p(x))
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx,stop_index = 0,batch_size_K
+            lnpxs = []
+            while stop_index <= K:
+                latents = z_xy[i][start_idx:stop_index]
+
+                # Compute p(x_m|z) for z in latents and for each modality m
+                lpx_zs = 0 # ln(p(x,y|z))
+                for m, vae in enumerate(self.vaes):
+
+                    mus = vae.decoder(latents)['reconstruction'] # (batch_size_K, nb_channels, w, h)
+                    x_m = data[m][i] # (nb_channels, w, h)
+                    lpx_z = -0.5 * torch.sum((mus - x_m)**2,dim=(1,2,3)) - np.prod(x_m.shape)/2*np.log(2*np.pi)
+                    lpx_zs += lpx_z
+
+                # Compute ln(p(z))
+                prior = self.pz(*self.pz_params)
+                lpz = torch.sum(prior.log_prob(latents), dim=-1)
+
+                # Compute posteriors -ln(q(z|x,y))
+                qz_xy = self.qz_xy(self.qz_xy_params[0][i], self.qz_xy_params[1][i])
+                lqz_xy = torch.sum(qz_xy.log_prob(latents), dim=-1)
+
+                ln_px = torch.logsumexp(lpx_zs + lpz - lqz_xy, dim=-1)
+                lnpxs.append(ln_px)
+
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+
+        return {'likelihood' : ll/len(data[0])}
+
+
+    def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
+
+        '''
+                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
+
+                ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
+
+                '''
+
+
+        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            lnpxs = []
+            repeated_data_point = torch.stack(batch_size_K * [data[cond_mod][i]]) # batch_size_K, n_channels, h, w
+
+            while stop_index <= K:
+
+                # Encode with the conditional VAE
+                latents = self.vaes[cond_mod](repeated_data_point).z  # (batchsize_K, latent_dim)
+
+                # Decode with the opposite decoder
+                recon = self.vaes[gen_mod].decoder(latents).reconstruction
+
+                # Compute lnp(y|z)
+                lp = ()
+
+
+
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+
+        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+
+
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+
+        metrics = self.compute_conditional_likelihood(data, 0,1, K, batch_size_K)
+        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
+        return metrics

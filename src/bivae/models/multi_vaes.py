@@ -17,7 +17,7 @@ from torchvision import transforms
 from umap import UMAP
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score
-from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape
+from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape, update_details
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 from torchvision.utils import save_image
 
