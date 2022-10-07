@@ -98,7 +98,7 @@ type = 'circles'
 
 batch_size = 256
 shuffle=True
-train_loader, test_loader = CIRCLES_DL(type, '/home/agathe/Code/vaes/mmvae/data/circles_squares/').getDataLoaders(batch_size,shuffle)
+#train_loader, test_loader = CIRCLES_DL(type, '/home/agathe/Code/vaes/mmvae/data/circles_squares/').getDataLoaders(batch_size,shuffle)
 
 model = CirclesClassifier()
 optimizer = optim.Adam(model.parameters(),lr=1e-3)

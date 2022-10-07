@@ -5,8 +5,6 @@ Summary: Bimodal variational Autoencoders in Python
 Home-page: https://github.com/AgatheSenellart/mmvae
 Author: Agathe Senellart (HekA team INRIA)
 Author-email: agathe.senellart@inria.fr
-License: UNKNOWN
-Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
@@ -17,5 +15,3 @@ License-File: LICENSE
 
 
 # Bimodal variational autoencodeurs - MMVAE models, JMVAE, JMVAE-NF-DCCA
-
-

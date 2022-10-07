@@ -27,17 +27,17 @@ input_dim = (1, 28, 28)
 hidden_dim = 512
 
 # Define the classifiers for analysis
-classifier1, classifier2 = MnistClassifier(), MnistClassifier()
-path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
-path2 = '../experiments/classifier_fashion/2022-06-09/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+#classifier1, classifier2 = MnistClassifier(), MnistClassifier()
+#path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
+#path2 = '../experiments/classifier_fashion/2022-06-09/model_4.pt'
+#classifier1.load_state_dict(torch.load(path1))
+#classifier2.load_state_dict(torch.load(path2))
+## Set in eval mode
+#classifier1.eval()
+#classifier2.eval()
+## Set to cuda
+#classifier1.cuda()
+#classifier2.cuda()
 
 def fashion_labels_to_mnist(f_labels):
     return torch.div(f_labels - 1,3, rounding_mode='trunc')

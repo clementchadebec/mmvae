@@ -85,7 +85,7 @@ learning_rate = 1e-3
 experiment_name = args.experiment if args.experiment != '' else args.model
 wand_mode = 'online'
 # wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = "mmvae" , entity="clementchadebec", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')

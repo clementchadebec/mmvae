@@ -28,17 +28,17 @@ input_dim = (1,32,32)
 hidden_dim = 512
 
 
-classifier1, classifier2 = CirclesClassifier(), CirclesClassifier()
-path1 = '../experiments/classifier_squares/2022-06-28/model_4.pt'
-path2 = '../experiments/classifier_circles/2022-06-28/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+#classifier1, classifier2 = CirclesClassifier(), CirclesClassifier()
+#path1 = '../experiments/classifier_squares/2022-06-28/model_4.pt'
+#path2 = '../experiments/classifier_circles/2022-06-28/model_4.pt'
+#classifier1.load_state_dict(torch.load(path1))
+#classifier2.load_state_dict(torch.load(path2))
+## Set in eval mode
+#classifier1.eval()
+#classifier2.eval()
+## Set to cuda
+#classifier1.cuda()
+#classifier2.cuda()
 
 
 
