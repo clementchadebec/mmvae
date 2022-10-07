@@ -48,10 +48,19 @@
 #python3 src/validate.py --use-pretrain '../experiments/mmvae_mnist_svhn/2022-06-20/2022-06-20T18:39:18.5986649k3o_d2e/'
 
 # JMVAE-NF-DCCA-no-recon
-python3 src/bivae/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-10-03/2022-10-03T16:40:02.881385cdcfscvu/'
+#python3 src/bivae/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-10-03/2022-10-03T16:40:02.881385cdcfscvu/'
 
 # JMVAE-NF-DCCA
 #python3 src/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-07-20/2022-07-20T10:22:05.309847keje2c1k/'
 
 # JMVAE-NF-no-recon
 #python3 src/validate.py --use-pretrain '../experiments/clean_mnist_svhn/2022-06-30/2022-06-30T14:12:35.379016xez57359/'
+
+
+############## COMPUTE LIKELIHOODS ########################
+
+# JMVAE-NF-DCCA-no-recon
+python3 src/bivae/compute_likelihoods.py --use-pretrain '../experiments/clean_mnist_svhn/2022-10-03/2022-10-03T16:40:02.881385cdcfscvu/'
+
+# MMVAE
+#python3 src/bivae/compute_likelihoods.py --use-pretrain '../experiments/mmvae_mnist_svhn/2022-06-20/2022-06-20T18:39:18.5986649k3o_d2e/'

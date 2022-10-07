@@ -96,7 +96,6 @@ class Encoder_VAE_SVHN(BaseEncoder):
 
     def forward(self, x :  torch.Tensor):
         e = self.enc(x)
-        print(self.n_channels, e.shape)
         mu = self.c1(e).reshape(-1, self.latent_dim)
         lv = self.c2(e).reshape(-1, self.latent_dim)
         output = ModelOutput(

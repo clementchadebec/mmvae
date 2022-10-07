@@ -7,7 +7,7 @@ from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
-from bivae.data.transforms import contour_transform
+from bivae.data.transforms import contour_transform, random_grey_transform
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -326,18 +326,19 @@ class MNIST_OASIS_DL():
         test = DataLoader(test_mnist_oasis, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
+
 class MNIST_CONTOUR_DL():
 
     def __init__(self, data_path='/home/agathe/Code/datasets'):
         self.data_path = data_path
 
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=None):
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
 
 
         # load base datasets
 
         # Simple MNIST dataset
-        t1,s1 = MNIST_DL(self.data_path,'numbers').getDataLoaders(batch_size,shuffle,device, transform)
+        t1,s1 = MNIST_DL(self.data_path,'numbers').getDataLoaders(batch_size,shuffle,device, random_grey_transform)
         # Dataset with Canny Transform
         t2,s2 = MNIST_DL(self.data_path,'numbers').getDataLoaders(batch_size,shuffle,device, contour_transform)
 
@@ -361,5 +362,13 @@ class MNIST_CONTOUR_DL():
         test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
+
+
+class CELEBA_MASK_DL():
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
+        # to fill
+        return
+
 
 

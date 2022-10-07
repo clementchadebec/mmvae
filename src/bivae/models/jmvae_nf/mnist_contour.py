@@ -42,10 +42,8 @@ class JMVAE_NF_MNIST_CONTOUR(JMVAE_NF):
         vae_config = vae_config(input_dim, params.latent_dim)
 
 
-
-
-        dcca_encoders = load_dcca_mnist_contour()
-        encoder1, encoder2 = TwoStepsEncoder(self.dcca[0], params), TwoStepsEncoder(self.dcca[1], params)
+        # dcca_encoders = load_dcca_mnist_contour()
+        # encoder1, encoder2 = TwoStepsEncoder(dcca_encoders[0], params), TwoStepsEncoder(dcca_encoders[1], params)
 
         encoder1, encoder2 = None, None
         decoder1, decoder2 = None, None
@@ -65,7 +63,7 @@ class JMVAE_NF_MNIST_CONTOUR(JMVAE_NF):
         self.classifier2 = None
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
-        train, test, val = MNIST_CONTOUR_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = MNIST_CONTOUR_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
         return train, test, val
 
 
