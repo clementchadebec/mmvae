@@ -21,14 +21,18 @@ from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_M
 from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_VAE_CELEBA, Decoder_ResNet_AE_CELEBA
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
-from bivae.utils import extract_rayon
 from bivae.dataloaders import CELEBA_DL
 import torch.nn.functional as F
+from PIL import Image, ImageDraw, ImageFont
+from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape, update_details
+from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
-from bivae.dcca.models import load_dcca_mnist_svhn
+from bivae.dcca.models import load_dcca_celeba
+from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
+
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -58,12 +62,12 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         vae_config2 = vae_config(self.shape_mod2, params.latent_dim)
 
         # # First load the DCCA encoders
-        # self.dcca = load_dcca_mnist_svhn()
+        self.dcca = load_dcca_celeba()
         # # Then add the flows
-        # encoder1 = TwoStepsEncoder(self.dcca[0], params)
-        # encoder2 = TwoStepsEncoder(self.dcca[1], params)
-        encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
-        encoder2 = Encoder_VAE_MLP(vae_config2)
+        encoder1 = TwoStepsEncoder(self.dcca[0], params)
+        encoder2 = TwoStepsEncoder(self.dcca[1], params)
+        # encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
+        # encoder2 = Encoder_VAE_MLP(vae_config2)
 
         # Define the decoders
         decoder1, decoder2 = Decoder_ResNet_AE_CELEBA(vae_config1), Decoder_AE_MLP(vae_config2)
@@ -89,6 +93,55 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # self.classifier1, self.classifier2 = classifier1, classifier2
 
         self.recon_losses = ['mse', 'bce']
+
+    def attribute_array_to_image(self, tensor):
+        """tensor of size (n_batch, 1,1,40)
+
+        output size (3,64,64)
+        """
+        list_images=[]
+        for v in tensor:
+            img = Image.new('RGB', (100, 100), color=(0, 0, 0))
+            d = ImageDraw.Draw(img)
+            fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+            vector = v.squeeze()
+
+            text = f"Bald {vector[4]} \n" \
+                   f"Bangs {vector[5]}\n" \
+                   f"Big_Nose {vector[7]} \n" \
+                   f"Blond_Hair {vector[9]}\n" \
+                   f"Eyeglasses {vector[15]}\n" \
+                   f"Male {vector[20]}\n" \
+                   f"No_Beard {vector[24]}\n"
+
+            offset = fnt.getoffset(text)
+            d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
+
+            list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
+
+        return torch.stack(list_images).cuda() # nb_batch x 3 x 100 x 100
+
+    def generate(self,runPath, epoch, N= 8, save=False):
+        """Generate samples from sampling the prior distribution"""
+        self.eval()
+        with torch.no_grad():
+            data = []
+            if self.sampler is None:
+                pz = self.pz(*self.pz_params)
+                latents = pz.rsample(torch.Size([N])).squeeze()
+            else :
+                latents = self.sampler.sample(num_samples=N)
+            for d, vae in enumerate(self.vaes):
+                data.append(vae.decoder(latents)["reconstruction"])
+
+        if save:
+            data = [*adjust_shape(data[0],self.attribute_array_to_image(data[1]))]
+            file = ('{}/generate_{:03d}'+self.save_format).format(runPath, epoch)
+            save_samples(data,file)
+            wandb.log({'generate_joint' : wandb.Image(file)})
+        return data  # list of generations---one for each modality
+
+
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
         train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)

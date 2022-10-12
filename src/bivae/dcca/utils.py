@@ -29,15 +29,20 @@ def make_tensor(data_xy):
     data_y = np.asarray(data_y, dtype='int32')
     return data_x, data_y
 
-def svm_classify_svhn(outputs_train, outputs_test, C):
+def svm_classify_view(outputs_train, outputs_test, C, view = 0):
 
-    mnist_data_t, svhn_data_t, labels_t = outputs_train
-    mnist_data_s, svhn_data_s, labels_s = outputs_test
+    view_0_t, view_1_t, labels_t = outputs_train
+    view_0_s, view_1_s, labels_s = outputs_test
+
 
     print('training SVM...')
     clf = svm.LinearSVC(C=C, dual=False)
-    clf.fit(svhn_data_t, labels_t)
-    p = clf.predict(svhn_data_s)
+    if view==0:
+        clf.fit(view_0_t, labels_t)
+        p = clf.predict(view_0_s)
+    else:
+        clf.fit(view_1_t, labels_t)
+        p = clf.predict(view_1_s)
     test_acc = accuracy_score(labels_s, p)
 
     return test_acc
@@ -108,11 +113,13 @@ def unpack_data(dataB, device='cuda'):
         raise RuntimeError('Invalid data format {} -- check your dataloader!'.format(type(dataB)))
 
 
-def visualize_umap(z,classes):
+def visualize_umap(z,classes, save_file = None):
     z_embed = TSNE().fit_transform(z)
 
     fig = plt.figure()
     plt.scatter(z_embed[:,0], z_embed[:,1], c=classes)
+    if save_file is not None:
+        plt.savefig(save_file)
     return fig
 
 def save_encoders(model, path):
