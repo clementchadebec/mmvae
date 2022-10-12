@@ -35,7 +35,7 @@ class Solver():
 
         self.outdim_size = outdim_size
 
-        wandb.init(project = 'DCCA_celeba', entity = 'asenellart', config = {'batch_size' : batch_size,
+        wandb.init(project = 'DCCA_celeba', entity = 'clementchadebec', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None},
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     epoch_num = args.num_epochs
     batch_size = 800
-    train_loader,test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size=batch_size)
+    train_loader,test_loader, val_loader = CELEBA_DL('/gpfsscratch/rech/wlr/uhw48em/mmvae_data/').getDataLoaders(batch_size=batch_size)
 
 
     # the regularization parameter of the network

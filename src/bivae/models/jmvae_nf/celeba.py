@@ -29,7 +29,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
+from bivae.analysis import compute_accuracies
 from bivae.dcca.models import load_dcca_celeba
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 

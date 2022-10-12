@@ -25,9 +25,5 @@ bin/*.png
 bin/face_extract_vgg/
 
 doc/
-
-
-
-
-
+wandb/
 
