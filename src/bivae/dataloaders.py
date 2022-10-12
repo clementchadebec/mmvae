@@ -7,7 +7,7 @@ from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
-from bivae.data.transforms import contour_transform, random_grey_transform
+from bivae.data_utils.transforms import contour_transform, random_grey_transform
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
