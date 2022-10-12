@@ -12,6 +12,8 @@ from bivae.data.transforms import contour_transform, random_grey_transform
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
 
+path_to_my_datasets = '/home/agathe/Code/datasets'
+
 class BasicDataset(torch.utils.data.Dataset):
 
     def __init__(self, data, transform = None):
@@ -117,9 +119,9 @@ class MNIST_DL():
         else :
             tx = transform
         datasetC = datasets.MNIST if self.type == 'numbers' else datasets.FashionMNIST
-        train = DataLoader(datasetC('/home/agathe/Code/datasets/', train=True, download=True, transform=tx),
+        train = DataLoader(datasetC(path_to_my_datasets, train=True, download=True, transform=tx),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasetC('/home/agathe/Code/datasets/', train=False, download=True, transform=tx),
+        test = DataLoader(datasetC(path_to_my_datasets, train=False, download=True, transform=tx),
                           batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
@@ -132,9 +134,9 @@ class SVHN_DL():
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
         kwargs = {'num_workers': 8, 'pin_memory': True} if device == 'cuda' else {}
 
-        train = DataLoader(datasets.SVHN('/home/agathe/Code/datasets/svhn', split='train', download=True, transform=transform),
+        train = DataLoader(datasets.SVHN(path_to_my_datasets, split='train', download=True, transform=transform),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.SVHN('/home/agathe/Code/datasets/svhn', split='test', download=True, transform=transform),
+        test = DataLoader(datasets.SVHN(path_to_my_datasets, split='test', download=True, transform=transform),
                           batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
@@ -371,4 +373,23 @@ class CELEBA_MASK_DL():
         return
 
 
+from .datasets import CelebA
+from torchvision.transforms import ToTensor
+class CELEBA_DL():
+
+    def __init__(self, data_path=None):
+        self.data_path = data_path if data_path is not None else path_to_my_datasets
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
+
+        train_dataset = CelebA(self.data_path, 'train', transform=ToTensor())
+        test = CelebA(self.data_path, 'test', transform=ToTensor())
+        val = CelebA(self.data_path, 'val', transform=ToTensor())
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+
+        train_dataloader = DataLoader(train_dataset, batch_size, shuffle, **kwargs)
+        test_dataloader = DataLoader(test, batch_size, shuffle=False, **kwargs)
+        val_dataloader = DataLoader(val, batch_size,shuffle=False,**kwargs )
+        return train_dataloader, test_dataloader, val_dataloader
 

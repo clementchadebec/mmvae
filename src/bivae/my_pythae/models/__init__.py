@@ -15,26 +15,15 @@ and named likewise the model. The following modules can be found in this folder:
 """
 
 
-from .vae import VAE, VAEConfig
-from .base import BaseAE, BaseAEConfig
 
-from .vae import VAE, VAEConfig, my_VAE
-from .vae_iaf import VAE_IAF, VAE_IAF_Config, my_VAE_IAF
-from .vae_lin_nf import VAE_LinNF, VAE_LinNF_Config, my_VAE_LinNF
+from .vae import my_VAE
+from .vae_iaf import my_VAE_IAF
+from .vae_lin_nf import my_VAE_LinNF
 
 
 __all__ = [
-    "BaseAE",
-    "BaseAEConfig",
-
-    "VAE",
-    "VAEConfig",
 
     "my_VAE_LinNF",
-    "VAE_LinNF",
-    "VAE_LinNF_Config",
-    "VAE_IAF",
-    "VAE_IAF_Config",
     "my_VAE_IAF",
     "my_VAE"
 ]

@@ -224,13 +224,13 @@ def test(epoch, agg):
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
                 wandb.log(model.compute_metrics(data, runPath, epoch, classes))
-                model.sample_from_conditional(data, runPath,epoch)
+                # model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
-                    model.analyse(data, runPath, epoch, classes=classes)
-                    model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
+                    # model.analyse(data, runPath, epoch, classes=classes)
+                    # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
                     model.generate(runPath, epoch, N=32, save=True)
-                    model.generate_from_conditional(runPath, epoch, N=32, save=True)
+                    # model.generate_from_conditional(runPath, epoch, N=32, save=True)
                     if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
                         if epoch == 1:
                             print("Computing test histogram")

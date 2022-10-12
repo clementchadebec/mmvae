@@ -1,0 +1,1 @@
+{"loss_0_train": 457.94842529296875, "loss_1_train": 16.450971603393555, "loss_train": -474.3994140625, "kld_prior_train": 33.8894157409668, "reg_train": 0.0, "_timestamp": 1665568375.8646493, "_runtime": 20.6305193901062, "_step": 1, "beta_kl": 1, "_wandb": {"runtime": 75}}

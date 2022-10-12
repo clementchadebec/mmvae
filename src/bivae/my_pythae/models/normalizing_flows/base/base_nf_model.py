@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from pythae.data.datasets import BaseDataset
-from ...base.base_utils import ModelOutput
+from pythae.models.base.base_utils import ModelOutput
 from .base_nf_config import BaseNFConfig
 
 

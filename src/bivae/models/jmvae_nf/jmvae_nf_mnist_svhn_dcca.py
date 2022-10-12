@@ -13,8 +13,10 @@ from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels,
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
 from torchvision.utils import save_image
 import pythae
-from bivae.my_pythae.models import my_VAE_LinNF, VAE_LinNF_Config, my_VAE_IAF, VAE_IAF_Config, my_VAE, VAEConfig
-from bivae.my_pythae.models.nn import Encoder_VAE_MLP, Decoder_AE_MLP, Encoder_VAE_SVHN
+from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
+from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
+from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
+from bivae.models.nn import Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon

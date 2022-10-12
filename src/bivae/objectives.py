@@ -172,6 +172,9 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     details['kl1'], details['kl2'] , details['loss'] = kl1,kl2, loss
     return (loss - beta*(kl1+kl2), details) if epoch >= warmup else (loss, details)
 
+
+recon_loss_dict = {'mse' : F.mse_loss, 'bce' : F.binary_cross_entropy , 'l1' : F.l1_loss}
+
 def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
         model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
@@ -183,7 +186,7 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
 
-        F_loss = F.mse_loss if model.loss == 'mse' else F.l1_loss
+        F_loss = recon_loss_dict[model.recon_losses[m]]
 
         details[f'loss_{m}'] = F_loss(
                 recons[m].reshape(xm.shape[0], -1),

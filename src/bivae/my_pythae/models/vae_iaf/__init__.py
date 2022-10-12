@@ -14,10 +14,9 @@ Available samplers
     :nosignatures:
 """
 
-from .vae_iaf_config import VAE_IAF_Config
-from .vae_iaf_model import VAE_IAF
+
 from .vae_iaf_model_adapted import my_VAE_IAF
 
 
-__all__ = ["VAE_IAF", "VAE_IAF_Config", "my_VAE_IAF"]
+__all__ = [ "my_VAE_IAF"]
 

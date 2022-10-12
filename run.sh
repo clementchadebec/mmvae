@@ -61,7 +61,7 @@
 
 
 ###### Train from scratch ###### (no pretrained joint encoder)
-python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --no-recon True
+#python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --no-recon True
 
 
 ########################################################################################################################
@@ -71,6 +71,12 @@ python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_d
 #python3 src/bivae/main.py --experiment contour --model jnf_mnist_contour --obj jmvae_nf --latent-dim 16 --warmup 15 --epochs 30 --beta-prior 1
 
 
+
+########################################################################################################################
+######################################### CELEB-ATTRIBUTES #############################################################
+########################################################################################################################
+
+python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 30 --epochs 30 --beta-prior 1 --llik_scaling 1 --data-path '../data/'
 
 
 ########################################################################################################################

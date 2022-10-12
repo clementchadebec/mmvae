@@ -7,12 +7,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from pythae.data.datasets import BaseDataset
-from ..base.base_utils import ModelOutput
-from ..nn import BaseDecoder, BaseEncoder
+from pythae.models.base.base_utils import ModelOutput
+from pythae.models.nn import BaseDecoder, BaseEncoder
 from ..normalizing_flows import (PlanarFlow, PlanarFlowConfig, RadialFlow,
                                  RadialFlowConfig)
-from ..vae import VAE
-from .vae_lin_nf_config import VAE_LinNF_Config
+from pythae.models.vae import VAE
+from pythae.models.vae_lin_nf.vae_lin_nf_config import VAE_LinNF_Config
 
 
 class my_VAE_LinNF(VAE):

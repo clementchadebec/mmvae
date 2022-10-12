@@ -1,8 +1,8 @@
 # Define custom encoders architectures for the VAEs
 import torch
 from torch import nn
-from bivae.my_pythae.models.nn import BaseEncoder, BaseDecoder
-from bivae.my_pythae.models.base.base_utils import ModelOutput
+from pythae.models.nn import BaseEncoder, BaseDecoder
+from pythae.models.base.base_utils import ModelOutput
 
 
 class Encoder_VAE_MNIST(BaseEncoder):

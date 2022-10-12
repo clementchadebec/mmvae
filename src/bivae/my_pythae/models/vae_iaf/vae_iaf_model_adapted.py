@@ -6,12 +6,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ..base.base_utils import ModelOutput
-from ..nn import BaseDecoder, BaseEncoder
-from ..nn.default_architectures import Encoder_VAE_MLP
+from pythae.models.base.base_utils import ModelOutput
+from pythae.models.nn import BaseDecoder, BaseEncoder
 from ..normalizing_flows import IAF, IAFConfig
-from ..vae import VAE
-from .vae_iaf_config import VAE_IAF_Config
+from pythae.models.vae import VAE
+from pythae.models.vae_iaf.vae_iaf_config import VAE_IAF_Config
 
 
 class my_VAE_IAF(VAE):

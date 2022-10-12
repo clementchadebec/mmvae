@@ -197,7 +197,7 @@ class Multi_VAES(nn.Module):
                 _,_,ch,w,h = recon.shape
                 recon = recon.resize(n * 8, ch, w, h).cpu()
                 if _data.shape[1:] != recon.shape[1:]:
-                    _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
+                        _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
 
                 comp = torch.cat([_data, recon])
                 filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)

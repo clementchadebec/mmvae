@@ -6,11 +6,11 @@ import torch
 import torch.nn.functional as F
 
 from pythae.data.datasets import BaseDataset
-from ..base import BaseAE
-from ..base.base_utils import ModelOutput
-from ..nn import BaseDecoder, BaseEncoder
-from ..nn.default_architectures import Encoder_VAE_MLP
-from .vae_config import VAEConfig
+from pythae.models.base import BaseAE
+from pythae.models.base.base_utils import ModelOutput
+from pythae.models.nn import BaseDecoder, BaseEncoder
+from pythae.models.nn.default_architectures import Encoder_VAE_MLP
+from pythae.models.vae.vae_config import VAEConfig
 
 
 class my_VAE(BaseAE):

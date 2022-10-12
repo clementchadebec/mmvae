@@ -306,7 +306,7 @@ class add_channels(object):
             image = torch.cat([image, torch.zeros_like(image), torch.zeros_like(image)], dim=0)
         return image
 
-
+from math import *
 
 def adjust_shape(data_1, data_2):
 
@@ -320,8 +320,8 @@ def adjust_shape(data_1, data_2):
     w1,w2 = data_1.shape[2], data_2.shape[2]
     h1,h2 = data_1.shape[3], data_2.shape[3]
     h,w = max(h1,h2), max(w1,w2)
-    data_1 = F.pad(data_1, ((h-h1)//2, (h-h1)//2, (w-w1)//2, (w-w1)//2), mode='constant',value=0)
-    data_2 = F.pad(data_2, ((h-h2)//2, (h-h2)//2, (w-w2)//2, (w-w2)//2), 'constant', 0)
+    data_1 = F.pad(data_1, (floor((h-h1)/2), ceil((h-h1)/2), floor((w-w1)/2), ceil((w-w1)/2)), mode='constant',value=0)
+    data_2 = F.pad(data_2, (floor((h-h2)/2), ceil((h-h2)/2), floor((w-w2)/2), ceil((w-w2)/2)), 'constant', 0)
     return data_1, data_2
 
 def entropy(model, data, n = 20):

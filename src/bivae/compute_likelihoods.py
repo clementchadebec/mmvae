@@ -28,6 +28,7 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--use-pretrain', type=str, default='')
+parser.add_argument('--k', type=int, default = 1000)
 
 
 # args
@@ -111,8 +112,8 @@ def eval():
     with torch.no_grad():
         for i, dataT in enumerate(tqdm(test_loader)):
             data = unpack_data(dataT, device=device)
-            update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=1000))
-            update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=1000))
+            update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
+            update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
     print_mean_std(m_metrics,s_metrics)

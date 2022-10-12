@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ...base.base_utils import ModelOutput
+from pythae.models.base.base_utils import ModelOutput
 from ..base import BaseNF
 from .radial_flow_config import RadialFlowConfig
 
