@@ -76,7 +76,7 @@
 ######################################### CELEB-ATTRIBUTES #############################################################
 ########################################################################################################################
 
-python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
+#python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
 python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/'
 
 

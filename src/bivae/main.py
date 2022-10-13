@@ -123,6 +123,8 @@ skip_warmup = args.skip_warmup
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 pretrained_joint_path = '../experiments/clean_mnist_svhn/2022-06-29/2022-06-29T11:41:41.132687__5qri92/'
 # pretrained_joint_path = '../experiments/jmvae/2022-06-28/2022-06-28T17:25:01.03903846svjh2d/'
+
+
 min_epoch = 1
 
 if skip_warmup:
@@ -225,7 +227,6 @@ def test(epoch, agg):
                 # Compute accuracies
                 wandb.log(model.compute_metrics(data, runPath, epoch, classes))
                 model.sample_from_conditional(data, runPath,epoch)
-                1/0
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
                     # model.analyse(data, runPath, epoch, classes=classes)
@@ -244,7 +245,7 @@ def test(epoch, agg):
     agg['test_loss'].append(b_loss / len(val_loader.dataset))
     wandb.log({'test_loss' : b_loss / len(val_loader.dataset) })
     print('====>             Test loss: {:.4f}'.format(agg['test_loss'][-1]))
-
+    return b_loss / len(val_loader.dataset)
 
 
 
@@ -265,16 +266,20 @@ def estimate_log_marginal(K):
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
-
+        best_loss = torch.inf
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
 
-            # train(epoch, agg)
-            test(epoch, agg)
-            save_model(model, runPath + '/model.pt')
-            save_vars(agg, runPath + '/losses.pt')
+            train(epoch, agg)
+            test_loss = test(epoch, agg)
+            if test_loss < best_loss:
+                save_model(model, runPath + '/model.pt')
+                print("Saved model after improvement of {}".format(best_loss-test_loss))
+                best_loss = test_loss
+
+            save_vars(agg, runPath + '/losses_{}.pt'.format(epoch))
 
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)
