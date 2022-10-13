@@ -6,10 +6,8 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch import optim
 import datetime
+from bivae.utils import accuracy
 
-def accuracy(logits, labels):
-
-    return torch.sum(labels == torch.argmax(logits, dim=1))
 
 def BinLabels(targets):
     bin_labels = torch.zeros((targets.shape[0], 10))

@@ -1,6 +1,4 @@
-from .classifier_mnist import MnistClassifier, load_pretrained_mnist,load_pretrained_fashion
-from .classifier_SVHN import SVHNClassifier, load_pretrained_svhn
-from .classifier_empty_full import CirclesClassifier
+from .classifiers import *
 from .Quality_assess import GenerativeQualityAssesser, Inception_quality_assess, custom_mnist_fashion
 from .accuracies import compute_accuracies
 

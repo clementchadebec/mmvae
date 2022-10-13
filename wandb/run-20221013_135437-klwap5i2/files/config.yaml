@@ -258,6 +258,38 @@ _wandb:
       5: 1
       6:
       - 1
+    - 1: recon_loss_0_train
+      5: 1
+      6:
+      - 1
+    - 1: kld_0_train
+      5: 1
+      6:
+      - 1
+    - 1: recon_loss_1_train
+      5: 1
+      6:
+      - 1
+    - 1: kld_1_train
+      5: 1
+      6:
+      - 1
+    - 1: recon_loss_0_test
+      5: 1
+      6:
+      - 1
+    - 1: kld_0_test
+      5: 1
+      6:
+      - 1
+    - 1: recon_loss_1_test
+      5: 1
+      6:
+      - 1
+    - 1: kld_1_test
+      5: 1
+      6:
+      - 1
     python_version: 3.8.13
     start_time: 1665662077.311375
     t:
