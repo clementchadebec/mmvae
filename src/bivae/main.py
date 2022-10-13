@@ -85,7 +85,7 @@ learning_rate = 1e-3
 experiment_name = args.experiment if args.experiment != '' else args.model
 wand_mode = 'online'
 # wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="multimodal_vaes", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -224,7 +224,8 @@ def test(epoch, agg):
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
                 wandb.log(model.compute_metrics(data, runPath, epoch, classes))
-                # model.sample_from_conditional(data, runPath,epoch)
+                model.sample_from_conditional(data, runPath,epoch)
+                1/0
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
                     # model.analyse(data, runPath, epoch, classes=classes)
@@ -270,7 +271,7 @@ if __name__ == '__main__':
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
 
-            train(epoch, agg)
+            # train(epoch, agg)
             test(epoch, agg)
             save_model(model, runPath + '/model.pt')
             save_vars(agg, runPath + '/losses.pt')
