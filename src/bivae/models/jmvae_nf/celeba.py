@@ -103,7 +103,8 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         for v in tensor:
             img = Image.new('RGB', (100, 100), color=(0, 0, 0))
             d = ImageDraw.Draw(img)
-            fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+            #fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+            fnt = ImageFont.load_default()
             vector = v.squeeze()
 
             text = f"Bald {vector[4]} \n" \
@@ -114,7 +115,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
                    f"Male {vector[20]}\n" \
                    f"No_Beard {vector[24]}\n"
 
-            offset = fnt.getoffset(text)
+            offset = fnt.getbbox(text)
             d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
 
             list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
