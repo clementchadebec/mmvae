@@ -4,7 +4,9 @@ from ..objectives import cca_loss
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
 from pythae.models.nn.default_architectures import Encoder_AE_MLP
 from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_AE_CELEBA
+from pythae.models.base.base_utils import ModelOutput
 
+import numpy as np
 
 
 class DeepCCA_celeba(nn.Module):
@@ -31,13 +33,51 @@ class DeepCCA_celeba(nn.Module):
         return output1, output2
 
 
+class wrapper_encoder_lcca_celeb(nn.Module):
+
+    def __init__(self):
+        super(wrapper_encoder_lcca_celeb, self).__init__()
+        model1 = Encoder_ResNet_AE_CELEBA(VAEConfig((3, 64, 64), 40))
+        model1.load_state_dict(torch.load('../dcca/celeba/model1.pt'))
+        self.latent_dim = 40
+
+        self.encoder = model1
+        self.m = np.load('../dcca/celeba/l_cca_m.npy')[0]
+        self.w = np.load('../dcca/celeba/l_cca_w.npy')[0]
+
+    def forward(self, x):
+
+        h = self.encoder(x)['embedding'].cpu().numpy()
+        result = h - self.m.reshape([1, -1]).repeat(len(h), axis=0)
+        result = np.dot(result, self.w)
+        o = ModelOutput(embedding = torch.from_numpy(result).cuda().float())
+        return o
+
+class wrapper_encoder_lcca_attributes(nn.Module):
+
+    def __init__(self):
+        super(wrapper_encoder_lcca_attributes, self).__init__()
+        model2 = Encoder_AE_MLP(VAEConfig((1, 1, 40), 40))
+        model2.load_state_dict(torch.load('../dcca/celeba/model2.pt'))
+        self.latent_dim = 40
+
+        self.encoder = model2
+        self.m = np.load('../dcca/celeba/l_cca_m.npy')[1]
+        self.w = np.load('../dcca/celeba/l_cca_w.npy')[1]
+
+    def forward(self, x):
+
+        h = self.encoder(x)['embedding'].cpu().numpy()
+        result = h - self.m.reshape([1, -1]).repeat(len(h), axis=0)
+        result = np.dot(result, self.w)
+
+        o = ModelOutput(embedding = torch.from_numpy(result).cuda().float())
+        return o
+
 def load_dcca_celeba():
 
-    model1 = Encoder_ResNet_AE_CELEBA(VAEConfig((3,64,64), 40))
-    model2 = Encoder_AE_MLP(VAEConfig((1,1,40), 40))
-
-    model1.load_state_dict(torch.load('../dcca/celeba/model1.pt'))
-    model2.load_state_dict(torch.load('../dcca/celeba/model2.pt'))
+    model1 = wrapper_encoder_lcca_celeb()
+    model2 = wrapper_encoder_lcca_attributes()
 
     return [model1, model2]
 

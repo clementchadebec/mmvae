@@ -64,8 +64,8 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # # First load the DCCA encoders
         self.dcca = load_dcca_celeba()
         # # Then add the flows
-        encoder1 = TwoStepsEncoder(self.dcca[0], params)
-        encoder2 = TwoStepsEncoder(self.dcca[1], params)
+        encoder1 = TwoStepsEncoder(self.dcca[0], params, hidden_dim=40, num_hidden=3)
+        encoder2 = TwoStepsEncoder(self.dcca[1], params, hidden_dim=40,num_hidden=3)
         # encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
         # encoder2 = Encoder_VAE_MLP(vae_config2)
 
@@ -94,7 +94,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
         self.recon_losses = ['mse', 'bce']
 
-    def attribute_array_to_image(self, tensor):
+    def attribute_array_to_image(self, tensor, device='cuda'):
         """tensor of size (n_batch, 1,1,40)
 
         output size (3,64,64)
@@ -107,20 +107,22 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
             fnt = ImageFont.load_default()
             vector = v.squeeze()
 
-            text = f"Bald {vector[4]} \n" \
-                   f"Bangs {vector[5]}\n" \
-                   f"Big_Nose {vector[7]} \n" \
-                   f"Blond_Hair {vector[9]}\n" \
-                   f"Eyeglasses {vector[15]}\n" \
-                   f"Male {vector[20]}\n" \
-                   f"No_Beard {vector[24]}\n"
+
+
+            text = "Bald {:.1f} \n"\
+                   "Bangs {:.1f}\n"\
+                   "Big_Nose {:.1f} \n"\
+                   "Blond_Hair {:.1f}\n"\
+                   "Eyeglasses {:.1f}\n"\
+                   "Male {:.1f}\n"\
+                   "No_Beard {:.1f}\n".format(vector[4], vector[5], vector[7], vector[9], vector[15], vector[20], vector[24])
 
             offset = fnt.getbbox(text)
             d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
 
             list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
 
-        return torch.stack(list_images).cuda() # nb_batch x 3 x 100 x 100
+        return torch.stack(list_images).to(device) # nb_batch x 3 x 100 x 100
 
     def generate(self,runPath, epoch, N= 8, save=False):
         """Generate samples from sampling the prior distribution"""
@@ -142,6 +144,32 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
             wandb.log({'generate_joint' : wandb.Image(file)})
         return data  # list of generations---one for each modality
 
+    def sample_from_conditional(self, data, runPath, epoch, n=10):
+        """Sample from conditional with vector attributes transformed into words"""
+
+        bdata = [d[:8] for d in data]
+        self.eval()
+        samples = self._sample_from_conditional(bdata, n)
+
+        for r, recon_list in enumerate(samples):
+            for o, recon in enumerate(recon_list):
+                _data = bdata[r].cpu()
+                recon = torch.stack(recon)
+                _,_,ch,w,h = recon.shape
+                recon = recon.resize(n * 8, ch, w, h).cpu()
+
+                if r == 0 and o == 1:
+                    recon = self.attribute_array_to_image(recon, device='cpu')
+                elif r == 1 and o == 0:
+                    _data = self.attribute_array_to_image(_data, device='cpu')
+
+                if _data.shape[1:] != recon.shape[1:]:
+                        _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
+
+                comp = torch.cat([_data, recon])
+                filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
+                save_image(comp, filename)
+                wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
