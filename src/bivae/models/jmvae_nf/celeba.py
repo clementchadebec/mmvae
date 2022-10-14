@@ -64,8 +64,8 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # # First load the DCCA encoders
         self.dcca = load_dcca_celeba()
         # # Then add the flows
-        encoder1 = TwoStepsEncoder(self.dcca[0], params)
-        encoder2 = TwoStepsEncoder(self.dcca[1], params)
+        encoder1 = TwoStepsEncoder(self.dcca[0], params, hidden_dim=40, num_hidden=3)
+        encoder2 = TwoStepsEncoder(self.dcca[1], params, hidden_dim=40,num_hidden=3)
         # encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
         # encoder2 = Encoder_VAE_MLP(vae_config2)
 

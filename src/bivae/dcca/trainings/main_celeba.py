@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     # if a linear CCA should get applied on the learned features extracted from the networks
     # it does not affect the performance on noisy MNIST significantly
-    apply_linear_cca = False
+    apply_linear_cca = True
     # end of parameters section
     ############
 
@@ -205,7 +205,11 @@ if __name__ == '__main__':
                     learning_rate, reg_par, device=device)
 
     solver.fit(train_loader, checkpoint=save_to)
-    # TODO: Save l_cca model if needed
+
+    # Save parameters for the lcca
+    print(l_cca.w[0].shape)
+    np.save(str(save_to) + '/l_cca_w.npy', l_cca.w)
+    np.save(str(save_to) + '/l_cca_m.npy', l_cca.m)
 
 
     # Training and testing of SVM with linear kernel on the view 1 with new features

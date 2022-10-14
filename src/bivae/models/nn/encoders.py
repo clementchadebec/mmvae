@@ -175,7 +175,7 @@ class TwoStepsDecoder(BaseDecoder):
 
 class TwoStepsEncoder(BaseEncoder):
     """Defines a two-step encoder, with the first step being pretrained and requires no grad"""
-    def __init__(self, pretrained_encoder,args):
+    def __init__(self, pretrained_encoder,args, hidden_dim=512, num_hidden=3):
 
         BaseEncoder.__init__(self)
         self.first_encoder = pretrained_encoder
@@ -200,6 +200,7 @@ class TwoStepsEncoder(BaseEncoder):
 
         with torch.no_grad():
             h = self.first_encoder(x).embedding
+
         h1 = self.sec_encoder(h)
         out = ModelOutput(
             embedding = self.embedding(h1),
