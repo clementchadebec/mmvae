@@ -19,6 +19,7 @@ from .multi_vaes import Multi_VAES
 #from .jmvae_nf import JMVAE_NF_DCCA_MNIST_SVHN as VAE_jnf_mnist_svhn_dcca
 #from .jmvae_nf import JMVAE_NF_MNIST_CONTOUR as VAE_jnf_mnist_contour
 from .jmvae_nf import JMVAE_NF_CELEBA as VAE_jnf_celeba
+from .jmvae_nf import JMVAEGAN_NF_CELEBA as VAE_jnfgan_celeba
 
 __all__ = [ 
         #'VAE_mnist_svhn',
@@ -29,6 +30,7 @@ __all__ = [
         #    'VAE_mnist_fashion',
         #    'VAE_jnf_mnist_svhn_dcca',
         #    'VAE_jnf_mnist_contour',
-            'VAE_jnf_celeba'
+            'VAE_jnf_celeba',
+            'VAE_jnfgan_celeba'
 
             ]

@@ -1,5 +1,6 @@
 # JMVAE_NF specification for CelebA experiment
 
+from inspect import ArgSpec
 from itertools import combinations
 import numpy as np
 import torch
@@ -37,7 +38,6 @@ from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoSteps
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
 # Define the classifiers for analysis
-
 
 class JMVAE_NF_CELEBA(JMVAE_NF):
 
@@ -178,11 +178,20 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
 
 
+class JMVAEGAN_NF_CELEBA(JMVAE_NF_CELEBA):
+
+    def __init__(self, params):
+        super().__init__(params)
+
+        discriminator_args = params
+        discriminator_args.latent_dim = 1
+        self.disciminator = Encoder_ResNet_VAE_CELEBA(discriminator_args)
+
+        self.reconstruction_layer = params.reconstruction_layer
+        self.adversarial_loss_scale = params.adversarial_loss_scale
 
 
-
-
-
+       
 
 
 
