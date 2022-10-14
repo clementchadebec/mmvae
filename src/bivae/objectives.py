@@ -227,11 +227,11 @@ def m_jmvaegan_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
         if m == 0:
             N = z_xy.shape[0]  # batch size
 
-            #z_prior = torch.randn_like(z_xy, device=x.device).requires_grad_(True)
+            z_prior = torch.randn_like(z_xy, device=xm.device)#.requires_grad_(True)
 
             # feature maps of true data
             true_discr_layer = model.discriminator(
-                x, output_layer_levels=[model.reconstruction_layer]
+                xm, output_layer_levels=[model.reconstruction_layer]
             )[f"embedding_layer_{model.reconstruction_layer}"]
 
             # feature maps of recon data
@@ -249,28 +249,28 @@ def m_jmvaegan_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
 
             encoder_loss = encoder_loss - recon_loss
 
-            #gen_prior = model.decoder(z_prior).reconstruction
+            gen_prior = model.vaes[0].decoder(z_prior).reconstruction
 
-            true_adversarial_score = model.discriminator(x).embedding.flatten()
+            true_adversarial_score = torch.sigmoid(model.discriminator(xm).embedding.flatten())
             # gen_adversarial_score = self.discriminator(recon_x).embedding.flatten()
-            #prior_adversarial_score = model.discriminator(gen_prior).embedding.flatten()
+            prior_adversarial_score = torch.sigmoid(model.discriminator(gen_prior).embedding.flatten())
 
-            true_labels = torch.ones(N, requires_grad=False).to(x.device)
-            fake_labels = torch.zeros(N, requires_grad=False).to(x.device)
+            true_labels = torch.ones(N, requires_grad=False).to(xm.device)
+            fake_labels = torch.zeros(N, requires_grad=False).to(xm.device)
 
             original_dis_cost = F.binary_cross_entropy(
                 true_adversarial_score, true_labels
             ).sum()  # original are true
-            #prior_dis_cost = F.binary_cross_entropy(
-            #    prior_adversarial_score, fake_labels
-            #)  # prior is false
+            prior_dis_cost = F.binary_cross_entropy(
+                prior_adversarial_score, fake_labels
+            ).sum()  # prior is false
             # gen_cost =  F.binary_cross_entropy(
             #   gen_adversarial_score, fake_labels
             # ) # generated are false
 
             discriminator_loss = discriminator_loss - (
                 (original_dis_cost)
-                #+ (prior_dis_cost)
+                + (prior_dis_cost)
                 # +
                 # (gen_cost)
             ).sum()
@@ -304,23 +304,27 @@ def m_jmvaegan_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
 
             F_loss = recon_loss_dict[model.recon_losses[m]]
 
-            details[f'loss_{m}'] = F_loss(
+            
+            loss_1 = F_loss(
                     recons[m].reshape(xm.shape[0], -1),
                     xm.reshape(xm.shape[0], -1),
                     reduction="none",
                 ).sum()*model.lik_scaling[m]
 
-            encoder_loss = encoder_loss - details[f'loss_{m}']
-            decoder_loss = decoder_loss - details[f'loss_{m}']
+            details[f'loss_{m}'] = loss_1.item()
+
+            encoder_loss = encoder_loss - loss_1#details[f'loss_{m}']
+            decoder_loss = decoder_loss - loss_1#details[f'loss_{m}']
 
 
-    details['encoder_loss'] = encoder_loss
-    details['decoder_loss'] = decoder_loss
-    details['discriminator_loss'] = discriminator_loss
+    details['encoder_loss'] = encoder_loss.item()
+    details['decoder_loss'] = decoder_loss.item()
+    details['discriminator_loss'] = discriminator_loss.item()
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
     # print(list(model.joint_encoder.parameters())[0].requires_grad)
-    details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
+    kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
+    details['kld_prior'] = kld.item()
     # Approximate the posterior
     if epoch >= warmup:
         reg, det = model.compute_kld(x)
@@ -333,8 +337,12 @@ def m_jmvaegan_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
         return (- details['reg'], details)
 
     else:
-        encoder_loss = encoder_loss - beta_prior*details['kld_prior']
-        return (encoder_loss, decoder_loss, discriminator_loss, details)
+        encoder_loss = encoder_loss - beta_prior*kld
+        return (
+            encoder_loss,
+            decoder_loss,
+            discriminator_loss,  
+            details)
 
 
 

@@ -185,7 +185,7 @@ class JMVAEGAN_NF_CELEBA(JMVAE_NF_CELEBA):
 
         discriminator_args = params
         discriminator_args.latent_dim = 1
-        self.disciminator = Encoder_ResNet_VAE_CELEBA(discriminator_args)
+        self.discriminator = Encoder_ResNet_VAE_CELEBA(discriminator_args)
 
         self.reconstruction_layer = params.reconstruction_layer
         self.adversarial_loss_scale = params.adversarial_loss_scale
