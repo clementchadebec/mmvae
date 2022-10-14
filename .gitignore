@@ -27,3 +27,4 @@ bin/face_extract_vgg/
 doc/
 wandb/
 
+mmvae_data

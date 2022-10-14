@@ -31,7 +31,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
                     choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'
-                             ,'telbo_nf', 'm_jmvaegan_nf'],
+                             ,'telbo_nf', 'jmvaegan_nf'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -164,7 +164,7 @@ joint_optimizer = optim.Adam(model.joint_encoder.parameters(),
                        lr=learning_rate, amsgrad=True)
 decoder_optimizer = optim.Adam(model.vaes.parameters(),
                        lr=learning_rate, amsgrad=True)
-dis_opmtimizer = optim.Adam(model.discriminator.parameters(),
+dis_optimizer = optim.Adam(model.discriminator.parameters(),
                        lr=learning_rate, amsgrad=True)
 
 
@@ -205,10 +205,10 @@ def train(epoch, agg):
             full_optimizer.step()
 
         else:
-
+            model.zero_grad()
             joint_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
-            dis_opmtimizer.zero_grad()
+            dis_optimizer.zero_grad()
 
             encoder_loss, decoder_loss, discriminator_loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
 
@@ -216,17 +216,40 @@ def train(epoch, agg):
             decoder_loss = -decoder_loss
             discriminator_loss = -discriminator_loss
 
-            encoder_loss.backward(retain_graph=True)
-            decoder_loss.backward(retain_graph=True)
-            discriminator_loss.backward()
+            update_encoder = True
+            update_discriminator = True
+            update_decoder = True
 
-            loss = encoder_loss + decoder_loss + discriminator_loss
+            if update_encoder:
+                joint_optimizer.zero_grad()
+                encoder_loss.backward(retain_graph=True)
+
+            if update_decoder:
+                decoder_optimizer.zero_grad()
+                decoder_loss.backward(retain_graph=True)
+
+            if update_discriminator:
+                dis_optimizer.zero_grad()
+                discriminator_loss.backward()
+
+            if update_encoder:
+                joint_optimizer.step()
+
+            if update_decoder:
+                decoder_optimizer.step()
+
+            if update_discriminator:
+                dis_optimizer.step()
+
+
+            loss = (encoder_loss + decoder_loss + discriminator_loss).detach()
 
         b_loss += loss.item()
         update_details(b_details, details)
         # print('after update_det',b_details['loss'])
         if args.print_freq > 0 and i % args.print_freq == 0:
             print("iteration {:04d}: loss: {:6.3f} details : {}".format(i, loss.item() / args.batch_size, b_details['loss_0']/b_details['loss_1']))
+    print(b_details)
     b_details = {k + '_train': b_details[k]/len(train_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
     agg['train_loss'].append(b_loss / len(train_loader.dataset))
@@ -258,35 +281,35 @@ def test(epoch, agg):
                 loss.backward()
                 full_optimizer.step()
 
-        else:
+            else:
 
-            encoder_loss, decoder_loss, discriminator_loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
+                encoder_loss, decoder_loss, discriminator_loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
 
-            encoder_loss = -encoder_loss
-            decoder_loss = -decoder_loss
-            discriminator_loss = -discriminator_loss
+                encoder_loss = -encoder_loss
+                decoder_loss = -decoder_loss
+                discriminator_loss = -discriminator_loss
 
-            loss = encoder_loss + decoder_loss + discriminator_loss
-            
-        b_loss += loss.item()
-        update_details(b_details, details)
-        if i == 0:
-            wandb.log({'epoch' : epoch})
-            # Compute accuracies
-            wandb.log(model.compute_metrics(data, runPath, epoch, classes))
-            model.sample_from_conditional(data, runPath,epoch)
-            model.reconstruct(data, runPath, epoch)
-            if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
-                # model.analyse(data, runPath, epoch, classes=classes)
-                # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
-                model.generate(runPath, epoch, N=32, save=True)
-                # model.generate_from_conditional(runPath, epoch, N=32, save=True)
-                if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
-                    if epoch == 1:
-                        print("Computing test histogram")
-                        plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
-                        plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
-                    model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
+                loss = encoder_loss + decoder_loss + discriminator_loss
+
+            b_loss += loss.item()
+            update_details(b_details, details)
+            if i == 0:
+                wandb.log({'epoch' : epoch})
+                # Compute accuracies
+                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                model.sample_from_conditional(data, runPath,epoch)
+                model.reconstruct(data, runPath, epoch)
+                if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
+                    # model.analyse(data, runPath, epoch, classes=classes)
+                    # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
+                    model.generate(runPath, epoch, N=32, save=True)
+                    # model.generate_from_conditional(runPath, epoch, N=32, save=True)
+                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
+                        if epoch == 1:
+                            print("Computing test histogram")
+                            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
+                            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
+                        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
 
     b_details = {k + '_test': b_details[k] / len(val_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
