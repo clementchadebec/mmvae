@@ -11,7 +11,7 @@
 ##SBATCH --cpus-per-task=3           # nombre de coeurs CPU par tache (pour gpu_p2 : 1/8 du noeud 8-GPU)
 # /!\ Attention, "multithread" fait reference à l'hyperthreading dans la terminologie Slurm
 #SBATCH --hint=nomultithread         # hyperthreading desactive
-#SBATCH --time=10:00:00              # temps maximum d'execution demande (HH:MM:SS)
+#SBATCH --time=20:00:00              # temps maximum d'execution demande (HH:MM:SS)
 #SBATCH --output=logs/%x_%A_%a.out        # nom du fichier de sortie
 #SBATCH --error=logs/%x_%A_%a.out         # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0               # 20 travaux en tout mais 5 travaux max dans la file
@@ -31,6 +31,5 @@ wandb offline
 set -x
 
 #python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
-python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '/gpfsscratch/rech/wlr/uhw48em/mmvae_data/'
-
-
+#python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '/gpfsscratch/rech/wlr/uhw48em/mmvae_data/' --no-recon True
+python3 src/bivae/main_vaegan.py --experiment celeba --model jnfgan_celeba --obj jmvaegan_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '/gpfsscratch/rech/wlr/uhw48em/mmvae_data/'  --no-recon True --reconstruction_layer 3 --adversarial_loss_scale 0.999
