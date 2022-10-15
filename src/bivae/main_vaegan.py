@@ -76,7 +76,7 @@ parser.add_argument('--fix-jencoder', type=bool, default=True)
 parser.add_argument('--no-recon', type=bool, default=False)
 parser.add_argument('--freq_analytics', type=int, default=5)
 parser.add_argument('--loss', type=str, default = 'mse')
-parser.add_argument('--reconstruction_layer', type=int, default = 3)
+parser.add_argument('--reconstruction_layer', type=list, default = [3])
 parser.add_argument('--adversarial_loss_scale', type=float, default = 0.9)
 
 # args
@@ -87,7 +87,7 @@ learning_rate = 1e-3
 experiment_name = args.experiment if args.experiment != '' else args.model
 wand_mode = 'online'
 # wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="multimodal_vaes", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="clementchadebec", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -210,15 +210,22 @@ def train(epoch, agg):
             decoder_optimizer.zero_grad()
             dis_optimizer.zero_grad()
 
-            encoder_loss, decoder_loss, discriminator_loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
+            (
+            encoder_loss,
+            decoder_loss,
+            discriminator_loss,
+            update_encoder,
+            update_decoder,
+            update_discriminator,  
+            details) = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
 
             encoder_loss = -encoder_loss
             decoder_loss = -decoder_loss
             discriminator_loss = -discriminator_loss
 
-            update_encoder = True
-            update_discriminator = True
-            update_decoder = True
+            #update_encoder = True
+            #update_discriminator = True
+            #update_decoder = True
 
             if update_encoder:
                 joint_optimizer.zero_grad()
@@ -269,7 +276,7 @@ def test(epoch, agg):
     b_loss = 0
     b_details = {}
     with torch.no_grad():
-        for i, dataT in enumerate(val_loader):
+        for i, dataT in enumerate(tqdm(val_loader)):
             data = unpack_data(dataT, device=device)
             classes = dataT[0][1], dataT[1][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
@@ -283,7 +290,14 @@ def test(epoch, agg):
 
             else:
 
-                encoder_loss, decoder_loss, discriminator_loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
+                (
+                encoder_loss,
+                decoder_loss,
+                discriminator_loss,
+                _,
+                _,
+                _,  
+                details) = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
 
                 encoder_loss = -encoder_loss
                 decoder_loss = -decoder_loss
@@ -296,20 +310,20 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
-                model.sample_from_conditional(data, runPath,epoch)
-                model.reconstruct(data, runPath, epoch)
-                if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
-                    # model.analyse(data, runPath, epoch, classes=classes)
-                    # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
-                    model.generate(runPath, epoch, N=32, save=True)
-                    # model.generate_from_conditional(runPath, epoch, N=32, save=True)
-                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
-                        if epoch == 1:
-                            print("Computing test histogram")
-                            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
-                            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
-                        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
+                #wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                #model.sample_from_conditional(data, runPath,epoch)
+                model.reconstruct(data[:25], runPath, epoch)
+                #if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
+                #    # model.analyse(data, runPath, epoch, classes=classes)
+                #    # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
+                #    model.generate(runPath, epoch, N=32, save=True)
+                #    # model.generate_from_conditional(runPath, epoch, N=32, save=True)
+                #    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
+                #        if epoch == 1:
+                #            print("Computing test histogram")
+                #            plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
+                #            plot_hist(extract_rayon(data[1].unsqueeze(1)), runPath + '/hist_test_1.png')
+                #        model.analyse_rayons(data, dataT[0][2],dataT[1][2],runPath, epoch, [dataT[0][1], 1-dataT[0][1]])
 
     b_details = {k + '_test': b_details[k] / len(val_loader.dataset) for k in b_details.keys()}
     wandb.log(b_details)
