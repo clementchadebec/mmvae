@@ -417,8 +417,10 @@ class CelebA(VisionDataset):
         return [(X, target[0]), (target.float().reshape(1,1,40), target[0])]
 
     def __len__(self) -> int:
-        #if self.split == 'train':
-        #    return 50000
+        if self.split == 'train':
+            return 20000
+        elif self.split == 'val':
+            return 1000
         return len(self.attr)
 
     def extra_repr(self) -> str:

@@ -19,7 +19,7 @@ from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from bivae.models.nn import Encoder_VAE_SVHN
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
-from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_VAE_CELEBA, Decoder_ResNet_AE_CELEBA
+from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_VAE_CELEBA, Decoder_ResNet_AE_CELEBA, Discriminator_Conv_CELEBA
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from bivae.dataloaders import CELEBA_DL
@@ -185,6 +185,8 @@ class JMVAEGAN_NF_CELEBA(JMVAE_NF_CELEBA):
 
         discriminator_args = params
         discriminator_args.latent_dim = 1
+        discriminator_args.discriminator_input_dim = (3, 64, 64)
+        #self.discriminator = Discriminator_Conv_CELEBA(discriminator_args)
         self.discriminator = Encoder_ResNet_VAE_CELEBA(discriminator_args)
 
         self.reconstruction_layer = params.reconstruction_layer
