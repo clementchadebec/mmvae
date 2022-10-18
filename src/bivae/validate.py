@@ -34,7 +34,9 @@ info = parser.parse_args()
 
 # load args from disk if pretrained model path is given
 pretrained_path = info.use_pretrain
-args = torch.load(pretrained_path + 'args.rar')
+with open(pretrained_path + 'args.json', 'r') as fcc_file:
+    args = argparse.Namespace()
+    args.__dict__.update(json.load(fcc_file))
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
@@ -94,8 +96,8 @@ print(f"Train : {len(train_loader.dataset)},"
 
 
 # Define a sampler for generating new samples
-model.sampler = GaussianMixtureSampler()
-# model.sampler = None
+# model.sampler = GaussianMixtureSampler()
+model.sampler = None
 
 # Define the parameters for assessing quality
 # assesser = Inception_quality_assess(model)
@@ -107,19 +109,19 @@ def eval():
 
     model.eval()
     # Compute all train latents
-    model.compute_all_train_latents(train_loader)
+    # model.compute_all_train_latents(train_loader)
 
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
         model.sampler.fit_from_latents(model.train_latents[0])
     b_metrics = {}
     with torch.no_grad():
-        for i, dataT in enumerate(test_loader):
-            data = unpack_data(dataT, device=device)
-            # print(dataT)
-            classes = dataT[0][1], dataT[1][1]
-
-            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
+        # for i, dataT in enumerate(test_loader):
+        #     data = unpack_data(dataT, device=device)
+        #     # print(dataT)
+        #     classes = dataT[0][1], dataT[1][1]
+        #
+        #     update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
             # if i == 0:
             #     model.sample_from_conditional(data, runPath, epoch=0)
             #     model.reconstruct(data, runPath, epoch=0)
@@ -128,12 +130,14 @@ def eval():
             #     model.generate(runPath, epoch=0, N=32, save=True)
             #     model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
 
-        # for i in range(1):
-        #     # Compute fids 10 times to have a std
-        #     update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
-        #
-        #     cond_gen_data = model.generate_from_conditional(runPath, 0, N = assesser.n_samples)
-        #     np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data )
+        for i in range(1):
+            # Compute fids 10 times to have a std
+            # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
+
+            model.compute_fid(batch_size=50)
+
+            # cond_gen_data = model.generate_from_conditional(runPath, 0, N = assesser.n_samples)
+            # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data )
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

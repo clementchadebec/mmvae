@@ -1,0 +1,43 @@
+{
+    "os": "Linux-5.15.0-50-generic-x86_64-with-glibc2.17",
+    "python": "3.8.13",
+    "heartbeatAt": "2022-10-18T13:00:56.013102",
+    "startedAt": "2022-10-18T13:00:55.529416",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [
+        "--experiment",
+        "celeba",
+        "--model",
+        "mmvae_celeba",
+        "--obj",
+        "dreg",
+        "--latent-dim",
+        "64",
+        "--epochs",
+        "100",
+        "--dist",
+        "normal",
+        "--K",
+        "10",
+        "--data-path",
+        "../data/",
+        "--llik_scaling",
+        "1"
+    ],
+    "state": "running",
+    "program": "src/bivae/main.py",
+    "codePath": "src/bivae/main.py",
+    "git": {
+        "remote": "git@github.com:AgatheSenellart/mmvae.git",
+        "commit": "e35697e0e99a21956366f588b3be2938079fcdff"
+    },
+    "email": "agathe.senellart@polytechnique.edu",
+    "root": "/home/agathe/Code/vaes/mmvae/mmvae",
+    "host": "agathe-Precision-7760",
+    "username": "agathe",
+    "executable": "/home/agathe/Code/miniconda3/envs/myenv38/bin/python3"
+}

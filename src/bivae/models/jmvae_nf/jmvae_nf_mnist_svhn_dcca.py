@@ -85,6 +85,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         params.llik_scaling, 1)
         self.to_tensor = True
 
+        self.px_z = [dist.Normal, dist.Normal]
         # Set the classifiers
         # self.classifier1, self.classifier2 = classifier1, classifier2
 

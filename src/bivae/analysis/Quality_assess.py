@@ -63,7 +63,7 @@ class GenerativeQualityAssesser():
         for encoder in self.encoders:
             encoder.eval()
         pred_arr = [np.empty((self.n_samples,d)) for d in self.dims]
-        labels = [np.empty(self.n_samples) for _ in self.dims]
+        # labels = [np.empty(self.n_samples) for _ in self.dims]
         start_idx = 0
 
         for i, batch in enumerate(tqdm(dataloader)):
@@ -76,14 +76,14 @@ class GenerativeQualityAssesser():
                     pred = self.encoders[m](batch[m]) # batchsize x dims[m]
 
                 pred_arr[m][start_idx:start_idx + pred.shape[0]] = pred
-                labels[m][start_idx:start_idx + pred.shape[0]] = classes[m]
+                # labels[m][start_idx:start_idx + pred.shape[0]] = classes[m]
 
             start_idx = start_idx + pred.shape[0]
 
         pred_arr = np.concatenate(pred_arr, axis=1)
         print("pred_arr shape ", pred_arr.shape)
-        return pred_arr, labels
-
+        # return pred_arr, labels
+        return pred_arr, None
 
     def compute_fid_prd(self, gen_dataloader, runPath, compute_unimodal=False):
         """
@@ -132,7 +132,7 @@ class GenerativeQualityAssesser():
 
 class Inception_quality_assess(GenerativeQualityAssesser):
 
-    batchsize = 100
+    batchsize = 50
     n_samples = 100*batchsize
     gen_transform = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
     nb_clusters = 10

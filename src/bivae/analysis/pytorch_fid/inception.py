@@ -334,14 +334,14 @@ class wrapper_inception(nn.Module):
         super().__init__()
         self.dims = dims
         self.block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
-        self.model = InceptionV3([self.block_idx]).to(device)
+        self.model = InceptionV3([self.block_idx]).to(device).eval()
 
 
 
     def forward(self, x):
-
-        pred = self.model(x)[0]
-        return pred.squeeze(3).squeeze(2).cpu().numpy()
+        with torch.no_grad():
+            pred = self.model(x)[0]
+            return pred.squeeze(3).squeeze(2).cpu().numpy()
 
 
 

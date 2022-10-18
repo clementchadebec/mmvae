@@ -45,8 +45,6 @@ class celeba(MMVAE):
         vae_config2 = vae_config((1,1,40), params.latent_dim)
         vae = my_VAE
 
-        self.px_z = [dist.Normal, dist.Bernoulli]
-
         encoder1, encoder2 = Encoder_ResNet_VAE_CELEBA(vae_config1), Encoder_VAE_MLP(vae_config2) # Standard MLP for
         # encoder1, encoder2 = None, None
         decoder1, decoder2 = Decoder_ResNet_AE_CELEBA(vae_config1), Decoder_AE_MLP(vae_config2)
@@ -65,6 +63,9 @@ class celeba(MMVAE):
         self.vaes[1].modelName = 'attributes'
         self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
         self.to_tensor = True
+        self.px_z = [dist.Normal, dist.Bernoulli]
+        self.qz_x = dist.Normal
+        # self.pz = dist.Normal
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=50000)

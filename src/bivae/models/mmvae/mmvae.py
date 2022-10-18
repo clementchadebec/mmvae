@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributions as dist
+import torch.nn.functional as F
 
 from ..multi_vaes import Multi_VAES
 from bivae.utils import Constants, unpack_data, update_details
@@ -41,7 +42,11 @@ class MMVAE(Multi_VAES):
             o =  vae(torch.cat([x[m] for _ in range(K)]))
             # print(o.mu.shape)
             mu =  o.mu.reshape(K,len(x[m]), -1)
-            std =  o.std.reshape(K,len(x[m]), -1)
+
+            # std = F.softmax(o.log_var, dim=-1) * o.log_var.size(-1) + Constants.eta
+            std =  o.std
+            std =std.reshape(K,len(x[m]), -1)
+
             qz_x_params.append((mu,std))
             # print(m,torch.max(o.log_var))
             qz_xs.append(self.qz_x(mu, std))

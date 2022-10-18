@@ -263,11 +263,12 @@ class Multi_VAES(nn.Module):
                 # Compute p(x|z) for z in latents and for each modality m
                 mus = self.vaes[mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                 x_m = data[mod][i]  # (nb_channels, w, h)
-                lpx_z = -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                    2 * np.pi)
+                if self.px_z[mod] == dist.Bernoulli:
+                    lp = self.px_z[mod](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                else:
+                    lp = self.px_z[mod](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
 
-
-                ln_pxs.append(torch.logsumexp(lpx_z, dim=0))
+                ln_pxs.append(torch.logsumexp(lp, dim=0))
 
                 # next batch
                 start_idx += batch_size_K
@@ -292,7 +293,7 @@ class Multi_VAES(nn.Module):
         # Compute the first term
         t1 = self.compute_joint_ll_from_uni(data, cond_mod, K, batch_size_K)[f'joint_ll_from_{cond_mod}']
         t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
-
+        print(t1, t2)
         return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
 
 

@@ -82,10 +82,11 @@
 # JMVAE-NF-DCCA
 #python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup True --no-recon True
 
-# JMVAE WITHOUT NF
+# JMVAE WITHOUT NF, WITHOUT DCCA
 #python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup True --no-nf --no-recon True
+
 # MMVAE
- python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 1 --data-path ../data/ --llik_scaling 1
+ python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 10 --data-path ../data/ --llik_scaling 1
 
 ########################################################################################################################
 ########################################### CIRCLES-SQUARES INVERSE ####################################################

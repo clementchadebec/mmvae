@@ -77,6 +77,8 @@ parser.add_argument('--no-recon', type=bool, default=False)
 parser.add_argument('--freq_analytics', type=int, default=5)
 parser.add_argument('--loss', type=str, default = 'mse')
 
+parser.add_argument('--dcca', action='store_true', default=False)
+
 # args
 args = parser.parse_args()
 learning_rate = 1e-3
