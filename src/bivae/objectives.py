@@ -1,3 +1,4 @@
+
 # objectives of choice
 import torch
 from numpy import prod
@@ -385,7 +386,7 @@ def m_dreg(model, x, K=1, beta=0, warmup=0, epoch=1, beta_prior=1):
     with torch.no_grad():
         grad_wt = (lw - torch.logsumexp(lw, 0, keepdim=True)).exp()
         if zss.requires_grad:
-            zss.register_hook(lambda grad: grad_wt.unsqueeze(-1) * grad)
+            zss.register_hook(lambda grad: grad_wt.unsqueeze(-1) * grad) # Multiply the gradient by (w_i / sum_j w_j) to get the Dreg gradient
     details = {}
     return (grad_wt * lw).sum(), details
 

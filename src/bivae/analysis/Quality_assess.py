@@ -63,7 +63,7 @@ class GenerativeQualityAssesser():
         for encoder in self.encoders:
             encoder.eval()
         pred_arr = [np.empty((self.n_samples,d)) for d in self.dims]
-        labels = [np.empty(self.n_samples) for d in self.dims]
+        labels = [np.empty(self.n_samples) for _ in self.dims]
         start_idx = 0
 
         for i, batch in enumerate(tqdm(dataloader)):

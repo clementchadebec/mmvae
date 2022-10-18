@@ -380,9 +380,9 @@ class CELEBA_DL():
     def __init__(self, data_path=None):
         self.data_path = data_path if data_path is not None else path_to_my_datasets
 
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', len_train=None):
 
-        train_dataset = CelebA(self.data_path, 'train', transform=ToTensor())
+        train_dataset = CelebA(self.data_path, 'train', transform=ToTensor(), len=len_train)
         test = CelebA(self.data_path, 'test', transform=ToTensor())
         val = CelebA(self.data_path, 'val', transform=ToTensor())
 

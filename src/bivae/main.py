@@ -85,7 +85,7 @@ learning_rate = 1e-3
 experiment_name = args.experiment if args.experiment != '' else args.model
 wand_mode = 'online'
 # wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="multimodal_vaes", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -225,7 +225,7 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                # wandb.log(model.compute_metrics(data, runPath, epoch, classes))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):

@@ -23,9 +23,9 @@ class MMVAE(Multi_VAES):
     def __init__(self,params, vaes):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
-        self.px_z = dist_dict[params.dist]
+        self.px_z = dist_dict[params.dist] # can be dist or tuple of dist (to have different reconstruction loss for different modalities)
         device = params.device
-        self.px_z_std = torch.tensor(0.75).to(device)
+        self.px_z_std = torch.tensor(1).to(device) # 0.75 in the original implementation but Idk why
         self.train_latents = None
 
     def forward(self, x, K=1):
@@ -46,15 +46,34 @@ class MMVAE(Multi_VAES):
             # print(m,torch.max(o.log_var))
             qz_xs.append(self.qz_x(mu, std))
             zss.append(o.z.reshape(K,len(x[m]),*o.z.shape[1:]))
+
+            # Compute reconstruction loss
+
             px_zs[m][m] = o.recon_x.reshape(K,len(x[m]),*o.recon_x.shape[1:])  # fill-in diagonal
-            px_zs[m][m]= self.px_z(px_zs[m][m], self.px_z_std)
+            if type(self.px_z) == type(dist.Normal) :
+                px_zs[m][m]= self.px_z(px_zs[m][m], self.px_z_std)
+            else :
+                if self.px_z[m] is dist.Bernoulli:
+                    px_zs[m][m]= self.px_z[m](px_zs[m][m])
+                else :
+                    px_zs[m][m] = self.px_z[m](px_zs[m][m], self.px_z_std)
+
         for e, zs in enumerate(zss):
             for d, vae in enumerate(self.vaes):
                 if e != d:  # fill-in off-diagonal
                     zs_resh = zs.reshape(zs.shape[0]*zs.shape[1],-1)
                     px_zs[e][d] = vae.decoder(zs_resh).reconstruction
                     px_zs[e][d] = px_zs[e][d].reshape(K,zs.shape[1],*px_zs[e][d].shape[1:])
-                    px_zs[e][d] = self.px_z(px_zs[e][d], self.px_z_std )
+
+                    if type(self.px_z) == type(dist.Normal):
+                        px_zs[e][d] = self.px_z(px_zs[e][d], self.px_z_std )
+                    else :
+                        if self.px_z[d] is dist.Bernoulli:
+                            px_zs[e][d] = self.px_z[d](px_zs[e][d])
+                        else:
+                            px_zs[e][d] = self.px_z[d](px_zs[e][d], self.px_z_std)
+
+
 
         return qz_xs, px_zs, zss, qz_x_params
 

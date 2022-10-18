@@ -33,6 +33,10 @@ from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_
 from bivae.dcca.models import load_dcca_celeba
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 
+from bivae.analysis.classifiers.CelebA_classifier import load_celeba_classifiers
+
+classifier1, classifier2 = load_celeba_classifiers()
+
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -172,9 +176,49 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=50000)
         return train, test, val
 
+
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
+        """
+
+        inputs :
+
+        - classes of shape (batch_size, 40)"""
+
+
+
+        bdata = [d[:n_data] for d in data]
+        samples = self._sample_from_conditional(bdata, n=ns)
+        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
+
+        # Compute the labels
+        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
+        labels2 = (preds2 > 0).int().reshape(n_data, ns,40)
+
+        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
+        labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
+        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
+        print(classes_mul.shape)
+
+        acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
+        acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
+
+        metrics = dict(accuracy1=acc1, accuracy2=acc2)
+
+        # Compute the joint accuracy
+        data = self.generate('', 0, N=ns, save=False)
+        labels_celeb = classifier1(data[0]) > 0
+        labels_attributes = classifier2(data[1]) > 0
+
+        joint_acc = torch.sum(labels_attributes == labels_celeb) / (ns * 40)
+        metrics['joint_coherence'] = joint_acc
+
+        general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+
+        update_details(metrics, general_metrics)
+        return metrics
 
 
 
