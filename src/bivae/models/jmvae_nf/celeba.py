@@ -283,7 +283,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
 
         # print(fid)
-        return fid
+        return {'fid' : fid}
 
     def analyse(self, data, runPath, epoch=0, classes=None):
         return

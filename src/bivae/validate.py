@@ -121,7 +121,7 @@ def eval():
             # Compute fids 10 times to have a std
             # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
-            model.compute_fid(batch_size=50)
+            update_dict_list(b_metrics, model.compute_fid(batch_size=50))
 
             # cond_gen_data = model.generate_from_conditional(runPath, 0)
             # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )
