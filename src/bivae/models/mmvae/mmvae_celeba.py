@@ -33,7 +33,7 @@ from bivae.analysis import MnistClassifier, SVHNClassifier
 # Define the classifiers for analysis
 classifier1, classifier2 = load_celeba_classifiers()
 
-
+dist_dict = {'mse' : dist.Normal, 'l1' : dist.Laplace, 'bce' : dist.Bernoulli}
 class celeba(MMVAE):
     def __init__(self, params):
         vae_config = VAEConfig
@@ -63,12 +63,14 @@ class celeba(MMVAE):
         self.vaes[1].modelName = 'attributes'
         self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
         self.to_tensor = True
-        self.px_z = [dist.Normal, dist.Bernoulli]
-        self.qz_x = dist.Normal
+        self.recon_losses = ['mse', 'mse']
+        self.px_z = [dist_dict[s] for s in self.recon_losses]
+        # self.qz_x = dist.Normal
         # self.pz = dist.Normal
+        wandb.config.update({'recon_losses' : self.recon_losses})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=50000)
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
         return train, test, val
 
 

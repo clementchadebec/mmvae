@@ -1,29 +1,17 @@
 import argparse
 import datetime
-import sys
 import json
-from collections import defaultdict
-from pathlib import Path
-from tempfile import mkdtemp
 import random
-from tqdm import tqdm
-from copy import deepcopy
-
-from analysis.pytorch_fid import wrapper_inception
-from analysis import Inception_quality_assess, custom_mnist_fashion
+import sys
+from pathlib import Path
 
 import numpy as np
 import torch
-from torch import optim
-from torchvision import transforms
-
-
 import wandb
+
 import models
-import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon, add_channels,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
-from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
+from utils import Logger, Timer, unpack_data, update_dict_list, get_mean_std, print_mean_std
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--use-pretrain', type=str, default='')
@@ -86,7 +74,6 @@ print('Expt:', runPath)
 print('RunID:', runId)
 
 
-
 train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
@@ -96,8 +83,8 @@ print(f"Train : {len(train_loader.dataset)},"
 
 
 # Define a sampler for generating new samples
-# model.sampler = GaussianMixtureSampler()
-model.sampler = None
+model.sampler = GaussianMixtureSampler()
+# model.sampler = None
 
 # Define the parameters for assessing quality
 # assesser = Inception_quality_assess(model)
@@ -109,26 +96,26 @@ def eval():
 
     model.eval()
     # Compute all train latents
-    # model.compute_all_train_latents(train_loader)
+    model.compute_all_train_latents(train_loader)
 
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
         model.sampler.fit_from_latents(model.train_latents[0])
     b_metrics = {}
     with torch.no_grad():
-        # for i, dataT in enumerate(test_loader):
-        #     data = unpack_data(dataT, device=device)
-        #     # print(dataT)
-        #     classes = dataT[0][1], dataT[1][1]
-        #
-        #     update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
-            # if i == 0:
-            #     model.sample_from_conditional(data, runPath, epoch=0)
-            #     model.reconstruct(data, runPath, epoch=0)
-            #     model.analyse(data, runPath, epoch=0, classes=classes)
-            #     model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
-            #     model.generate(runPath, epoch=0, N=32, save=True)
-            #     model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
+        for i, dataT in enumerate(test_loader):
+            data = unpack_data(dataT, device=device)
+            # print(dataT)
+            classes = dataT[0][1], dataT[1][1]
+
+            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
+            if i == 0:
+                model.sample_from_conditional(data, runPath, epoch=0)
+                model.reconstruct(data, runPath, epoch=0)
+                model.analyse(data, runPath, epoch=0, classes=classes)
+                model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
+                model.generate(runPath, epoch=0, N=32, save=True)
+                model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
 
         for i in range(1):
             # Compute fids 10 times to have a std
@@ -136,8 +123,8 @@ def eval():
 
             model.compute_fid(batch_size=50)
 
-            # cond_gen_data = model.generate_from_conditional(runPath, 0, N = assesser.n_samples)
-            # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data )
+            # cond_gen_data = model.generate_from_conditional(runPath, 0)
+            # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

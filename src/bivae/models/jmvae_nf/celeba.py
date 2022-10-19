@@ -185,7 +185,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = ToTensor()):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device,transform=transform, len_train=50000)
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device,transform=transform)
         return train, test, val
 
 
@@ -209,7 +209,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
         labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
-        print(classes_mul.shape)
+        # print(classes_mul.shape)
 
         acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
         acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
@@ -262,7 +262,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
             gen_samples.extend(gen)
 
         gen_samples = torch.cat(gen_samples).squeeze()
-        print(gen_samples.shape)
+        # print(gen_samples.shape)
         tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
 
         gen_dataset = BasicDataset(gen_samples,transform=tx)
@@ -273,19 +273,20 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
             gen_activations.append(model(data[0]))
         gen_activations = np.concatenate(gen_activations)
 
-        print(ref_activations.shape, gen_activations.shape)
+        # print(ref_activations.shape, gen_activations.shape)
 
         mu1, mu2 = np.mean(ref_activations, axis=0), np.mean(gen_activations, axis=0)
         sigma1, sigma2 = np.cov(ref_activations, rowvar=False), np.cov(gen_activations, rowvar=False)
 
-        print(mu1.shape, sigma1.shape)
+        # print(mu1.shape, sigma1.shape)
 
         fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
 
-        print(fid)
+        # print(fid)
         return fid
 
-
+    def analyse(self, data, runPath, epoch=0, classes=None):
+        return
 
 
 

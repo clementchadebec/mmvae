@@ -8,7 +8,7 @@ from tempfile import mkdtemp
 import random
 from tqdm import tqdm
 from copy import deepcopy
-
+from types import UnionType
 
 import numpy as np
 import torch
