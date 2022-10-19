@@ -76,6 +76,7 @@
 ######################################### CELEB-ATTRIBUTES #############################################################
 ########################################################################################################################
 
+########################################### local ######################################################################
 # DCCA training
 #python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
 
@@ -86,7 +87,22 @@
 #python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup True --no-nf --no-recon True
 
 # MMVAE
- python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 10 --data-path ../data/ --llik_scaling 1
+# python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 10 --data-path ../data/ --llik_scaling 1
+
+########################################### jean-zay ###################################################################
+
+# DCCA training
+#python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
+
+# JMVAE-NF-DCCA
+#python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 64 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup False --no-recon True
+
+# JMVAE WITHOUT NF, WITHOUT DCCA
+#python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 64 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup False --no-nf --no-recon True
+
+# MMVAE
+# python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 10 --data-path ../data/ --llik_scaling 1
+
 
 ########################################################################################################################
 ########################################### CIRCLES-SQUARES INVERSE ####################################################
