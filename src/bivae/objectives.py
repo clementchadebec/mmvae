@@ -88,7 +88,7 @@ def m_elbo(model, x, K=1, beta=1000, epoch=1, warmup=0,beta_prior = 1):
     """Computes importance-sampled m_elbo (in notes3) for multi-modal vae
 
     Personal comment : I actually don't understand where in this function is computed the
-    log(q(z_i|x1;m) --> it feels like its missing
+    log(q(z_i|x1;m) --> it feels like it s missing
     """
     qz_xs, px_zs, zss,_ = model(x, K=K)
     lpx_zs, klds = [], []
@@ -249,7 +249,7 @@ def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
 
 def m_multi_elbos(model, x, K=1, beta=0):
     """ Generalized multimodal Elbo loss introduced in (Sutter 2021).
-    It consists in sum of modified ELBOS that minimizes a sum of KL divergence"""
+    It consists in sum of modified ELBOS that minimizes a sum of KL diver'gence"""
 
     if not hasattr(model, 'joint_encoder'):
         raise TypeError('The model must have a joint encoder for this loss.')
@@ -370,6 +370,7 @@ def _m_dreg(model, x, K=1, beta=0):
         lpx_z = [px_z.log_prob(x[d]).view(*px_z.batch_shape[:2], -1)
                      .mul(model.lik_scaling[d]).sum(-1)
                  for d, px_z in enumerate(px_zs[r])]
+        # print(lpx_z[0].sum(), lpx_z[1].sum())
         lpx_z = torch.stack(lpx_z).sum(0)
         lw = lpz + lpx_z - lqz_x
         lws.append(lw)
@@ -395,14 +396,14 @@ def _m_dreg_looser(model, x, K=1, beta=0):
     """DERG estimate for log p_\theta(x) for multi-modal vae -- fully vectorised
     This version is the looser bound---with the average over modalities outside the log
     """
-    qz_xs, px_zs, zss = model(x, K)
-    qz_xs_ = [vae.qz_x(*[p.detach() for p in vae.qz_x_params]) for vae in model.vaes]
+    qz_xs, px_zs, zss, qz_x_params = model(x, K)
+    qz_xs_ = [model.qz_x(*[p.detach() for p in qz_x_params[i]]) for i in range(len(model.vaes))]
     lws = []
     for r, vae in enumerate(model.vaes):
         lpz = model.pz(*model.pz_params).log_prob(zss[r]).sum(-1)
         lqz_x = log_mean_exp(torch.stack([qz_x_.log_prob(zss[r]).sum(-1) for qz_x_ in qz_xs_]))
         lpx_z = [px_z.log_prob(x[d]).view(*px_z.batch_shape[:2], -1)
-                     .mul(model.vaes[d].llik_scaling).sum(-1)
+                     .mul(model.lik_scaling[d]).sum(-1)
                  for d, px_z in enumerate(px_zs[r])]
         lpx_z = torch.stack(lpx_z).sum(0)
         lw = lpz + lpx_z - lqz_x
@@ -410,7 +411,7 @@ def _m_dreg_looser(model, x, K=1, beta=0):
     return torch.stack(lws), torch.stack(zss)
 
 
-def m_dreg_looser(model, x, K=1, beta=0):
+def m_dreg_looser(model, x,K,epoch,warmup, beta_prior):
     """Computes dreg estimate for log p_\theta(x) for multi-modal vae
     This version is the looser bound---with the average over modalities outside the log
     """
@@ -423,4 +424,28 @@ def m_dreg_looser(model, x, K=1, beta=0):
         grad_wt = (lw - torch.logsumexp(lw, 1, keepdim=True)).exp()
         if zss.requires_grad:
             zss.register_hook(lambda grad: grad_wt.unsqueeze(-1) * grad)
-    return (grad_wt * lw).mean(0).sum()
+    return (grad_wt * lw).mean(0).sum(), {}
+
+
+def m_elbo_nf(model, x, K, epoch, warmup, beta_prior):
+
+    ln_qz_xs, zs, recons = model.forward(x)
+    # Compute reconstruction terms
+    lpxy_z = [ [-1/2*torch.sum((x[i] - recon)**2)
+               for i,recon in enumerate(recon_row)] for recon_row in recons ]
+    lpxy_z = ((lpxy_z[0][0] + lpxy_z[1][0])*model.lik_scaling[0] +(lpxy_z[0][1]  + lpxy_z[1][1])*model.lik_scaling[1])/2
+
+    # print(lpxy_z)
+    # Compute KL divergence
+
+    sum_ln_qz_xs = torch.sum(torch.stack([torch.logsumexp(torch.stack(row), dim=0).sum() for row in ln_qz_xs]))/2
+
+    # We assume the prior to be a standard gaussian
+    ln_p_z = torch.sum(torch.Tensor([-1/2*torch.sum(z**2) for z in zs]))
+
+    kld = sum_ln_qz_xs - ln_p_z
+    # print(kld)
+    print(lpxy_z -kld)
+    return lpxy_z - kld, {}
+
+

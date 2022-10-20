@@ -8,7 +8,6 @@ from tempfile import mkdtemp
 import random
 from tqdm import tqdm
 from copy import deepcopy
-from types import UnionType
 
 import numpy as np
 import torch
@@ -31,7 +30,7 @@ parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
                     help='model name (default: mnist_svhn)')
 parser.add_argument('--obj', type=str, default='elbo', metavar='O',
                     choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'
-                             ,'telbo_nf'],
+                             ,'telbo_nf', 'elbo_nf'],
                     help='objective to use (default: elbo)')
 parser.add_argument('--K', type=int, default=20, metavar='K',
                     help='number of particles to use for iwae/dreg (default: 20)')
@@ -81,12 +80,12 @@ parser.add_argument('--dcca', action='store_true', default=False)
 
 # args
 args = parser.parse_args()
-learning_rate = 1e-3
+learning_rate = 1e-4
 
 # Log parameters of the experiments
 experiment_name = args.experiment if args.experiment != '' else args.model
-wand_mode = 'online'
-# wand_mode = 'disabled'
+# wand_mode = 'online'
+wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')

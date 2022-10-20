@@ -28,3 +28,11 @@ class random_grey(object):
         return image*intensity_change
 
 random_grey_transform = Compose([ToTensor(), random_grey()])
+
+
+class binary_transform(object):
+
+    """ Used to binarize MNIST """
+
+    def __call__(self, image):
+        return (image > 0.5).float()

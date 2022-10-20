@@ -43,8 +43,8 @@ class MMVAE(Multi_VAES):
             # print(o.mu.shape)
             mu =  o.mu.reshape(K,len(x[m]), -1)
 
-            # std = F.softmax(o.log_var, dim=-1) * o.log_var.size(-1) + Constants.eta
-            std =  o.std
+            std = F.softmax(o.log_var, dim=-1) * o.log_var.size(-1) + Constants.eta
+            # std =  o.std
             std =std.reshape(K,len(x[m]), -1)
 
             qz_x_params.append((mu,std))

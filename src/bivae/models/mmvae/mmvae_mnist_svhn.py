@@ -2,26 +2,20 @@
 
 
 import torch
-import torch.nn as nn
 import torch.distributions as dist
-from sklearn.manifold import TSNE
+import torch.nn as nn
 import wandb
+from pythae.models import VAEConfig
+from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from torchvision import transforms
 
-from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
-from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
-
-from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE_LinNF, my_VAE_IAF, my_VAE
-from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
-
-from bivae.dataloaders import MNIST_SVHN_DL
-from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN
-
-
-from ..nn import DoubleHeadMLP, DoubleHeadJoint
-from .mmvae import MMVAE
 from bivae.analysis import MnistClassifier, SVHNClassifier
+from bivae.dataloaders import MNIST_SVHN_DL, BINARY_MNIST_SVHN_DL
+from bivae.my_pythae.models import my_VAE
+from bivae.utils import update_details
+from bivae.vis import plot_hist
+from .mmvae import MMVAE
+from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -65,11 +59,13 @@ class MNIST_SVHN(MMVAE):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
-        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 100) if params.llik_scaling == 0 else (params.llik_scaling, 1)
         self.to_tensor = True
+        self.px_z = [dist.Bernoulli, dist.Normal]
+        wandb.config.update({'decoder dist' : self.px_z})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = BINARY_MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
 
     def conditional_labels(self, data, n_data=8, ns=30):
