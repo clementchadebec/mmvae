@@ -14,7 +14,7 @@ from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels,
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
 
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE_LinNF, my_VAE_IAF, my_VAE
+from bivae.my_pythae.models import my_VAE_LinNF, my_VAE_IAF, my_VAE, laplace_VAE
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_VAE_CELEBA, Decoder_ResNet_AE_CELEBA
 
@@ -43,7 +43,7 @@ class celeba(MMVAE):
 
         vae_config1 = vae_config((3,64,64), params.latent_dim)
         vae_config2 = vae_config((1,1,40), params.latent_dim)
-        vae = my_VAE
+        vae = my_VAE if params.dist == 'normal' else laplace_VAE
 
         encoder1, encoder2 = Encoder_ResNet_VAE_CELEBA(vae_config1), Encoder_VAE_MLP(vae_config2) # Standard MLP for
         # encoder1, encoder2 = None, None
@@ -62,11 +62,8 @@ class celeba(MMVAE):
         self.vaes[0].modelName = 'celeb'
         self.vaes[1].modelName = 'attributes'
         self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1)*10,1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.to_tensor = True
         self.recon_losses = ['l1', 'bce']
         self.px_z = [dist_dict[s] for s in self.recon_losses]
-        self.qz_x = dist.Laplace
-        self.pz = dist.Laplace
         wandb.config.update({'recon_losses' : self.recon_losses, 'lik_scalings' : self.lik_scaling})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):

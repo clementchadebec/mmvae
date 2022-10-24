@@ -15,6 +15,7 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+
 input_dim = (1,32,32)
 
 
@@ -24,9 +25,9 @@ class MMVAE(Multi_VAES):
     def __init__(self,params, vaes):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
-        self.px_z = dist_dict[params.dist] # can be dist or tuple of dist (to have different reconstruction loss for different modalities)
+        self.px_z = None # to be populated in the subclasses
         device = params.device
-        self.px_z_std = torch.tensor(1).to(device) # 0.75 in the original implementation but Idk why
+        self.px_z_std = torch.tensor(1).to(device)
         self.train_latents = None
 
     def forward(self, x, K=1):
@@ -43,12 +44,10 @@ class MMVAE(Multi_VAES):
             # print(o.mu.shape)
             mu =  o.mu.reshape(K,len(x[m]), -1)
 
-            std = F.softmax(o.log_var, dim=-1) * o.log_var.size(-1) + Constants.eta
-            # std =  o.std
-            std =std.reshape(K,len(x[m]), -1)
+            std =  o.std.reshape(K,len(x[m]), -1)
 
             qz_x_params.append((mu,std))
-            # print(m,torch.max(o.log_var))
+
             qz_xs.append(self.qz_x(mu, std))
             zss.append(o.z.reshape(K,len(x[m]),*o.z.shape[1:]))
 

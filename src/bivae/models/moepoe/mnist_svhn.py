@@ -1,3 +1,5 @@
+"MoePoe specification for MNIST-SVHN"
+
 # JMVAE_NF specification for MNIST-SVHN experiment
 
 
@@ -11,40 +13,31 @@ from torchvision import transforms
 
 from bivae.analysis import MnistClassifier, SVHNClassifier
 from bivae.dataloaders import MNIST_SVHN_DL, BINARY_MNIST_SVHN_DL
-from bivae.my_pythae.models import my_VAE, laplace_VAE
+from bivae.my_pythae.models import my_VAE
 from bivae.utils import update_details
 from bivae.vis import plot_hist
-from .mmvae import MMVAE
+from .moepoe import MOEPOE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
-
-dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
-
-hidden_dim = 512
-
-# Define the classifiers for analysis
-classifier1, classifier2 = MnistClassifier(), SVHNClassifier()
-path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
-path2 = '../experiments/classifier_svhn/2022-06-16/model_8.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
 
 
-class MNIST_SVHN(MMVAE):
+classifier1,classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+
+
+
+
+class MNIST_SVHN(MOEPOE):
     def __init__(self, params):
         vae_config = VAEConfig
         vae_config1 = vae_config((1,28,28), params.latent_dim)
         vae_config2 = vae_config((3,32,32), params.latent_dim)
-        vae = my_VAE if params.dist == 'normal' else laplace_VAE
+        vae = my_VAE
 
 
         encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2) # Standard MLP for
+        # encoder1, encoder2 = None, None
         decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
+        # decoder1, decoder2 = None, None
 
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
@@ -52,14 +45,13 @@ class MNIST_SVHN(MMVAE):
 
         ])
         super(MNIST_SVHN, self).__init__(params, vaes)
-        self.modelName = 'mmvae_mnist_svhn'
+        self.modelName = 'moepoe_mnist_svhn'
         self.data_path = params.data_path
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.px_z = dist.Normal
-        wandb.config.update({'decoder dist' : self.px_z})
+
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -99,7 +91,7 @@ class MNIST_SVHN(MMVAE):
         they are well distributed in that class"""
 
         # Compute general metrics (FID)
-        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq)
+        general_metrics = super(MNIST_SVHN, self).compute_metrics(self,runPath,epoch,freq=freq)
         # general_metrics = {}
         # Compute cross_coherence
         labels2, labels1 = self.conditional_labels(data, n_data, ns)
@@ -124,7 +116,8 @@ class MNIST_SVHN(MMVAE):
 
 
 
-
+    def step(self, epoch):
+        pass
 
 
 

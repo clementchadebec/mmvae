@@ -19,11 +19,12 @@ and named likewise the model. The following modules can be found in this folder:
 from .vae import my_VAE
 from .vae_iaf import my_VAE_IAF
 from .vae_lin_nf import my_VAE_LinNF
-
+from .laplace_vae import laplace_VAE
 
 __all__ = [
 
     "my_VAE_LinNF",
     "my_VAE_IAF",
-    "my_VAE"
+    "my_VAE",
+    "laplace_VAE"
 ]

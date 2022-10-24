@@ -70,18 +70,18 @@ def dreg(model, x, K, regs=None):
 
 
 # multi-modal variants
-def m_elbo_naive(model, x, K=1):
+def m_elbo_naive(model, x, K, epoch, warmup, beta_prior):
     """Computes E_{p(x)}[ELBO] for multi-modal vae --- NOT EXPOSED"""
-    qz_xs, px_zs, zss = model(x)
+    qz_xs, px_zs, zss, qz_x_params = model(x)
     lpx_zs, klds = [], []
     for r, qz_x in enumerate(qz_xs):
         kld = kl_divergence(qz_x, model.pz(*model.pz_params))
         klds.append(kld.sum(-1))
         for d, px_z in enumerate(px_zs[r]):
-            lpx_z = px_z.log_prob(x[d]) * model.vaes[d].llik_scaling
+            lpx_z = px_z.log_prob(x[d]) * model.lik_scaling[d]
             lpx_zs.append(lpx_z.view(*px_z.batch_shape[:2], -1).sum(-1))
     obj = (1 / len(model.vaes)) * (torch.stack(lpx_zs).sum(0) - torch.stack(klds).sum(0))
-    return obj.mean(0).sum()
+    return obj.mean(0).sum(), {}
 
 
 def m_elbo(model, x, K=1, beta=1000, epoch=1, warmup=0,beta_prior = 1):
@@ -427,7 +427,7 @@ def m_dreg_looser(model, x,K,epoch,warmup, beta_prior):
     return (grad_wt * lw).mean(0).sum(), {}
 
 
-def m_elbo_nf(model, x, K, epoch, warmup, beta_prior):
+def m_elbo_nf_(model, x, K, epoch, warmup, beta_prior):
 
     ln_qz_xs, zs, recons = model.forward(x)
     # Compute reconstruction terms
@@ -449,3 +449,24 @@ def m_elbo_nf(model, x, K, epoch, warmup, beta_prior):
     return lpxy_z - kld, {}
 
 
+def m_elbo_nf(model, x, K, epoch, warmup, beta_prior):
+    """ ELBO computation developing the KLD """
+
+    ln_qz_xs, zs, recons = model.forward(x)
+    elbo = 0
+    for e, row in enumerate(ln_qz_xs):
+
+        # Compute the KL
+        log_prob_z = -1/2*torch.sum(zs[e]**2)
+        kld = row[e].sum() - log_prob_z
+        elbo -= kld/len(model.vaes)
+        # Compute reconstruction errors
+        for d, recon in enumerate(recons[e]):
+            # We assume gaussian distribution for decoder
+            elbo += (-1/2*torch.sum((recon-x[d])**2)) /len(model.vaes) * model.lik_scaling[d]
+
+    return elbo / len(x) , {}
+
+def m_self_built(model, x, K, epoch, warmup, beta_prior):
+    elbo = model.forward(x)['elbo']
+    return elbo, {}

@@ -177,12 +177,12 @@ class Multi_VAES(nn.Module):
             for i in range(n):
                 o0 = self.vaes[0].forward(bdata[0])
                 o1 = self.vaes[1].forward(bdata[1])
-                z0 = o0.__getitem__('z')
-                z1 = o1.__getitem__('z')
+                z0 = o0.z
+                z1 = o1.z
                 samples[0][1].append(self.vaes[1].decoder(z0)["reconstruction"])
                 samples[1][0].append(self.vaes[0].decoder(z1)["reconstruction"])
-                samples[0][0].append(o0.__getitem__('recon_x'))
-                samples[1][1].append(o1.__getitem__('recon_x'))
+                samples[0][0].append(o0.recon_x)
+                samples[1][1].append(o1.recon_x)
         return samples
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
