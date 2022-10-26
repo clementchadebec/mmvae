@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributions as dist
+import torch.nn.functional as F
 
 from ..multi_vaes import Multi_VAES
 from bivae.utils import Constants, unpack_data, update_details
@@ -14,6 +15,7 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+
 input_dim = (1,32,32)
 
 
@@ -23,9 +25,8 @@ class MMVAE(Multi_VAES):
     def __init__(self,params, vaes):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
-        self.px_z = dist_dict[params.dist]
         device = params.device
-        self.px_z_std = torch.tensor(0.75).to(device)
+        self.px_z_std = torch.tensor(1).to(device)
         self.train_latents = None
 
     def forward(self, x, K=1):
@@ -41,20 +42,41 @@ class MMVAE(Multi_VAES):
             o =  vae(torch.cat([x[m] for _ in range(K)]))
             # print(o.mu.shape)
             mu =  o.mu.reshape(K,len(x[m]), -1)
+
             std =  o.std.reshape(K,len(x[m]), -1)
+
             qz_x_params.append((mu,std))
-            # print(m,torch.max(o.log_var))
+
             qz_xs.append(self.qz_x(mu, std))
             zss.append(o.z.reshape(K,len(x[m]),*o.z.shape[1:]))
+
+            # Compute reconstruction loss
+
             px_zs[m][m] = o.recon_x.reshape(K,len(x[m]),*o.recon_x.shape[1:])  # fill-in diagonal
-            px_zs[m][m]= self.px_z(px_zs[m][m], self.px_z_std)
+            if type(self.px_z) == type(dist.Normal) :
+                px_zs[m][m]= self.px_z(px_zs[m][m], self.px_z_std)
+            else :
+                if self.px_z[m] is dist.Bernoulli:
+                    px_zs[m][m]= self.px_z[m](px_zs[m][m])
+                else :
+                    px_zs[m][m] = self.px_z[m](px_zs[m][m], self.px_z_std)
+
         for e, zs in enumerate(zss):
             for d, vae in enumerate(self.vaes):
                 if e != d:  # fill-in off-diagonal
                     zs_resh = zs.reshape(zs.shape[0]*zs.shape[1],-1)
                     px_zs[e][d] = vae.decoder(zs_resh).reconstruction
                     px_zs[e][d] = px_zs[e][d].reshape(K,zs.shape[1],*px_zs[e][d].shape[1:])
-                    px_zs[e][d] = self.px_z(px_zs[e][d], self.px_z_std )
+
+                    if type(self.px_z) == type(dist.Normal):
+                        px_zs[e][d] = self.px_z(px_zs[e][d], self.px_z_std )
+                    else :
+                        if self.px_z[d] is dist.Bernoulli:
+                            px_zs[e][d] = self.px_z[d](px_zs[e][d])
+                        else:
+                            px_zs[e][d] = self.px_z[d](px_zs[e][d], self.px_z_std)
+
+
 
         return qz_xs, px_zs, zss, qz_x_params
 
@@ -91,8 +113,8 @@ class MMVAE(Multi_VAES):
 
 
     def compute_qz_x_params(self,data):
-        outputs_encoders = [self.vaes[m].encoder(data[m]) for m in range(len(data))]
-        qz_xy_params = [(o['embedding'], torch.exp(0.5*o['log_covariance'])) for o in outputs_encoders]
+        outputs_encoders = [self.vaes[m](data[m]) for m in range(len(data))]
+        qz_xy_params = [(o.mu, o.std) for o in outputs_encoders]
         return qz_xy_params
 
 
@@ -127,8 +149,12 @@ class MMVAE(Multi_VAES):
 
                     mus = vae.decoder(latents)['reconstruction'] # (batch_size_K, nb_channels, w, h)
                     x_m = data[m][i] # (nb_channels, w, h)
-                    lpx_z = -0.5 * torch.sum((mus - x_m)**2,dim=(1,2,3)) - np.prod(x_m.shape)/2*np.log(2*np.pi)
-                    lpx_zs += lpx_z
+
+                    # Compute lnp(y|z)
+                    if self.px_z[m] == dist.Bernoulli:
+                        lpx_zs += self.px_z[m](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                    else:
+                        lpx_zs += self.px_z[m](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
 
                 # Compute ln(p(z))
                 prior = self.pz(*self.pz_params)
@@ -163,8 +189,8 @@ class MMVAE(Multi_VAES):
 
         '''
 
-        o = self.vaes[cond_mod].encoder(data[cond_mod])
-        qz_xy_params = (o['embedding'], torch.exp(0.5 * o['log_covariance']))
+        o = self.vaes[cond_mod](data[cond_mod])
+        qz_xy_params = (o.mu, o.std)
 
         qz_xs = self.qz_x(*qz_xy_params)
         # Sample from the conditional encoder distribution
@@ -182,9 +208,14 @@ class MMVAE(Multi_VAES):
                 for m, vae in enumerate(self.vaes):
                     mus = self.vaes[m].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                     x_m = data[m][i]  # (nb_channels, w, h)
-                    lpxs_z += -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                        2 * np.pi)
 
+                    # Compute lnp(y|z)
+                    if self.px_z[m] == dist.Bernoulli:
+                        lp = self.px_z[m](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                    else:
+                        lp = self.px_z[m](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
+
+                    lpxs_z += lp
 
                 # Prior distribution p(z)
                 lpz = torch.sum(self.pz(*self.pz_params).log_prob(latents), dim=-1)
@@ -213,8 +244,8 @@ class MMVAE(Multi_VAES):
 
         '''
 
-        o = self.vaes[cond_mod].encoder(data[cond_mod])
-        qz_xy_params = (o['embedding'], torch.exp(0.5 * o['log_covariance']))
+        o = self.vaes[cond_mod](data[cond_mod])
+        qz_xy_params = (o.mu, o.std)
 
         qz_xs = self.qz_x(*qz_xy_params)
         # Sample from the conditional encoder distribution
@@ -231,10 +262,14 @@ class MMVAE(Multi_VAES):
                 # Compute p(x_m|z) for z in latents and for each modality m
                 mus = self.vaes[gen_mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                 x_m = data[gen_mod][i]  # (nb_channels, w, h)
-                lpx_z = -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                    2 * np.pi)
 
-                lnpxs.append(torch.logsumexp(lpx_z, dim=0))
+                # Compute lnp(y|z)
+                if self.px_z[gen_mod] == dist.Bernoulli:
+                    lp = self.px_z[gen_mod](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                else:
+                    lp = self.px_z[gen_mod](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
+
+                lnpxs.append(torch.logsumexp(lp, dim=0))
 
                 # next batch
                 start_idx += batch_size_K

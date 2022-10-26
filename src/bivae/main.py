@@ -9,7 +9,6 @@ import random
 from tqdm import tqdm
 from copy import deepcopy
 
-
 import numpy as np
 import torch
 from torch import optim
@@ -24,68 +23,23 @@ from models.samplers import GaussianMixtureSampler
 from bivae.analysis import compute_accuracies
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
-parser.add_argument('--experiment', type=str, default='', metavar='E',
-                    help='experiment name')
-parser.add_argument('--model', type=str, default='mnist_svhn', metavar='M',
-                    choices=[s[4:] for s in dir(models) if 'VAE_' in s],
-                    help='model name (default: mnist_svhn)')
-parser.add_argument('--obj', type=str, default='elbo', metavar='O',
-                    choices=['elbo', 'iwae', 'dreg', 'vaevae_w2', 'vaevae_kl', 'jmvae', 'multi_elbos', 'svae', 'telbo', 'jmvae_nf'
-                             ,'telbo_nf'],
-                    help='objective to use (default: elbo)')
-parser.add_argument('--K', type=int, default=20, metavar='K',
-                    help='number of particles to use for iwae/dreg (default: 20)')
-parser.add_argument('--looser', action='store_true', default=False,
-                    help='use the looser version of IWAE/DREG')
-parser.add_argument('--llik_scaling', type=float, default=0.,
-                    help='likelihood scaling for cub images/svhn modality when running in'
-                         'multimodal setting, set as 0 to use default value')
-parser.add_argument('--batch-size', type=int, default=256, metavar='N',
-                    help='batch size for data (default: 256)')
-parser.add_argument('--epochs', type=int, default=10, metavar='E',
-                    help='number of epochs to train (default: 10)')
-parser.add_argument('--latent-dim', type=int, default=20, metavar='L',
-                    help='latent dimensionality (default: 20)')
-parser.add_argument('--num-hidden-layers', type=int, default=1, metavar='H',
-                    help='number of hidden layers in enc and dec (default: 2)')
-parser.add_argument('--use-pretrain', type=str, default='')
-parser.add_argument('--learn-prior', action='store_true', default=False,
-                    help='learn model prior parameters')
-parser.add_argument('--logp', action='store_true', default=False,
-                    help='estimate tight marginal likelihood on completion')
-parser.add_argument('--print-freq', type=int, default=0, metavar='f',
-                    help='frequency with which to print stats (default: 0)')
-parser.add_argument('--no-analytics', action='store_true', default=False,
-                    help='disable plotting analytics')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disable CUDA use')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--dist', type=str, default = 'normal',
-                    choices= ['normal', 'laplace'])
+parser.add_argument('--config-path', type=str, default='')
 
-parser.add_argument('--data-path', type=str, default = '../data/')
-parser.add_argument('--skip-warmup', type=bool, default=False)
-parser.add_argument('--warmup', type=int, default=0)
-parser.add_argument('--no-nf', action='store_true', default= False)
-parser.add_argument('--beta-prior', type=float, default = 1)
-parser.add_argument('--beta-kl', type=float, default = 1)
-parser.add_argument('--decrease-beta-kl', type=float, default=1)
-parser.add_argument('--fix-decoders', type=bool, default=True)
-parser.add_argument('--fix-jencoder', type=bool, default=True)
-parser.add_argument('--no-recon', type=bool, default=False)
-parser.add_argument('--freq_analytics', type=int, default=5)
-parser.add_argument('--loss', type=str, default = 'mse')
 
 # args
-args = parser.parse_args()
-learning_rate = 1e-3
+info = parser.parse_args()
 
+# load args from disk if pretrained model path is given
+with open(info.config_path, 'r') as fcc_file:
+    args = argparse.Namespace()
+    args.__dict__.update(json.load(fcc_file))
+
+learning_rate = 1e-3
 # Log parameters of the experiments
-experiment_name = args.experiment if args.experiment != '' else args.model
+experiment_name = args.wandb_experiment
 wand_mode = 'online'
 # wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="multimodal_vaes", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -225,7 +179,7 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                # wandb.log(model.compute_metrics(data, runPath, epoch, classes))
                 model.sample_from_conditional(data, runPath,epoch)
                 model.reconstruct(data, runPath, epoch)
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):

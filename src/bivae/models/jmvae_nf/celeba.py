@@ -9,6 +9,8 @@ import torch.distributions as dist
 from sklearn.manifold import TSNE
 import wandb
 from torchvision import transforms
+from bivae.dataloaders import BasicDataset
+from bivae.analysis.pytorch_fid.fid_score import calculate_frechet_distance
 
 from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
@@ -25,7 +27,7 @@ from torch.utils.data import DataLoader
 from bivae.dataloaders import CELEBA_DL
 import torch.nn.functional as F
 from PIL import Image, ImageDraw, ImageFont
-from bivae.utils import get_mean, kl_divergence, add_channels, adjust_shape, update_details
+from bivae.utils import unpack_data, kl_divergence, add_channels, adjust_shape, update_details
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples
 
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
@@ -33,9 +35,15 @@ from ..jmvae_nf import JMVAE_NF
 from bivae.analysis import compute_accuracies
 from bivae.dcca.models import load_dcca_celeba
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
+from torchvision.transforms import ToTensor
+from bivae.analysis.classifiers.CelebA_classifier import load_celeba_classifiers
+from bivae.analysis.pytorch_fid.inception import wrapper_inception
+from bivae.analysis.pytorch_fid.fid_score import get_activations
+
+classifier1, classifier2 = load_celeba_classifiers()
 
 
-dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+dist_dict = {'mse': dist.Normal, 'l1' : dist.Laplace, 'bce': dist.Bernoulli}
 
 # Define the classifiers for analysis
 
@@ -62,12 +70,16 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         vae_config2 = vae_config(self.shape_mod2, params.latent_dim)
 
         # # First load the DCCA encoders
-        self.dcca = load_dcca_celeba()
-        # # Then add the flows
-        encoder1 = TwoStepsEncoder(self.dcca[0], params, hidden_dim=40, num_hidden=3)
-        encoder2 = TwoStepsEncoder(self.dcca[1], params, hidden_dim=40,num_hidden=3)
-        # encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
-        # encoder2 = Encoder_VAE_MLP(vae_config2)
+        if params.dcca :
+            print("Preparing DCCA encoders")
+            self.dcca = load_dcca_celeba()
+            # # Then add the flows
+            encoder1 = TwoStepsEncoder(self.dcca[0], params, hidden_dim=40, num_hidden=3)
+            encoder2 = TwoStepsEncoder(self.dcca[1], params, hidden_dim=40,num_hidden=3)
+        else :
+            print("Preparing non DCCA encoders")
+            encoder1 = Encoder_ResNet_VAE_CELEBA(vae_config1)
+            encoder2 = Encoder_VAE_MLP(vae_config2)
 
         # Define the decoders
         decoder1, decoder2 = Decoder_ResNet_AE_CELEBA(vae_config1), Decoder_AE_MLP(vae_config2)
@@ -92,7 +104,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # Set the classifiers
         # self.classifier1, self.classifier2 = classifier1, classifier2
 
-        self.recon_losses = ['mse', 'bce']
+
 
     def attribute_array_to_image(self, tensor, device='cuda'):
         """tensor of size (n_batch, 1,1,40)
@@ -172,10 +184,109 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
 
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = ToTensor()):
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device,transform=transform)
         return train, test, val
 
+
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
+        """
+
+        inputs :
+
+        - classes of shape (batch_size, 40)"""
+
+
+
+        bdata = [d[:n_data] for d in data]
+        samples = self._sample_from_conditional(bdata, n=ns)
+        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
+
+        # Compute the labels
+        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
+        labels2 = (preds2 > 0).int().reshape(n_data, ns,40)
+
+        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
+        labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
+        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
+        # print(classes_mul.shape)
+
+        acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
+        acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
+
+        metrics = dict(accuracy1=acc1, accuracy2=acc2)
+
+        # Compute the joint accuracy
+        data = self.generate('', 0, N=ns, save=False)
+        labels_celeb = classifier1(data[0]) > 0
+        labels_attributes = classifier2(data[1]) > 0
+
+        joint_acc = torch.sum(labels_attributes == labels_celeb) / (ns * 40)
+        metrics['joint_coherence'] = joint_acc
+
+        general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+
+        update_details(metrics, general_metrics)
+        return metrics
+
+
+    def compute_fid(self, batch_size):
+
+        # Define the inception model used to compute FID
+        model = wrapper_inception()
+
+        # Get the data with suited transform
+        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+
+        _, test,_ = self.getDataLoaders(batch_size,transform=tx)
+
+        ref_activations = []
+
+        for dataT in test:
+            data = unpack_data(dataT)
+
+            ref_activations.append(model(data[0]))
+
+        ref_activations = np.concatenate(ref_activations)
+
+        # Generate data from conditional
+
+        _, test,_ = self.getDataLoaders(batch_size)
+
+        gen_samples = []
+        for dataT in test:
+            data=unpack_data(dataT)
+            gen = self._sample_from_conditional(data, n=1)[1][0]
+
+
+            gen_samples.extend(gen)
+
+        gen_samples = torch.cat(gen_samples).squeeze()
+        # print(gen_samples.shape)
+        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+
+        gen_dataset = BasicDataset(gen_samples,transform=tx)
+        gen_dataloader = DataLoader(gen_dataset,batch_size=batch_size)
+
+        gen_activations = []
+        for data in gen_dataloader:
+            gen_activations.append(model(data[0]))
+        gen_activations = np.concatenate(gen_activations)
+
+        # print(ref_activations.shape, gen_activations.shape)
+
+        mu1, mu2 = np.mean(ref_activations, axis=0), np.mean(gen_activations, axis=0)
+        sigma1, sigma2 = np.cov(ref_activations, rowvar=False), np.cov(gen_activations, rowvar=False)
+
+        # print(mu1.shape, sigma1.shape)
+
+        fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+
+        # print(fid)
+        return {'fid' : fid}
+
+    def analyse(self, data, runPath, epoch=0, classes=None):
+        return
 
 
 class JMVAEGAN_NF_CELEBA(JMVAE_NF_CELEBA):

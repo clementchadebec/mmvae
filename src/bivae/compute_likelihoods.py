@@ -1,4 +1,5 @@
 import argparse
+import json
 import datetime
 import sys
 import json
@@ -26,7 +27,7 @@ from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
 from tqdm import tqdm
 
-parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
+parser = argparse.ArgumentParser(description='Compute likelihoods parameters')
 parser.add_argument('--use-pretrain', type=str, default='')
 parser.add_argument('--k', type=int, default = 1000)
 
@@ -36,7 +37,11 @@ info = parser.parse_args()
 
 # load args from disk if pretrained model path is given
 pretrained_path = info.use_pretrain
-args = torch.load(pretrained_path + 'args.rar')
+with open(pretrained_path + 'args.json', 'r') as fcc_file:
+    args = argparse.Namespace()
+    args.__dict__.update(json.load(fcc_file))
+
+
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
@@ -47,7 +52,7 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # Log parameters of the experiments
-experiment_name = args.experiment if args.experiment != '' else args.model
+experiment_name = args.wandb_experiment if hasattr(args, 'wandb_experiment') else args.model
 wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
@@ -112,6 +117,8 @@ def eval():
     with torch.no_grad():
         for i, dataT in enumerate(tqdm(test_loader)):
             data = unpack_data(dataT, device=device)
+            # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 1, 0, K= info.k))
+            # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 0,1, K=info.k))
             update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
             update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
 

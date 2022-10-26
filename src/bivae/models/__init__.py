@@ -19,18 +19,23 @@ from .multi_vaes import Multi_VAES
 #from .jmvae_nf import JMVAE_NF_DCCA_MNIST_SVHN as VAE_jnf_mnist_svhn_dcca
 #from .jmvae_nf import JMVAE_NF_MNIST_CONTOUR as VAE_jnf_mnist_contour
 from .jmvae_nf import JMVAE_NF_CELEBA as VAE_jnf_celeba
-from .jmvae_nf import JMVAEGAN_NF_CELEBA as VAE_jnfgan_celeba
+from .mmvae.mmvae_celeba import celeba as VAE_mmvae_celeba
+from .mmvae_nf.mnist_svhn import MNIST_SVHN as VAE_mmvae_nf_mnist_svhn
+from .mvae.mnist_svhn import MNIST_SVHN as VAE_mvae_mnist_svhn
+from .moepoe.mnist_svhn import MNIST_SVHN as VAE_moepoe_mnist_svhn
 
-__all__ = [ 
-        #'VAE_mnist_svhn',
-        #'VAE_circles_squares',
-        #    'VAE_jnf_circles_squares',
-        #    'VAE_jnf_mnist_fashion',
-        #    'VAE_jnf_mnist_svhn',
-        #    'VAE_mnist_fashion',
-        #    'VAE_jnf_mnist_svhn_dcca',
-        #    'VAE_jnf_mnist_contour',
+__all__ = [ 'VAE_mnist_svhn',
+            'VAE_circles_squares',
+            'VAE_jnf_circles_squares',
+            'VAE_jnf_mnist_fashion',
+            'VAE_jnf_mnist_svhn',
+            'VAE_mnist_fashion',
+            'VAE_jnf_mnist_svhn_dcca',
+            'VAE_jnf_mnist_contour',
             'VAE_jnf_celeba',
-            'VAE_jnfgan_celeba'
+            'VAE_mmvae_celeba',
+            'VAE_mmvae_nf_mnist_svhn',
+            'VAE_mvae_mnist_svhn',
+            'VAE_moepoe_mnist_svhn'
 
             ]

@@ -79,6 +79,8 @@ def load_dcca_celeba():
     model1 = wrapper_encoder_lcca_celeb()
     model2 = wrapper_encoder_lcca_attributes()
 
+
+
     return [model1, model2]
 
 

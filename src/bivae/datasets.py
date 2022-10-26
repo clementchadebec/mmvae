@@ -316,11 +316,13 @@ class CelebA(VisionDataset):
             transform: Optional[Callable] = None,
             target_transform: Optional[Callable] = None,
             download: bool = False,
+            len: Union[int, None] = None
     ) -> None:
         import pandas
         super(CelebA, self).__init__(root, transform=transform,
                                      target_transform=target_transform)
         self.split = split
+        self.len = len
         if isinstance(target_type, list):
             self.target_type = target_type
         else:
@@ -414,13 +416,11 @@ class CelebA(VisionDataset):
         else:
             target = None
 
-        return [(X, target[0]), (target.float().reshape(1,1,40), target[0])]
+        return [(X, target), (target.float().reshape(1,1,40), target)]
 
     def __len__(self) -> int:
-        if self.split == 'train':
-            return 20000
-        elif self.split == 'val':
-            return 1000
+        if self.len is not None:
+            return self.len
         return len(self.attr)
 
     def extra_repr(self) -> str:

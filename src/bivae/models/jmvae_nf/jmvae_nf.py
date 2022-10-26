@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import torch.distributions as dist
 import wandb
+import torch.distributions as dist
+
 
 from ..multi_vaes import Multi_VAES
 from tqdm import tqdm
@@ -101,7 +103,7 @@ class JMVAE_NF(Multi_VAES):
         '''
                 Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
 
-                ln p(x,y) = \sum_{z ~ q(z|y)} ln p(x|z)p(y|z)p(z)/q(z|y)
+                ln p(x,y) = ln \sum_{z ~ q(z|y)}  p(x|z)p(y|z)p(z)/q(z|y)
 
                 '''
 
@@ -125,8 +127,15 @@ class JMVAE_NF(Multi_VAES):
                     recon = self.vaes[m].decoder(latents).reconstruction
 
                     # Compute lnp(y|z)
-                    lpxy_z += -0.5 * torch.sum((recon - data[m][i])**2, dim=(1, 2, 3)) - np.prod(data[m][i].shape) / 2 * np.log(
-                        2 * np.pi)
+                    if self.px_z[m] == dist.Bernoulli :
+                        # print(f'compute Bernouilli likelihood for modality {m}')
+                        lp =  self.px_z[m](recon).log_prob(data[m][i]).sum(dim=(1, 2, 3))
+                    else :
+                        # print(f'compute normal for mod {m}')
+                        lp =  self.px_z[m](recon, scale = 1).log_prob(data[m][i]).sum(dim=(1, 2, 3))
+
+                    lpxy_z += lp
+
 
                 # Compute lpz
                 prior = self.pz(*self.pz_params)
@@ -221,8 +230,15 @@ class JMVAE_NF(Multi_VAES):
 
                     mus = vae.decoder(latents)['reconstruction'] # (batch_size_K, nb_channels, w, h)
                     x_m = data[m][i] # (nb_channels, w, h)
-                    lpx_z = -0.5 * torch.sum((mus - x_m)**2,dim=(1,2,3)) - np.prod(x_m.shape)/2*np.log(2*np.pi)
-                    lpx_zs += lpx_z
+
+                    # Compute lnp(y|z)
+                    if self.px_z[m] == dist.Bernoulli :
+                        lp = self.px_z[m](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                    else :
+                        lp = self.px_z[m](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
+
+
+                    lpx_zs += lp
 
                 # Compute ln(p(z))
                 prior = self.pz(*self.pz_params)
@@ -270,8 +286,12 @@ class JMVAE_NF(Multi_VAES):
                 recon = self.vaes[gen_mod].decoder(latents).reconstruction
 
                 # Compute lnp(y|z)
-                lpx_z = -0.5 * torch.sum((recon - data[gen_mod][i])**2, dim=(1, 2, 3)) - np.prod(data[gen_mod][i].shape) / 2 * np.log(
-                    2 * np.pi)
+
+
+                if self.px_z[gen_mod] == dist.Bernoulli:
+                    lpx_z = self.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+                else:
+                    lpx_z = self.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
 
                 lnpxs.append(torch.logsumexp(lpx_z,dim=0))
                 # next batch

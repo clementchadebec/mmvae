@@ -59,6 +59,14 @@
 # JMVAE-NF-DCCA with no reconstruction term
 #python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --skip-warmup True --no-recon True
 
+# MMVAE
+#python3 src/bivae/main.py --experiment mmvae_binary --model mnist_svhn --obj dreg --latent-dim 20
+
+# MMVAE-NF
+#python3 src/bivae/main.py --experiment mmvae_nf --model mnist_svhn --obj dreg --latent-dim 20 --epochs 5 --K 10 --dist laplace
+
+# MOEPOE
+#python3 src/bivae/main.py --experiment moepoe --model moepoe_mnist_svhn --obj self_built --latent-dim 20 --epochs 5
 
 ###### Train from scratch ###### (no pretrained joint encoder)
 #python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --no-recon True
@@ -76,15 +84,32 @@
 ######################################### CELEB-ATTRIBUTES #############################################################
 ########################################################################################################################
 
+########################################### local ######################################################################
+# DCCA training
 #python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
+
+# JMVAE-NF-DCCA
 #python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup True --no-recon True
 
-# WITHOUT Normalizing flows
-
+# JMVAE WITHOUT NF, WITHOUT DCCA
 #python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup True --no-nf --no-recon True
 
-# WITH VAEGAN
-python3 src/bivae/main_vaegan.py --experiment celeba --model jnfgan_celeba --obj jmvaegan_nf --latent-dim 168 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path 'mmvae_data'  --no-recon True --adversarial_loss_scale 0.999
+# MMVAE
+#python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 6 --dist normal --K 10 --data-path ../data/ --llik_scaling 0 --looser
+
+########################################### jean-zay ###################################################################
+
+# DCCA training
+#python3 src/bivae/dcca/trainings/main_celeba.py --num_epochs 100 --outdim_size 40
+
+# JMVAE-NF-DCCA
+#python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 64 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup False --no-recon True
+
+# JMVAE WITHOUT NF, WITHOUT DCCA
+#python3 src/bivae/main.py --experiment celeba --model jnf_celeba --obj jmvae_nf --latent-dim 64 --warmup 50 --epochs 100 --beta-prior 1 --llik_scaling 1 --data-path '../data/' --skip-warmup False --no-nf --no-recon True
+
+# MMVAE
+# python3 src/bivae/main.py --experiment celeba --model mmvae_celeba --obj dreg --latent-dim 64 --epochs 100 --dist normal --K 10 --data-path ../data/ --llik_scaling 1
 
 
 ########################################################################################################################
@@ -92,7 +117,7 @@ python3 src/bivae/main_vaegan.py --experiment celeba --model jnfgan_celeba --obj
 ########################################################################################################################
 
 # JMVAE-NF
-#python3 src/main.py --experiment inverse --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares_inverse/
+#python3 src/mainNormal.py --experiment inverse --model jnf_circles_squares --obj jmvae_nf --latent-dim 2 --beta-kl 1 --decrease-beta-kl 1 --warmup 15 --epochs 30 --data-path ../data/circles_squares_inverse/
 
 
 

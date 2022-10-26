@@ -1,29 +1,17 @@
 import argparse
 import datetime
-import sys
 import json
-from collections import defaultdict
-from pathlib import Path
-from tempfile import mkdtemp
 import random
-from tqdm import tqdm
-from copy import deepcopy
-
-from analysis.pytorch_fid import wrapper_inception
-from analysis import Inception_quality_assess, custom_mnist_fashion
+import sys
+from pathlib import Path
 
 import numpy as np
 import torch
-from torch import optim
-from torchvision import transforms
-
-
 import wandb
+
 import models
-import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon, add_channels,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
-from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
+from utils import Logger, Timer, unpack_data, update_dict_list, get_mean_std, print_mean_std
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--use-pretrain', type=str, default='')
@@ -34,7 +22,9 @@ info = parser.parse_args()
 
 # load args from disk if pretrained model path is given
 pretrained_path = info.use_pretrain
-args = torch.load(pretrained_path + 'args.rar')
+with open(pretrained_path + 'args.json', 'r') as fcc_file:
+    args = argparse.Namespace()
+    args.__dict__.update(json.load(fcc_file))
 
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
@@ -45,7 +35,7 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # Log parameters of the experiments
-experiment_name = args.experiment if args.experiment != '' else args.model
+experiment_name = args.wandb_experiment if hasattr(args,'wandb_experiment') else args.model
 # wand_mode = 'online' if not args.eval_mode else 'disabled'
 wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
@@ -84,7 +74,6 @@ print('Expt:', runPath)
 print('RunID:', runId)
 
 
-
 train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
@@ -98,7 +87,7 @@ model.sampler = GaussianMixtureSampler()
 # model.sampler = None
 
 # Define the parameters for assessing quality
-assesser = Inception_quality_assess(model)
+# assesser = Inception_quality_assess(model)
 # assesser.check_activations(runPath)
 
 # assesser = custom_mnist_fashion(model)
@@ -116,8 +105,10 @@ def eval():
     with torch.no_grad():
         for i, dataT in enumerate(test_loader):
             data = unpack_data(dataT, device=device)
+            # print(dataT)
             classes = dataT[0][1], dataT[1][1]
-            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3))
+
+            update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
             if i == 0:
                 model.sample_from_conditional(data, runPath, epoch=0)
                 model.reconstruct(data, runPath, epoch=0)
@@ -128,10 +119,12 @@ def eval():
 
         for i in range(1):
             # Compute fids 10 times to have a std
-            update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
+            # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
-            cond_gen_data = model.generate_from_conditional(runPath, 0, N = assesser.n_samples)
-            np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data )
+            update_dict_list(b_metrics, model.compute_fid(batch_size=256))
+
+            # cond_gen_data = model.generate_from_conditional(runPath, 0)
+            # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)

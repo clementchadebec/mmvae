@@ -7,7 +7,7 @@ from torchnet.dataset import TensorDataset, ResampleDataset
 from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
-from bivae.data_utils.transforms import contour_transform, random_grey_transform
+from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -119,7 +119,7 @@ class MNIST_DL():
         else :
             tx = transform
         datasetC = datasets.MNIST if self.type == 'numbers' else datasets.FashionMNIST
-        train = DataLoader(datasetC(path_to_my_datasets, train=True, download=True, transform=tx),
+        train = DataLoader(datasetC(path_to_my_datasets , train=True, download=True, transform=tx),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
         test = DataLoader(datasetC(path_to_my_datasets, train=False, download=True, transform=tx),
                           batch_size=batch_size, shuffle=False, **kwargs)
@@ -134,9 +134,9 @@ class SVHN_DL():
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
         kwargs = {'num_workers': 8, 'pin_memory': True} if device == 'cuda' else {}
 
-        train = DataLoader(datasets.SVHN(path_to_my_datasets, split='train', download=True, transform=transform),
+        train = DataLoader(datasets.SVHN(path_to_my_datasets + '/svhn/', split='train', download=True, transform=transform),
                            batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(datasets.SVHN(path_to_my_datasets, split='test', download=True, transform=transform),
+        test = DataLoader(datasets.SVHN(path_to_my_datasets + '/svhn/', split='test', download=True, transform=transform),
                           batch_size=batch_size, shuffle=False, **kwargs)
         return train, test
 
@@ -279,6 +279,52 @@ class MNIST_SVHN_DL():
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
 
+class BINARY_MNIST_SVHN_DL():
+
+    def __init__(self, data_path='../data'):
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
+
+        if not (os.path.exists(self.data_path + '/train-ms-mnist-idx.pt')
+                and os.path.exists(self.data_path + '/train-ms-svhn-idx.pt')
+                and os.path.exists(self.data_path + '/test-ms-mnist-idx.pt')
+                and os.path.exists(self.data_path + '/test-ms-svhn-idx.pt')):
+            raise RuntimeError('Generate transformed indices with the script in bin')
+        # get transformed indices
+        t_mnist = torch.load(self.data_path + '/train-ms-mnist-idx.pt')
+        t_svhn = torch.load(self.data_path + '/train-ms-svhn-idx.pt')
+        s_mnist = torch.load(self.data_path + '/test-ms-mnist-idx.pt')
+        s_svhn = torch.load(self.data_path + '/test-ms-svhn-idx.pt')
+
+        # load base datasets
+        transf_mnist = transforms.Compose([transforms.ToTensor(),binary_transform() ])
+        t1, s1 = MNIST_DL(self.data_path, type='numbers').getDataLoaders(batch_size, shuffle, device, transf_mnist)
+        t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+
+        train_mnist_svhn = TensorDataset([
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn))
+        ])
+        test_mnist_svhn = TensorDataset([
+            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
+            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
+        ])
+
+        # Split between test and validation while fixing the seed to ensure that we always have the same sets
+        val_set, test_set = random_split(test_mnist_svhn,
+                                         [len(test_mnist_svhn) // 2,
+                                          len(test_mnist_svhn) - len(test_mnist_svhn) // 2],
+                                         generator=torch.Generator().manual_seed(42))
+
+
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+        train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
+
 class MNIST_OASIS_DL():
 
     def __init__(self, data, oasis_transform = None, mnist_transform = None):
@@ -380,11 +426,11 @@ class CELEBA_DL():
     def __init__(self, data_path=None):
         self.data_path = data_path if data_path is not None else path_to_my_datasets
 
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda'):
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', len_train=None, transform=ToTensor()):
 
-        train_dataset = CelebA(self.data_path, 'train', transform=ToTensor())
-        test = CelebA(self.data_path, 'test', transform=ToTensor())
-        val = CelebA(self.data_path, 'val', transform=ToTensor())
+        train_dataset = CelebA(self.data_path, 'train', transform=transform, len=len_train)
+        test = CelebA(self.data_path, 'test', transform=transform)
+        val = CelebA(self.data_path, 'val', transform=transform)
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
 
@@ -392,4 +438,6 @@ class CELEBA_DL():
         test_dataloader = DataLoader(test, batch_size, shuffle=False, **kwargs)
         val_dataloader = DataLoader(val, batch_size,shuffle=False,**kwargs )
         return train_dataloader, test_dataloader, val_dataloader
+
+
 

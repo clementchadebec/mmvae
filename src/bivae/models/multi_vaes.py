@@ -22,7 +22,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 
 
-dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace, 'bernoulli' : dist.Bernoulli}
 input_dim = (1,32,32)
 
 
@@ -51,6 +51,8 @@ class Multi_VAES(nn.Module):
         self.loss = params.loss if hasattr(params, 'loss') else 'mse'
         self.eval_mode = False
 
+        self.px_z = [ dist_dict[r] for r in params.recon_losses]
+        print(f"Set the decoder distributions to {self.px_z}")
 
 
     @property
@@ -177,12 +179,12 @@ class Multi_VAES(nn.Module):
             for i in range(n):
                 o0 = self.vaes[0].forward(bdata[0])
                 o1 = self.vaes[1].forward(bdata[1])
-                z0 = o0.__getitem__('z')
-                z1 = o1.__getitem__('z')
+                z0 = o0.z
+                z1 = o1.z
                 samples[0][1].append(self.vaes[1].decoder(z0)["reconstruction"])
                 samples[1][0].append(self.vaes[0].decoder(z1)["reconstruction"])
-                samples[0][0].append(o0.__getitem__('recon_x'))
-                samples[1][1].append(o1.__getitem__('recon_x'))
+                samples[0][0].append(o0.recon_x)
+                samples[1][1].append(o1.recon_x)
         return samples
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -263,11 +265,12 @@ class Multi_VAES(nn.Module):
                 # Compute p(x|z) for z in latents and for each modality m
                 mus = self.vaes[mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                 x_m = data[mod][i]  # (nb_channels, w, h)
-                lpx_z = -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                    2 * np.pi)
+                if self.px_z[mod] == dist.Bernoulli:
+                    lp = self.px_z[mod](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                else:
+                    lp = self.px_z[mod](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
 
-
-                ln_pxs.append(torch.logsumexp(lpx_z, dim=0))
+                ln_pxs.append(torch.logsumexp(lp, dim=0))
 
                 # next batch
                 start_idx += batch_size_K
@@ -292,7 +295,7 @@ class Multi_VAES(nn.Module):
         # Compute the first term
         t1 = self.compute_joint_ll_from_uni(data, cond_mod, K, batch_size_K)[f'joint_ll_from_{cond_mod}']
         t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
-
+        # print(t1, t2)
         return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
 
 

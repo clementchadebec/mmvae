@@ -9,6 +9,7 @@ from bivae.dataloaders import CELEBA_DL
 import numpy as np
 
 from bivae.utils import unpack_data
+from torchvision.models import resnet50
 
 # We use the same architecture as for the encoder as a classifier
 
@@ -23,8 +24,38 @@ class Resnet_classifier_celeba(torch.nn.Module):
         logits = self.encoder(x)['embedding']
         return logits
 
+def create_resnet_finetune():
+
+    model = resnet50()
+    model.fc = torch.nn.Linear(2048, 40)
+
+    return model
+
 def accuracy(logits, labels):
     return torch.sum((logits > 0).int() == labels)/(np.prod(labels.shape))
+
+class attribute_classifier(torch.nn.Module):
+
+    def __init__(self):
+        super(attribute_classifier, self).__init__()
+
+    def forward(self,x):
+        """ x is of shape (batch_size, 1,1,40)"""
+        return 2 * x.squeeze() - 1
+
+def load_celeba_classifiers():
+
+    model1 = create_resnet_finetune()
+    model1.load_state_dict(torch.load('../experiments/classifier_celeba/2022-10-14/model.pt'))
+
+    model2 = attribute_classifier()
+
+    model1.eval()
+    model2.eval()
+
+    model1.cuda()
+    model2.cuda()
+    return model1, model2
 
 
 if __name__ == '__main__':
@@ -33,9 +64,9 @@ if __name__ == '__main__':
     batch_size = 256
     shuffle = True
 
-    train_loader, test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size,shuffle)
+    train_loader, test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size,shuffle, len_train=None)
 
-    model = Resnet_classifier_celeba().cuda()
+    model = create_resnet_finetune().cuda()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     objective = torch.nn.BCEWithLogitsLoss(reduction='sum')
 

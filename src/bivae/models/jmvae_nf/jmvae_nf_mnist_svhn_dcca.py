@@ -5,8 +5,7 @@ from itertools import combinations
 import torch
 import torch.nn as nn
 import torch.distributions as dist
-from sklearn.manifold import TSNE
-import wandb
+import numpy as np
 from torchvision import transforms
 
 from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
@@ -20,13 +19,15 @@ from bivae.models.nn import Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
-from bivae.dataloaders import MNIST_SVHN_DL
+from bivae.dataloaders import MNIST_SVHN_DL, MultimodalBasicDataset
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 import torch.nn.functional as F
 
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
+from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
+from bivae.utils import unpack_data, add_channels
 from bivae.dcca.models import load_dcca_mnist_svhn
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
@@ -85,8 +86,6 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         params.llik_scaling, 1)
         self.to_tensor = True
 
-        # Set the classifiers
-        # self.classifier1, self.classifier2 = classifier1, classifier2
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -110,6 +109,60 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         return F.mse_loss(t,recon_t,reduction='sum')
 
 
+    def compute_fid(self, batch_size):
+
+        model = wrapper_inception()
+
+        # Get the data with suited transform
+        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+
+        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
+
+        ref_activations = [[],[]]
+
+        for dataT in test:
+            data = unpack_data(dataT)
+
+            ref_activations[0].append(model(data[0]))
+            ref_activations[1].append(model(data[1]))
+
+        ref_activations = [np.concatenate(r) for r in ref_activations]
+
+        # Generate data from conditional
+
+        _, test, _ = self.getDataLoaders(batch_size)
+
+        gen_samples = [[],[]]
+        for dataT in test:
+            data = unpack_data(dataT)
+            gen = self._sample_from_conditional(data, n=1)
+            gen_samples[0].extend(gen[1][0])
+            gen_samples[1].extend(gen[0][1])
+
+        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
+        print(gen_samples[0].shape)
+        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+
+        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
+        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
+
+        gen_activations = [[],[]]
+        for dataT in gen_dataloader:
+            data = unpack_data(dataT)
+            gen_activations[0].append(model(data[0]))
+            gen_activations[1].append(model(data[1]))
+        gen_activations = [np.concatenate(g) for g in gen_activations]
+
+        cond_fids = {}
+        for i in range(len(ref_activations)):
+            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
+            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
+
+            # print(mu1.shape, sigma1.shape)
+
+            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+
+        return cond_fids
 
 
 
