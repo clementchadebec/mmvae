@@ -22,7 +22,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 
 
-dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
+dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace, 'bernoulli' : dist.Bernoulli}
 input_dim = (1,32,32)
 
 
@@ -51,6 +51,8 @@ class Multi_VAES(nn.Module):
         self.loss = params.loss if hasattr(params, 'loss') else 'mse'
         self.eval_mode = False
 
+        self.px_z = [ dist_dict[r] for r in params.recon_losses]
+        print(f"Set the decoder distributions to {self.px_z}")
 
 
     @property
@@ -293,7 +295,7 @@ class Multi_VAES(nn.Module):
         # Compute the first term
         t1 = self.compute_joint_ll_from_uni(data, cond_mod, K, batch_size_K)[f'joint_ll_from_{cond_mod}']
         t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
-        print(t1, t2)
+        # print(t1, t2)
         return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
 
 

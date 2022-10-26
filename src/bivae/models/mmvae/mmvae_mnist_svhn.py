@@ -1,6 +1,6 @@
 # JMVAE_NF specification for MNIST-SVHN experiment
 
-
+import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn as nn
@@ -9,13 +9,17 @@ from pythae.models import VAEConfig
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from torchvision import transforms
 
-from bivae.analysis import MnistClassifier, SVHNClassifier
+from bivae.analysis import MnistClassifier, SVHNClassifier, Inception_quality_assess
 from bivae.dataloaders import MNIST_SVHN_DL, BINARY_MNIST_SVHN_DL
 from bivae.my_pythae.models import my_VAE, laplace_VAE
 from bivae.utils import update_details
 from bivae.vis import plot_hist
 from .mmvae import MMVAE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
+from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
+from bivae.utils import add_channels, unpack_data
+from bivae.dataloaders import MultimodalBasicDataset
+from torch.utils.data import DataLoader
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -58,8 +62,6 @@ class MNIST_SVHN(MMVAE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.px_z = dist.Normal
-        wandb.config.update({'decoder dist' : self.px_z})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -121,6 +123,60 @@ class MNIST_SVHN(MMVAE):
 
         return metrics
 
+    def compute_fid(self, batch_size):
+
+        model = wrapper_inception()
+
+        # Get the data with suited transform
+        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+
+        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
+
+        ref_activations = [[],[]]
+
+        for dataT in test:
+            data = unpack_data(dataT)
+
+            ref_activations[0].append(model(data[0]))
+            ref_activations[1].append(model(data[1]))
+
+        ref_activations = [np.concatenate(r) for r in ref_activations]
+
+        # Generate data from conditional
+
+        _, test, _ = self.getDataLoaders(batch_size)
+
+        gen_samples = [[],[]]
+        for dataT in test:
+            data = unpack_data(dataT)
+            gen = self._sample_from_conditional(data, n=1)
+            gen_samples[0].extend(gen[1][0])
+            gen_samples[1].extend(gen[0][1])
+
+        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
+        print(gen_samples[0].shape)
+        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+
+        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
+        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
+
+        gen_activations = [[],[]]
+        for dataT in gen_dataloader:
+            data = unpack_data(dataT)
+            gen_activations[0].append(model(data[0]))
+            gen_activations[1].append(model(data[1]))
+        gen_activations = [np.concatenate(g) for g in gen_activations]
+
+        cond_fids = {}
+        for i in range(len(ref_activations)):
+            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
+            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
+
+            # print(mu1.shape, sigma1.shape)
+
+            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+
+        return cond_fids
 
 
 

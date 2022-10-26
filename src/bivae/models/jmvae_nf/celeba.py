@@ -104,8 +104,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # Set the classifiers
         # self.classifier1, self.classifier2 = classifier1, classifier2
 
-        self.recon_losses = ['mse', 'bce']
-        self.px_z = [dist_dict[s] for s in self.recon_losses]
+
 
     def attribute_array_to_image(self, tensor, device='cuda'):
         """tensor of size (n_batch, 1,1,40)

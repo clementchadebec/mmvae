@@ -66,7 +66,7 @@
 #python3 src/bivae/main.py --experiment mmvae_nf --model mnist_svhn --obj dreg --latent-dim 20 --epochs 5 --K 10 --dist laplace
 
 # MOEPOE
-python3 src/bivae/main.py --experiment moepoe --model moepoe_mnist_svhn --obj self_built --latent-dim 20 --epochs 5
+#python3 src/bivae/main.py --experiment moepoe --model moepoe_mnist_svhn --obj self_built --latent-dim 20 --epochs 5
 
 ###### Train from scratch ###### (no pretrained joint encoder)
 #python3 src/bivae/main.py --experiment clean_mnist_svhn --model jnf_mnist_svhn_dcca --obj jmvae_nf --latent-dim 20 --warmup 30 --epochs 50 --beta-prior 1 --no-recon True

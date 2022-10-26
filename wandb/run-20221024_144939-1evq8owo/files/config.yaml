@@ -14,6 +14,150 @@ _wandb:
     - 1: epoch
       6:
       - 3
+    - 1: cond_samples_0x0\.png._type
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.sha256
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.size
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.path
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.format
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.width
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x0\.png.height
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png._type
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.sha256
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.size
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.path
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.format
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.width
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_0x1\.png.height
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png._type
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.sha256
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.size
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.path
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.format
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.width
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x0\.png.height
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png._type
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.sha256
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.size
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.path
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.format
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.width
+      5: 1
+      6:
+      - 1
+    - 1: cond_samples_1x1\.png.height
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint._type
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.sha256
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.size
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.path
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.format
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.width
+      5: 1
+      6:
+      - 1
+    - 1: generate_joint.height
+      5: 1
+      6:
+      - 1
+    - 1: test_loss
+      5: 1
+      6:
+      - 1
     python_version: 3.8.13
     start_time: 1666615779.070016
     t:

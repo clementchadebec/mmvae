@@ -52,7 +52,7 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # Log parameters of the experiments
-experiment_name = args.experiment if args.experiment != '' else args.model
+experiment_name = args.wandb_experiment if hasattr(args, 'wandb_experiment') else args.model
 wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
@@ -117,9 +117,10 @@ def eval():
     with torch.no_grad():
         for i, dataT in enumerate(tqdm(test_loader)):
             data = unpack_data(dataT, device=device)
-            update_dict_list(b_metrics, model.compute_conditional_likelihood_bis(data, 0,1, K=info.k))
-            # update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
-            # update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
+            # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 1, 0, K= info.k))
+            # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 0,1, K=info.k))
+            update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
+            update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
     print_mean_std(m_metrics,s_metrics)

@@ -18,22 +18,24 @@ from bivae.my_pythae.models import my_VAE_LinNF, my_VAE_IAF, my_VAE, laplace_VAE
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from pythae.models.nn.benchmarks.celeba import Encoder_ResNet_VAE_CELEBA, Decoder_ResNet_AE_CELEBA
 
-from bivae.dataloaders import CELEBA_DL
+from bivae.dataloaders import CELEBA_DL, BasicDataset
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Encoder_VAE_SVHN, Decoder_VAE_SVHN
 from bivae.analysis.classifiers.CelebA_classifier import load_celeba_classifiers
-from bivae.utils import adjust_shape
+from bivae.utils import adjust_shape, unpack_data
 from bivae.vis import save_samples
+from torch.utils.data import DataLoader
 
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from .mmvae import MMVAE
-from bivae.analysis import MnistClassifier, SVHNClassifier
+from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
+
 
 
 
 # Define the classifiers for analysis
 classifier1, classifier2 = load_celeba_classifiers()
 
-dist_dict = {'mse' : dist.Normal, 'l1' : dist.Laplace, 'bce' : dist.Bernoulli}
+
 class celeba(MMVAE):
     def __init__(self, params):
         vae_config = VAEConfig
@@ -57,14 +59,12 @@ class celeba(MMVAE):
         ])
         super(celeba, self).__init__(params, vaes)
         self.modelName = 'mmvae_celeba'
-        self.data_path = params.data_path
-        self.params = params
+
         self.vaes[0].modelName = 'celeb'
         self.vaes[1].modelName = 'attributes'
-        self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1)*10,1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.recon_losses = ['l1', 'bce']
-        self.px_z = [dist_dict[s] for s in self.recon_losses]
-        wandb.config.update({'recon_losses' : self.recon_losses, 'lik_scalings' : self.lik_scaling})
+        self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1),1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+
+        wandb.config.update({'lik_scalings' : self.lik_scaling})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=20000)
@@ -94,7 +94,7 @@ class celeba(MMVAE):
         preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
         labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
-        print(classes_mul.shape)
+        # print(classes_mul.shape)
 
         acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
         acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
@@ -193,10 +193,64 @@ class celeba(MMVAE):
 
 
 
+    def analyse(self, data, runPath, epoch=0, classes=None):
+        return
 
 
+    def compute_fid(self, batch_size):
+
+        # Define the inception model used to compute FID
+        model = wrapper_inception()
+
+        # Get the data with suited transform
+        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
+
+        _, test,_ = self.getDataLoaders(batch_size,transform=tx)
+
+        ref_activations = []
+
+        for dataT in test:
+            data = unpack_data(dataT)
+
+            ref_activations.append(model(data[0]))
+
+        ref_activations = np.concatenate(ref_activations)
+
+        # Generate data from conditional
+
+        _, test,_ = self.getDataLoaders(batch_size)
+
+        gen_samples = []
+        for dataT in test:
+            data=unpack_data(dataT)
+            gen = self._sample_from_conditional(data, n=1)[1][0]
 
 
+            gen_samples.extend(gen)
+
+        gen_samples = torch.cat(gen_samples).squeeze()
+        # print(gen_samples.shape)
+        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
+
+        gen_dataset = BasicDataset(gen_samples,transform=tx)
+        gen_dataloader = DataLoader(gen_dataset,batch_size=batch_size)
+
+        gen_activations = []
+        for data in gen_dataloader:
+            gen_activations.append(model(data[0]))
+        gen_activations = np.concatenate(gen_activations)
+
+        # print(ref_activations.shape, gen_activations.shape)
+
+        mu1, mu2 = np.mean(ref_activations, axis=0), np.mean(gen_activations, axis=0)
+        sigma1, sigma2 = np.cov(ref_activations, rowvar=False), np.cov(gen_activations, rowvar=False)
+
+        # print(mu1.shape, sigma1.shape)
+
+        fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+
+        # print(fid)
+        return {'fid' : fid}
 
 
 

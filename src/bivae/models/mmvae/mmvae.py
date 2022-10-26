@@ -25,7 +25,6 @@ class MMVAE(Multi_VAES):
     def __init__(self,params, vaes):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
-        self.px_z = None # to be populated in the subclasses
         device = params.device
         self.px_z_std = torch.tensor(1).to(device)
         self.train_latents = None
@@ -114,8 +113,8 @@ class MMVAE(Multi_VAES):
 
 
     def compute_qz_x_params(self,data):
-        outputs_encoders = [self.vaes[m].encoder(data[m]) for m in range(len(data))]
-        qz_xy_params = [(o['embedding'], torch.exp(0.5*o['log_covariance'])) for o in outputs_encoders]
+        outputs_encoders = [self.vaes[m](data[m]) for m in range(len(data))]
+        qz_xy_params = [(o.mu, o.std) for o in outputs_encoders]
         return qz_xy_params
 
 
@@ -150,8 +149,12 @@ class MMVAE(Multi_VAES):
 
                     mus = vae.decoder(latents)['reconstruction'] # (batch_size_K, nb_channels, w, h)
                     x_m = data[m][i] # (nb_channels, w, h)
-                    lpx_z = -0.5 * torch.sum((mus - x_m)**2,dim=(1,2,3)) - np.prod(x_m.shape)/2*np.log(2*np.pi)
-                    lpx_zs += lpx_z
+
+                    # Compute lnp(y|z)
+                    if self.px_z[m] == dist.Bernoulli:
+                        lpx_zs += self.px_z[m](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                    else:
+                        lpx_zs += self.px_z[m](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
 
                 # Compute ln(p(z))
                 prior = self.pz(*self.pz_params)
@@ -186,8 +189,8 @@ class MMVAE(Multi_VAES):
 
         '''
 
-        o = self.vaes[cond_mod].encoder(data[cond_mod])
-        qz_xy_params = (o['embedding'], torch.exp(0.5 * o['log_covariance']))
+        o = self.vaes[cond_mod](data[cond_mod])
+        qz_xy_params = (o.mu, o.std)
 
         qz_xs = self.qz_x(*qz_xy_params)
         # Sample from the conditional encoder distribution
@@ -205,9 +208,14 @@ class MMVAE(Multi_VAES):
                 for m, vae in enumerate(self.vaes):
                     mus = self.vaes[m].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                     x_m = data[m][i]  # (nb_channels, w, h)
-                    lpxs_z += -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                        2 * np.pi)
 
+                    # Compute lnp(y|z)
+                    if self.px_z[m] == dist.Bernoulli:
+                        lp = self.px_z[m](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                    else:
+                        lp = self.px_z[m](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
+
+                    lpxs_z += lp
 
                 # Prior distribution p(z)
                 lpz = torch.sum(self.pz(*self.pz_params).log_prob(latents), dim=-1)
@@ -236,8 +244,8 @@ class MMVAE(Multi_VAES):
 
         '''
 
-        o = self.vaes[cond_mod].encoder(data[cond_mod])
-        qz_xy_params = (o['embedding'], torch.exp(0.5 * o['log_covariance']))
+        o = self.vaes[cond_mod](data[cond_mod])
+        qz_xy_params = (o.mu, o.std)
 
         qz_xs = self.qz_x(*qz_xy_params)
         # Sample from the conditional encoder distribution
@@ -254,10 +262,14 @@ class MMVAE(Multi_VAES):
                 # Compute p(x_m|z) for z in latents and for each modality m
                 mus = self.vaes[gen_mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
                 x_m = data[gen_mod][i]  # (nb_channels, w, h)
-                lpx_z = -0.5 * torch.sum((mus - x_m) ** 2, dim=(1, 2, 3)) - np.prod(x_m.shape) / 2 * np.log(
-                    2 * np.pi)
 
-                lnpxs.append(torch.logsumexp(lpx_z, dim=0))
+                # Compute lnp(y|z)
+                if self.px_z[gen_mod] == dist.Bernoulli:
+                    lp = self.px_z[gen_mod](mus).log_prob(x_m).sum(dim=(1, 2, 3))
+                else:
+                    lp = self.px_z[gen_mod](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
+
+                lnpxs.append(torch.logsumexp(lp, dim=0))
 
                 # next batch
                 start_idx += batch_size_K

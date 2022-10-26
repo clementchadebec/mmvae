@@ -35,7 +35,7 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # Log parameters of the experiments
-experiment_name = args.experiment if args.experiment != '' else args.model
+experiment_name = args.wandb_experiment if hasattr(args,'wandb_experiment') else args.model
 # wand_mode = 'online' if not args.eval_mode else 'disabled'
 wand_mode = 'disabled'
 wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
@@ -121,7 +121,7 @@ def eval():
             # Compute fids 10 times to have a std
             # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
-            update_dict_list(b_metrics, model.compute_fid(batch_size=50))
+            update_dict_list(b_metrics, model.compute_fid(batch_size=256))
 
             # cond_gen_data = model.generate_from_conditional(runPath, 0)
             # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )
