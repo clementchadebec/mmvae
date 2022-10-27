@@ -6,18 +6,16 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import StepLR
 
-from dataloaders import MRIDataset
-from analysis.oasis_classifier_train import create_model
+from bivae.dataloaders import MRIDataset
+from bivae.analysis.classifiers.oasis_classifier_train import create_model
 import pandas as pd
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from utils import add_channels
+from bivae.utils import add_channels
 import wandb
 from sklearn.model_selection import StratifiedKFold
 
-img_dir = '/home/agathe/Code/datasets/OASIS-1_dataset/preprocessed'
-train_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/train_unbalanced.tsv',  sep='\t')
-test_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/test_unbalanced.tsv', sep='\t')
+
 
 
 
@@ -160,6 +158,10 @@ def compute_metrics(ground_truth, prediction):
 
 
 if __name__ == '__main__':
+
+    img_dir = '/home/agathe/Code/datasets/OASIS-1_dataset/preprocessed'
+    train_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/train_unbalanced.tsv',  sep='\t')
+    test_df = pd.read_csv('/home/agathe/Code/datasets/OASIS-1_dataset/tsv_files/lab_1/test_unbalanced.tsv', sep='\t')
 
     # Create 5 k-folds to correctly evaluate the model performance
     kf = StratifiedKFold(n_splits=5)
