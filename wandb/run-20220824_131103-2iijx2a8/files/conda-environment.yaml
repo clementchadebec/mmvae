@@ -1,4 +1,0 @@
-name: myenv
-channels:
-  - defaults
-prefix: /home/agathe/Code/miniconda3/envs/myenv/envs/myenv
