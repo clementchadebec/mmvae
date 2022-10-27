@@ -32,8 +32,7 @@ from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_dist
 
 
 
-# Define the classifiers for analysis
-classifier1, classifier2 = load_celeba_classifiers()
+
 
 
 class celeba(MMVAE):
@@ -88,10 +87,10 @@ class celeba(MMVAE):
         cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
 
         # Compute the labels
-        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
+        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
         labels2 = (preds2 > 0).int().reshape(n_data, ns,40)
 
-        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
+        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
         labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
         classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
         # print(classes_mul.shape)
@@ -103,8 +102,8 @@ class celeba(MMVAE):
 
         # Compute the joint accuracy
         data = self.generate('', 0, N=ns, save=False)
-        labels_celeb = classifier1(data[0]) > 0
-        labels_attributes = classifier2(data[1]) > 0
+        labels_celeb = self.classifier1(data[0]) > 0
+        labels_attributes = self.classifier2(data[1]) > 0
 
         joint_acc = torch.sum(labels_attributes == labels_celeb) / (ns * 40)
         metrics['joint_coherence'] = joint_acc
@@ -256,7 +255,10 @@ class celeba(MMVAE):
 
 
 
+    def set_classifiers(self):
 
+        # Define the classifiers for analysis
+        self.classifier1, self.classifier2 = load_celeba_classifiers()    
 
 
 

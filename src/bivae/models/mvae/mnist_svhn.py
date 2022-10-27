@@ -21,7 +21,6 @@ from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
 
 
-classifier1,classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
 
 
 
@@ -67,10 +66,10 @@ class MNIST_SVHN(MVAE):
         cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
 
         # Compute the labels
-        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, 3, 32, 32))  # 8*n x 10
+        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, 3, 32, 32))  # 8*n x 10
         labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
 
-        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, 1, 28, 28))  # 8*n x 10
+        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, 1, 28, 28))  # 8*n x 10
         labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
 
         return labels2, labels1
@@ -104,8 +103,8 @@ class MNIST_SVHN(MVAE):
 
         # Compute joint-coherence
         data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
-        labels_svhn = torch.argmax(classifier2(data[1]), dim=1)
+        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
+        labels_svhn = torch.argmax(self.classifier2(data[1]), dim=1)
 
         joint_acc = torch.sum(labels_mnist == labels_svhn)/100
         metrics['joint_coherence'] = joint_acc
@@ -118,6 +117,11 @@ class MNIST_SVHN(MVAE):
 
     def step(self, epoch):
         pass
+    
+
+    def set_classifiers(self):
+
+        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
 
 
 

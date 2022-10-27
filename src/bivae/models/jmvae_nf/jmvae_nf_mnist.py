@@ -21,7 +21,7 @@ from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 from ..vae_circles import CIRCLES
 from ..nn import DoubleHeadMLP
 from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import MnistClassifier
+from bivae.analysis.classifiers.classifier_mnist import load_pretrained_fashion, load_pretrained_mnist
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1, 28, 28)
@@ -61,11 +61,14 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
         self.to_tensor = True
-        self.classifier1 = classifier1
-        self.classifier2 = classifier2
+
+    
+    def set_classifiers(self):
+        self.classifier1 = load_pretrained_mnist()
+        self.classifier2 = load_pretrained_fashion()
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
-        train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = MNIST_FASHION_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -81,10 +84,10 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
 
         # Compute the labels
-        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
+        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
         labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
 
-        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
+        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
         labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
 
         return labels2, labels1
@@ -114,8 +117,8 @@ class JMVAE_NF_MNIST(JMVAE_NF):
 
         # Compute joint coherence :
         data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
-        labels_fashion = torch.argmax(classifier2(data[1]), dim=1)
+        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
+        labels_fashion = torch.argmax(self.classifier2(data[1]), dim=1)
 
         joint_acc = torch.sum(labels_mnist == fashion_labels_to_mnist(labels_fashion)) / 100
         metrics['joint_coherence'] = joint_acc

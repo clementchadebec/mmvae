@@ -30,8 +30,6 @@ from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_
 from bivae.dcca.models import load_dcca_mnist_svhn
 
 
-# Define the classifiers for analysis
-classifier1,classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
 
 
 class MNIST_SVHN(MMVAE_NF):
@@ -83,6 +81,11 @@ class MNIST_SVHN(MMVAE_NF):
 
     def step(self, epoch):
         return
+
+
+    def set_classifiers(self):
+
+        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
 
 
 

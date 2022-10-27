@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
 from ..nn import Encoder_VAE_MNIST,Decoder_AE_MNIST
 from bivae.dataloaders import CIRCLES_SQUARES_DL
-from bivae.analysis import CirclesClassifier
+from bivae.analysis.classifiers.classifier_empty_full import load_classifier_circles, load_classifier_squares
 
 from ..vae_circles import CIRCLES
 from .mmvae import MMVAE
@@ -28,17 +28,7 @@ input_dim = (1,32,32)
 hidden_dim = 512
 
 
-classifier1, classifier2 = CirclesClassifier(), CirclesClassifier()
-path1 = '../experiments/classifier_squares/2022-06-28/model_4.pt'
-path2 = '../experiments/classifier_circles/2022-06-28/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+
 
 
 
@@ -105,8 +95,8 @@ class MMVAE_CIRCLES(MMVAE):
         samples = self._sample_from_conditional(bdata, n=100)
 
         # Compute conditional accuracy
-        preds1 = classifier2(torch.stack(samples[0][1]))
-        preds0 = classifier1(torch.stack(samples[1][0]))
+        preds1 = self.classifier2(torch.stack(samples[0][1]))
+        preds0 = self.classifier1(torch.stack(samples[1][0]))
         labels0 = torch.argmax(preds0, dim=-1).reshape(100,preds0.shape[1])
         labels1 = torch.argmax(preds1, dim=-1).reshape(100,preds1.shape[1])
         classes_mul = torch.stack([classes[0][:100] for _ in np.arange(100)]).cuda()
@@ -118,4 +108,8 @@ class MMVAE_CIRCLES(MMVAE):
         sm =  {'neg_entropy' : negative_entropy(r.cpu(), range, bins), 'acc0' :acc0, 'acc1': acc1}
         update_details(sm,m)
         return sm
+
+    def set_classifiers(self):
+        self.classifier1 = load_classifier_squares()
+        self.classifier2 = load_classifier_circles()
 

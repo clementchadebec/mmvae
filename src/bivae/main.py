@@ -37,9 +37,7 @@ with open(info.config_path, 'r') as fcc_file:
 learning_rate = 1e-3
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment
-wand_mode = 'online'
-# wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=wand_mode) # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=args.wandb_mode) 
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')

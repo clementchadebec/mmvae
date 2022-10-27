@@ -88,51 +88,71 @@ class CirclesClassifier(nn.Module) :
 
 
 
+def load_classifier_squares(path='../experiments/classifier_squares/2022-06-28/model_4.pt', device='cuda'):
+    classifier = CirclesClassifier()
+    classifier.load_state_dict(torch.load(path))
+    classifier.eval()
+    classifier.to(device=device)
+    return classifier
+
+def load_classifier_circles(path='../experiments/classifier_circles/2022-06-28/model_4.pt', device='cuda'):
+    classifier = CirclesClassifier()
+    classifier.load_state_dict(torch.load(path))
+    classifier.eval()
+    classifier.to(device=device)
+    return classifier
+
+
+
+
+
 
 
 
 ##############################################################################################################
 # Load the fashion mnist dataset and train
 
-type = 'circles'
-
-batch_size = 256
-shuffle=True
-train_loader, test_loader = CIRCLES_DL(type, '/home/agathe/Code/vaes/mmvae/data/circles_squares/').getDataLoaders(batch_size,shuffle)
-
-model = CirclesClassifier()
-optimizer = optim.Adam(model.parameters(),lr=1e-3)
-objective = torch.nn.BCEWithLogitsLoss(reduction='sum')
-
-def train(epoch):
-    model.train()
-    b_loss = 0
-    for i, data in enumerate(tqdm(train_loader)):
-        optimizer.zero_grad()
-        data, labels = data[0], data[1]
-        logits = model(data)
-        loss = objective(logits,BinLabels(labels))
-        loss.backward()
-        optimizer.step()
-        b_loss += loss.item()
-
-    print(f"====> Epoch {epoch} Train Loss {b_loss/len(train_loader.dataset)}")
-
-def test(epoch):
-    model.eval()
-    loss, acc = 0, 0
-    with torch.no_grad():
-        for i, data in enumerate(test_loader):
-            data, labels = data[0], data[1]
-            logits = model(data)
-            bloss = objective(logits, BinLabels(labels))
-            acc += accuracy(logits, labels)
-            loss +=bloss.item()
-
-    print(f"====> Epoch {epoch} Test Loss {loss/len(test_loader.dataset)} Accuracy {acc/len(test_loader.dataset)}")
 
 
 if __name__ == '__main__':
+
+    type = 'circles'
+
+    batch_size = 256
+    shuffle=True
+    train_loader, test_loader = CIRCLES_DL(type, '/home/agathe/Code/vaes/mmvae/data/circles_squares/').getDataLoaders(batch_size,shuffle)
+
+    model = CirclesClassifier()
+    optimizer = optim.Adam(model.parameters(),lr=1e-3)
+    objective = torch.nn.BCEWithLogitsLoss(reduction='sum')
+
+    def train(epoch):
+        model.train()
+        b_loss = 0
+        for i, data in enumerate(tqdm(train_loader)):
+            optimizer.zero_grad()
+            data, labels = data[0], data[1]
+            logits = model(data)
+            loss = objective(logits,BinLabels(labels))
+            loss.backward()
+            optimizer.step()
+            b_loss += loss.item()
+
+        print(f"====> Epoch {epoch} Train Loss {b_loss/len(train_loader.dataset)}")
+
+    def test(epoch):
+        model.eval()
+        loss, acc = 0, 0
+        with torch.no_grad():
+            for i, data in enumerate(test_loader):
+                data, labels = data[0], data[1]
+                logits = model(data)
+                bloss = objective(logits, BinLabels(labels))
+                acc += accuracy(logits, labels)
+                loss +=bloss.item()
+
+        print(f"====> Epoch {epoch} Test Loss {loss/len(test_loader.dataset)} Accuracy {acc/len(test_loader.dataset)}")
+
 
     output_path = Path('../experiments/classifier_' + type + '/' + datetime.date.today().isoformat() +'/')
     output_path.mkdir(parents=True, exist_ok=True)

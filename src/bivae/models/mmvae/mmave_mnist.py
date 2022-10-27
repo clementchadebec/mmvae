@@ -20,25 +20,14 @@ from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST
 from ..vae_circles import CIRCLES
 from ..nn import DoubleHeadMLP
 from ..mmvae import MMVAE
-from bivae.analysis import MnistClassifier
+from bivae.analysis.classifiers.classifier_mnist import load_pretrained_fashion, load_pretrained_mnist
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1, 28, 28)
 
 hidden_dim = 512
 
-# Define the classifiers for analysis
-classifier1, classifier2 = MnistClassifier(), MnistClassifier()
-path1 = '../experiments/classifier_numbers/2022-06-09/model_4.pt'
-path2 = '../experiments/classifier_fashion/2022-06-09/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+
 
 def fashion_labels_to_mnist(f_labels):
     return torch.div(f_labels - 1,3, rounding_mode='trunc')
@@ -70,10 +59,12 @@ class MMVAE_MNIST(MMVAE):
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
             val: object
-            train, test, val = MNIST_FASHION_DATALOADER(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+            train, test, val = MNIST_FASHION_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
             return train, test, val
 
-
+    def set_classifiers(self):
+        self.classifier1 = load_pretrained_mnist()
+        self.classifier2 = load_pretrained_mnist()
 
     def conditional_labels(self, data, n_data = 8, ns = 30):
         """ Sample ns from the conditional distribution (for each of the first n_data)
@@ -85,10 +76,10 @@ class MMVAE_MNIST(MMVAE):
         cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
 
         # Compute the labels
-        preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
+        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
         labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
 
-        preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
+        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data*ns, 1, 28, 28))  # 8*n x 10
         labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
 
         return labels2, labels1
@@ -119,8 +110,8 @@ class MMVAE_MNIST(MMVAE):
 
         # Compute joint coherence :
         data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(classifier1(data[0]), dim=1)
-        labels_fashion = torch.argmax(classifier2(data[1]), dim=1)
+        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
+        labels_fashion = torch.argmax(self.classifier2(data[1]), dim=1)
 
         joint_acc = torch.sum(labels_mnist == fashion_labels_to_mnist(labels_fashion)) / 100
         metrics['joint_coherence'] = joint_acc

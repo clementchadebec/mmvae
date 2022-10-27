@@ -3,6 +3,7 @@
   "model": "mnist_svhn",
   "obj": "dreg",
   "K": 30,
+  "recon_losses" : ["normal", "normal"],
   "looser": true,
   "llik_scaling": 0.0,
   "batch_size": 128,
@@ -17,7 +18,7 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "laplace",
-  "data_path": "../data/",
+  "data_path": "/home/agathe/Code/vaes/mmvae/data/",
   "skip_warmup": false,
   "warmup": 0,
   "no_nf": true,
@@ -30,5 +31,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn"
+  "wandb_experiment": "mnist_svhn",
+  "wandb_mode" : "disabled"
   }
