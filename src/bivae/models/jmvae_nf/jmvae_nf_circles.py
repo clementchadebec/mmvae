@@ -21,23 +21,13 @@ from ..nn import Encoder_VAE_SVHN,Decoder_VAE_SVHN
 from bivae.dataloaders import CIRCLES_SQUARES_DL
 from ..nn import DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import CirclesClassifier
+from bivae.analysis.classifiers.classifier_empty_full import load_classifier_circles, load_classifier_squares
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 input_dim = (1,32,32)
 hidden_dim = 512
 
-classifier1, classifier2 = CirclesClassifier(), CirclesClassifier()
-path1 = '../experiments/classifier_squares/2022-06-28/model_4.pt'
-path2 = '../experiments/classifier_circles/2022-06-28/model_4.pt'
-classifier1.load_state_dict(torch.load(path1))
-classifier2.load_state_dict(torch.load(path2))
-# Set in eval mode
-classifier1.eval()
-classifier2.eval()
-# Set to cuda
-classifier1.cuda()
-classifier2.cuda()
+
 
 class JMVAE_NF_CIRCLES(JMVAE_NF):
     def __init__(self, params):
@@ -104,8 +94,8 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         bdata = [d[:100] for d in data]
         samples = self._sample_from_conditional(bdata, n=100)
 
-        preds1 = classifier2(torch.stack(samples[0][1]))
-        preds0 = classifier1(torch.stack(samples[1][0]))
+        preds1 = self.classifier2(torch.stack(samples[0][1]))
+        preds0 = self.classifier1(torch.stack(samples[1][0]))
 
         labels0 = torch.argmax(preds0, dim=-1).reshape(100, 100)
         labels1 = torch.argmax(preds1, dim=-1).reshape(100, 100)
@@ -121,4 +111,12 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
 
         print('Eval metrics : ', sm)
         return sm
+
+    def set_classifiers(self):
+
+        self.classifier1 = load_classifier_squares()
+        self.classifier2 = load_classifier_circles()
+        
+
+        
 

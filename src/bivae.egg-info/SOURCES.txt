@@ -71,6 +71,7 @@ src/bivae/models/moepoe/celeba.py
 src/bivae/models/moepoe/mnist_svhn.py
 src/bivae/models/moepoe/moepoe.py
 src/bivae/models/mvae/__init__.py
+src/bivae/models/mvae/celeba.py
 src/bivae/models/mvae/mnist_svhn.py
 src/bivae/models/mvae/mvae.py
 src/bivae/models/nn/__init__.py

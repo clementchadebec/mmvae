@@ -1,0 +1,27 @@
+{
+    "os": "Linux-5.15.0-52-generic-x86_64-with-glibc2.17",
+    "python": "3.8.13",
+    "heartbeatAt": "2022-10-27T13:28:35.682708",
+    "startedAt": "2022-10-27T13:28:33.162009",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [
+        "--config-path",
+        "src/configs_experiments/mnist_svhn/mmvae.json"
+    ],
+    "state": "running",
+    "program": "src/bivae/main.py",
+    "codePath": "src/bivae/main.py",
+    "git": {
+        "remote": "git@github.com:AgatheSenellart/mmvae.git",
+        "commit": "b87919b17f9a1ba5b6f500af914a59712296f086"
+    },
+    "email": "agathe.senellart@polytechnique.edu",
+    "root": "/home/agathe/Code/mmvae",
+    "host": "agathe-Precision-7760",
+    "username": "agathe",
+    "executable": "/home/agathe/Code/miniconda3/envs/myenv38/bin/python3"
+}
