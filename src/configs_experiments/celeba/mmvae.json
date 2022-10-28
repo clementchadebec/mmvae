@@ -31,5 +31,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "use_pretrain" : ""
+  "use_pretrain" : "",
+  "wandb_mode" : "offline"
   }

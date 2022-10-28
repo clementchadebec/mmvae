@@ -60,7 +60,8 @@ class MMVAE_NF(Multi_VAES):
 
         return ln_qz_xs, zs, recons
 
-
+    def step(self, epoch):
+        return
 
     def compute_all_train_latents(self, train_loader):
         mu = []

@@ -87,6 +87,9 @@ class MVAE(Multi_VAES):
 
         return res_dict
 
+    def step(self, epoch):
+        return
+
     def compute_all_train_latents(self, train_loader):
         mu = []
         labels = []

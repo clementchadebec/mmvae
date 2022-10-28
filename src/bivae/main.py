@@ -122,7 +122,7 @@ print(f"Train : {len(train_loader.dataset)},"
 objective = getattr(objectives,
                     ('m_' if hasattr(model, 'vaes') else '')
                     + args.obj
-                    + ('_looser' if (args.looser and args.obj != 'elbo') else ''))
+                    + ('_looser' if (args.looser and args.obj != 'elbo' and args.obj != 'self_built' and args.obj != 'elbo_nf') else ''))
 
 # Objective function to use on test data
 t_objective = objective

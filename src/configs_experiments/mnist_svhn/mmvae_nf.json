@@ -32,5 +32,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn"
+  "wandb_experiment": "mnist_svhn",
+  "wandb_mode" : "offline"
   }

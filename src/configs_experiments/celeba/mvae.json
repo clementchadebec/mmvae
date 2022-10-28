@@ -34,4 +34,5 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
+  "wandb_mode" : "offline"
   }

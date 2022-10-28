@@ -53,7 +53,6 @@ src/bivae/models/jmvae_nf/celeba.py
 src/bivae/models/jmvae_nf/jmvae_nf.py
 src/bivae/models/jmvae_nf/jmvae_nf_circles.py
 src/bivae/models/jmvae_nf/jmvae_nf_mnist.py
-src/bivae/models/jmvae_nf/jmvae_nf_mnist_svhn.py
 src/bivae/models/jmvae_nf/jmvae_nf_mnist_svhn_dcca.py
 src/bivae/models/jmvae_nf/mnist_contour.py
 src/bivae/models/mmvae/__init__.py
