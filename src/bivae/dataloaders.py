@@ -439,3 +439,49 @@ class CELEBA_DL():
 
 
 
+class MNIST_SVHN_FASHION_DL():
+
+    def __init__(self, data_path='../data'):
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
+
+        if not (os.path.exists(self.data_path + '/train-msf-mnist-idx.pt')):
+            raise RuntimeError('Generate transformed indices with the script in bin')
+        # get transformed indices
+        t_mnist = torch.load(self.data_path + '/train-msf-mnist-idx.pt')
+        t_svhn = torch.load(self.data_path + '/train-msf-svhn-idx.pt')
+        t_fashion = torch.load(self.data_path + '/train-msf-fashion-idx.pt')
+        s_mnist = torch.load(self.data_path + '/test-msf-mnist-idx.pt')
+        s_svhn = torch.load(self.data_path + '/test-msf-svhn-idx.pt')
+        s_fashion = torch.load(self.data_path + '/test-msf-fashion-idx.pt')
+
+        # load base datasets
+        t1, s1 = MNIST_DL(self.data_path, type='numbers').getDataLoaders(batch_size, shuffle, device, transform)
+        t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        t3, s3 = MNIST_DL(self.data_path, type='fashion').getDataLoaders(batch_size, shuffle,device, transform)
+
+        train_msf = TensorDataset([
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn)),
+            ResampleDataset(t3.dataset, lambda d,i : t_fashion[i], size=len(t_fashion))
+        ])
+        test_msf = TensorDataset([
+            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
+            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn)),
+            ResampleDataset(s3.dataset, lambda d,i : s_fashion[i], size=len(s_fashion))
+        ])
+
+        # Split between test and validation while fixing the seed to ensure that we always have the same sets
+        val_set, test_set = random_split(test_msf,
+                                         [len(test_msf) // 2,
+                                          len(test_msf) - len(test_msf) // 2],
+                                         generator=torch.Generator().manual_seed(42))
+
+
+
+        kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
+        train = DataLoader(train_msf, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val

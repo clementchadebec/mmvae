@@ -21,6 +21,9 @@ from .mmvae.mmvae_celeba import celeba as VAE_mmvae_celeba
 from .mmvae_nf.mnist_svhn import MNIST_SVHN as VAE_mmvae_nf_mnist_svhn
 from .mvae.mnist_svhn import MNIST_SVHN as VAE_mvae_mnist_svhn
 from .moepoe.mnist_svhn import MNIST_SVHN as VAE_moepoe_mnist_svhn
+from .mvae.celeba import celeba as VAE_mvae_celeba
+from .moepoe.celeba import celeba as VAE_moepoe_celeba
+from .mmvae_nf.celeba import celeba as VAE_mmvae_nf_celeba
 
 __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
@@ -33,6 +36,9 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_mmvae_celeba',
             'VAE_mmvae_nf_mnist_svhn',
             'VAE_mvae_mnist_svhn',
-            'VAE_moepoe_mnist_svhn'
+            'VAE_moepoe_mnist_svhn',
+            'VAE_mvae_celeba',
+            'VAE_moepoe_celeba',
+            'VAE_mmvae_nf_celeba'
 
             ]

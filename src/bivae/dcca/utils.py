@@ -31,18 +31,14 @@ def make_tensor(data_xy):
 
 def svm_classify_view(outputs_train, outputs_test, C, view = 0):
 
-    view_0_t, view_1_t, labels_t = outputs_train
-    view_0_s, view_1_s, labels_s = outputs_test
+    labels_t = outputs_train[-1]
+    labels_s = outputs_test[-1]
 
 
     print('training SVM...')
     clf = svm.LinearSVC(C=C, dual=False)
-    if view==0:
-        clf.fit(view_0_t, labels_t)
-        p = clf.predict(view_0_s)
-    else:
-        clf.fit(view_1_t, labels_t)
-        p = clf.predict(view_1_s)
+    clf.fit(outputs_train[view], labels_t)
+    p = clf.predict(outputs_test[view])
     test_acc = accuracy_score(labels_s, p)
 
     return test_acc

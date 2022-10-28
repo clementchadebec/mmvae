@@ -83,3 +83,27 @@ class cca_loss():
             U = U.topk(self.outdim_size)[0]
             corr = torch.sum(torch.sqrt(U))
         return -corr
+
+
+
+class mcca_loss():
+    
+    """
+    Wraps-up several cca loss when training with more than two modalities.
+    """
+    
+    def __init__(self, outdim_size, use_all_singular_values, device='cpu') -> None:
+        self.outdim_size = outdim_size
+        self.use_all_singular_values = use_all_singular_values
+        self.device = device
+        self.cca_loss = cca_loss(outdim_size,use_all_singular_values,device).loss
+        
+    def loss(self, H_list):
+        
+        loss = 0
+        for i, h1 in enumerate(H_list):
+            for j, h2 in enumerate(H_list):
+                if i < j:
+                    loss += self.cca_loss(h1, h2)
+                    
+        return loss
