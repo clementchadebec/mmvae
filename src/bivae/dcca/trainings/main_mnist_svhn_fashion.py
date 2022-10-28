@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 1
+    epoch_num = 50
     batch_size = 800
     path_to_data = '/home/agathe/Code/datasets'
     train_loader,test_loader, val_loader = MNIST_SVHN_FASHION_DL(path_to_data).getDataLoaders(batch_size=batch_size)

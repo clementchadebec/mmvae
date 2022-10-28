@@ -17,6 +17,7 @@ class DeepCCA_MNIST_SVHN(nn.Module):
 
         self.loss = cca_loss(outdim_size, use_all_singular_values, device).loss
         print('DeepCCA model initialized')
+        
     def forward(self, x1, x2):
         """
 
