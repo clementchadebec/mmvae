@@ -54,7 +54,7 @@ random.seed(args.seed)
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment if hasattr(args, 'wandb_experiment') else args.model
 wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="clementchadebec", mode='disabled') # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')

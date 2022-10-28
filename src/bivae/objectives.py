@@ -3,7 +3,7 @@
 import torch
 from numpy import prod
 import torch.nn.functional as F
-from utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2, update_details
+from .utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2, update_details
 
 
 # helper to vectorise computation

@@ -35,7 +35,7 @@ class Solver():
 
         self.outdim_size = outdim_size
 
-        wandb.init(project = 'DCCA_celeba', entity = 'asenellart', config = {'batch_size' : batch_size,
+        wandb.init(project = 'DCCA_celeba', entity = 'clementchadebec', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None},
