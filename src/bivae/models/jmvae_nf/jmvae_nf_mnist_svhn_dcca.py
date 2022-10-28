@@ -33,7 +33,6 @@ from bivae.dcca.models import load_dcca_mnist_svhn
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
 # Define the classifiers for analysis
-classifier1,classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
 
 
 class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
@@ -58,18 +57,20 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 32, 32), params.latent_dim)
 
-        # First load the DCCA encoders
-        self.dcca = load_dcca_mnist_svhn()
+        if self.params.dcca :
+            # First load the DCCA encoders
+            self.dcca = load_dcca_mnist_svhn()
 
-        # Then add the flows
-        encoder1 = TwoStepsEncoder(self.dcca[0], params)
-        encoder2 = TwoStepsEncoder(self.dcca[1], params)
+            # Then add the flows
+            encoder1 = TwoStepsEncoder(self.dcca[0], params)
+            encoder2 = TwoStepsEncoder(self.dcca[1], params)
+        else :
+            encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
+
 
         # Define the decoders
         decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
-        # decoder1 = TwoStepsDecoder(Decoder_AE_MNIST,pre_configs[0], pretrained_decoders[0], params)
-        # decoder2 = TwoStepsDecoder(Decoder_VAE_SVHN, pre_configs[1], pretrained_decoders[1], params)
-        # decoder1, decoder2 = None, None
+        
 
         # Then define the vaes
         vae = my_VAE_IAF if not params.no_nf else my_VAE
@@ -86,6 +87,12 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         params.llik_scaling, 1)
         self.to_tensor = True
 
+    
+    def set_classifiers(self):
+
+        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+        return 
+
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -97,7 +104,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
 
         general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
-        accuracies = compute_accuracies(self,classifier1,classifier2,data,classes,n_data,ns)
+        accuracies = compute_accuracies(self,self.classifier1,self.classifier2,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
         return accuracies

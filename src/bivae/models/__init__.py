@@ -11,9 +11,8 @@
 # from .vae_svhn import SVHN as VAE_svhn
 # from .j_mnist_fashion import J_MNIST_FASHION as VAE_j_mnist_fashion
 # from .j_circles_discs import J_CIRCLES_DISCS as VAE_j_circles_discs
-#from .jmvae_nf import JMVAE_NF_CIRCLES as VAE_jnf_circles_squares
-#from .jmvae_nf import JMVAE_NF_MNIST as VAE_jnf_mnist_fashion
-#from .jmvae_nf import JMVAE_NF_MNIST_SVHN as VAE_jnf_mnist_svhn
+from .jmvae_nf import JMVAE_NF_CIRCLES as VAE_jnf_circles_squares
+from .jmvae_nf import JMVAE_NF_MNIST as VAE_jnf_mnist_fashion
 from .multi_vaes import Multi_VAES
 #from .mmvae import MMVAE_MNIST as VAE_mnist_fashion
 #from .jmvae_nf import JMVAE_NF_DCCA_MNIST_SVHN as VAE_jnf_mnist_svhn_dcca
@@ -28,7 +27,6 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
             'VAE_jnf_circles_squares',
             'VAE_jnf_mnist_fashion',
-            'VAE_jnf_mnist_svhn',
             'VAE_mnist_fashion',
             'VAE_jnf_mnist_svhn_dcca',
             'VAE_jnf_mnist_contour',

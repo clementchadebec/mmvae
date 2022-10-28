@@ -24,6 +24,8 @@ bin/*.sh
 bin/*.png
 bin/face_extract_vgg/
 
+wandb
+
 doc/
 wandb/
 
