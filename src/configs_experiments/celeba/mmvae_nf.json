@@ -22,7 +22,7 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "normal",
-  "data_path": "../data/",
+  "data_path": "/gpfsscratch/rech/wlr/uhw48em/mmvae_data/",
   "skip_warmup": false,
   "warmup": 0,
   "no_nf": false,
