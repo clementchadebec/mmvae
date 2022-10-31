@@ -58,11 +58,11 @@ class celeba(MOEPOE):
         self.modelName = 'moepoe_celeba'
         self.vaes[0].modelName = 'celeb'
         self.vaes[1].modelName = 'attributes'
-        self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1)*10,1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        self.lik_scaling = (np.prod(self.shape_mod2) / np.prod(self.shape_mod1),1) if params.llik_scaling == 0 else (1, params.llik_scaling)
         wandb.config.update({'lik_scalings' : self.lik_scaling})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=20000)
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
         return train, test, val
 
 
@@ -198,7 +198,9 @@ class celeba(MOEPOE):
 
 
 
-
+    def step(self, epoch):
+        pass
+        
 
 
 

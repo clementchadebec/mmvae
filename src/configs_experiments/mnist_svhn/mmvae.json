@@ -18,7 +18,7 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "laplace",
-  "data_path": "/home/agathe/Code/vaes/mmvae/data/",
+  "data_path": "../data/",
   "skip_warmup": false,
   "warmup": 0,
   "no_nf": true,

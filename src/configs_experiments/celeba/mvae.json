@@ -2,16 +2,16 @@
   "experiment": "mvae/celeba",
   "model": "mvae_celeba",
   "obj": "self_built",
-  "llik_scaling": 0.0,
+  "llik_scaling": 0,
   "wandb_experiment": "celeba",
   "recon_losses" : ["normal", "bernoulli"],
 
   "K": 30,
-  "looser": true,
+  "looser": false,
 
   "batch_size": 256,
   "epochs": 100,
-  "latent_dim": 20,
+  "latent_dim": 64,
   "num_hidden_layers": 1,
   "use_pretrain": "",
   "learn_prior": false,
@@ -33,6 +33,6 @@
   "no_recon": false,
   "freq_analytics": 5,
   "dcca": false,
-  "device": "cuda",
-  "wandb_mode" : "offline"
+  "device": "cuda", 
+  "wandb_mode" : "disabled"
   }
