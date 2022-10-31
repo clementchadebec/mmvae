@@ -16,8 +16,6 @@ import torch.nn.functional as F
 
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
-input_dim = (1,32,32)
-
 
 
 

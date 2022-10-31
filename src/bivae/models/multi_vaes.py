@@ -33,10 +33,9 @@ class Multi_VAES(nn.Module):
     def __init__(self,params, vaes):
         super(Multi_VAES, self).__init__()
         self.pz = dist_dict[params.dist]
-        self.mod = 2
+        self.mod = len(vaes)
         self.vaes = vaes
-        # self.vaes = nn.ModuleList([ vae(model_config=vae_config) for _ in range(self.mod)])
-        self.modelName = None
+        self.modelName = None # to be populated in subclasses
         self.params = params
         self.data_path = params.data_path
         self._pz_params = nn.ParameterList([
@@ -48,7 +47,6 @@ class Multi_VAES(nn.Module):
         self.save_format = '.png'
         self.to_tensor = None # to define in each subclass. It says if the data must be formatted to tensor.
         self.ref_activations = None
-        self.loss = params.loss if hasattr(params, 'loss') else 'mse'
         self.eval_mode = False
 
         self.px_z = [ dist_dict[r] for r in params.recon_losses]
@@ -84,7 +82,7 @@ class Multi_VAES(nn.Module):
             for d, vae in enumerate(self.vaes):
                 data.append(vae.decoder(latents)["reconstruction"])
 
-        if save:
+        if save and self.mod == 2:
             data = [*adjust_shape(data[0],data[1])]
             file = ('{}/generate_{:03d}'+self.save_format).format(runPath, epoch)
             save_samples(data,file)
@@ -173,18 +171,19 @@ class Multi_VAES(nn.Module):
     def _sample_from_conditional(self,bdata, n=10):
         """Samples from q(z|x) and reconstruct y and conversely"""
         self.eval()
-        samples = [[[],[]],[[],[]]]
+        samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
+
         with torch.no_grad():
 
-            for i in range(n):
-                o0 = self.vaes[0].forward(bdata[0])
-                o1 = self.vaes[1].forward(bdata[1])
-                z0 = o0.z
-                z1 = o1.z
-                samples[0][1].append(self.vaes[1].decoder(z0)["reconstruction"])
-                samples[1][0].append(self.vaes[0].decoder(z1)["reconstruction"])
-                samples[0][0].append(o0.recon_x)
-                samples[1][1].append(o1.recon_x)
+            for _ in range(n):
+                                    
+                outputs = [self.vaes[i].forward(bdata[i]) for i in range(self.mod)]
+                zs = [o.z for o in outputs]
+                for i,o in enumerate(outputs):
+                    samples[i][i].append(o.recon_x)
+                    for j, vae in enumerate(self.vaes):
+                        if i!=j:
+                            samples[i][j].append(vae.decoder(zs[i])["reconstruction"])
         return samples
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):

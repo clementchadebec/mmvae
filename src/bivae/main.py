@@ -231,7 +231,7 @@ if __name__ == '__main__':
                 print("Saved model after improvement of {}".format(best_loss-test_loss))
                 best_loss = test_loss
 
-            save_vars(agg, runPath + '/losses_{}.pt'.format(epoch))
+            save_vars(agg, runPath + '/losses.pt')
 
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

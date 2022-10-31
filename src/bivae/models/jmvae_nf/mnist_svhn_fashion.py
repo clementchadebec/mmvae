@@ -1,6 +1,7 @@
 # JMVAE_NF specification for MNIST-SVHN experiment --> Using DCCA to extract shared information
 
 from itertools import combinations
+from re import M
 
 import torch
 import torch.nn as nn
@@ -19,7 +20,7 @@ from bivae.models.nn import Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
-from bivae.dataloaders import MNIST_SVHN_DL, MultimodalBasicDataset
+from bivae.dataloaders import MNIST_SVHN_FASHION_DL, MultimodalBasicDataset
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 import torch.nn.functional as F
 
@@ -28,17 +29,17 @@ from ..jmvae_nf import JMVAE_NF
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
 from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
 from bivae.utils import unpack_data, add_channels
-from bivae.dcca.models import load_dcca_mnist_svhn
+from bivae.dcca.models.mnist_svhn_fashion import load_dcca_mnist_svhn_fashion
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
 # Define the classifiers for analysis
 
 
-class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
+class MNIST_SVHN_FASHION(JMVAE_NF):
 
-    shape_mod1, shape_mod2 = (1, 28, 28), (3, 32, 32)
-    modelName = 'jmvae_nf_dcca_mnist_svhn'
+    shape_mods = [(1, 28, 28), (3, 32, 32), (1,28,28)]
+    modelName = 'jmvae_nf_mnist_svhn_fashion'
 
 
     def __init__(self, params):
@@ -47,46 +48,46 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
         # Define the joint encoder
         hidden_dim = 512
-        pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20)]
+        pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20), VAEConfig((1,28,28),20)]
         joint_encoder = MultipleHeadJoint(hidden_dim,pre_configs,
-                                        [Encoder_VAE_MLP ,
-                                        Encoder_VAE_SVHN],
+                                        [Encoder_VAE_MLP , Encoder_VAE_SVHN, Encoder_VAE_MLP],
                                         params)
-        
 
         # Define the unimodal encoders config
         vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 32, 32), params.latent_dim)
+        vae_config3 = vae_config((1,28,28), params.latent_dim)
 
         if params.dcca :
             # First load the DCCA encoders
-            self.dcca = load_dcca_mnist_svhn()
+            self.dcca = load_dcca_mnist_svhn_fashion()
 
             # Then add the flows
-            encoder1 = TwoStepsEncoder(self.dcca[0], params)
-            encoder2 = TwoStepsEncoder(self.dcca[1], params)
+            e1 = TwoStepsEncoder(self.dcca[0], params)
+            e2 = TwoStepsEncoder(self.dcca[1], params)
+            e3 = TwoStepsEncoder(self.dcca[2], params)
         else :
-            encoder1, encoder2 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2)
+            e1,e2,e3 = Encoder_VAE_MLP(vae_config1), Encoder_VAE_SVHN(vae_config2), Encoder_VAE_MLP(vae_config3)
 
 
         # Define the decoders
-        decoder1, decoder2 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2)
+        d1,d2,d3 = Decoder_AE_MLP(vae_config1), Decoder_VAE_SVHN(vae_config2), Decoder_AE_MLP(vae_config3)
         
 
         # Then define the vaes
         vae = my_VAE_IAF if not params.no_nf else my_VAE
         vaes = nn.ModuleList([
-            vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
-            vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)
+            vae(model_config=vae_config1, encoder=e1, decoder=d1),
+            vae(model_config=vae_config2, encoder=e2, decoder=d2),
+            vae(vae_config3,e3,d3)
         ])
 
-        super(JMVAE_NF_DCCA_MNIST_SVHN, self).__init__(params, joint_encoder, vaes)
+        super(MNIST_SVHN_FASHION, self).__init__(params, joint_encoder, vaes)
 
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
-        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0.0 else (
-        params.llik_scaling, 1)
-        self.to_tensor = True
+        self.vaes[2].modelName = 'fashion'
+        self.lik_scaling = (1,1,1)
 
     
     def set_classifiers(self):
@@ -96,7 +97,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = MNIST_SVHN_FASHION_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
 
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):

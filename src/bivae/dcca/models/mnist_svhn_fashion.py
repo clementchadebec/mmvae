@@ -35,14 +35,15 @@ class DeepCCA_MNIST_SVHN_FASHION(nn.Module):
         return [output1, output2, output3]
 
 
-""" def load_dcca_mnist_svhn():
+def load_dcca_mnist_svhn_fashion():
 
-    model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), 15))
-    model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 15))
+    model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), 16))
+    model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 16))
+    model3 = Encoder_VAE_MLP(VAEConfig((1,28,28), 16))
 
     model1.load_state_dict(torch.load('../dcca/mnist_svhnmodel1.pt'))
     model2.load_state_dict(torch.load('../dcca/mnist_svhnmodel2.pt'))
 
-    return [model1, model2] """
+    return [model1, model2, model3]
 
 

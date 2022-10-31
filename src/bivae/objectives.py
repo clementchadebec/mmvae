@@ -174,7 +174,7 @@ def m_jmvae(model, x, K=1, beta=0, epoch=1, warmup=0, beta_prior = 1):
     return (loss - beta*(kl1+kl2), details) if epoch >= warmup else (loss, details)
 
 
-recon_loss_dict = {'mse' : F.mse_loss, 'bce' : F.binary_cross_entropy , 'l1' : F.l1_loss}
+recon_loss_dict = {'normal' : F.mse_loss, 'bernoulli' : F.binary_cross_entropy , 'laplace' : F.l1_loss}
 
 def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     if epoch >= warmup:
@@ -187,7 +187,7 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
 
-        F_loss = recon_loss_dict[model.recon_losses[m]]
+        F_loss = recon_loss_dict[model.params.recon_losses[m]]
 
         details[f'loss_{m}'] = F_loss(
                 recons[m].reshape(xm.shape[0], -1),
