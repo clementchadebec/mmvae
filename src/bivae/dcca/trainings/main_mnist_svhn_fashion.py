@@ -39,7 +39,7 @@ class Solver():
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None,
                                                                                  'outdim_size' : outdim_size},
-                   mode = 'online')
+                   mode = 'offline')
         print('Solver initialized')
 
     def fit(self, train_loader, vx1=None, vx2=None, tx1=None, tx2=None, checkpoint=None):
@@ -204,9 +204,21 @@ if __name__ == '__main__':
     losses, outputs_t =  solver.test(train_loader, use_linear_cca=apply_linear_cca)
     losses, outputs_s = solver.test(test_loader, use_linear_cca=apply_linear_cca)
     test_acc = svm_classify_view(outputs_t, outputs_s, C=0.01,view=1)
-    wandb.log({'embedding_svhn' : visualize_umap(outputs_s[1], outputs_s[-1])})
-    wandb.log({'embedding_mnist' : visualize_umap(outputs_s[0], outputs_s[-1])})
-    wandb.log({'embedding_fashion' : visualize_umap(outputs_s[2], outputs_s[-1])})
+    
+    # Plot and save embeddings
+    fig_mnist = visualize_umap(outputs_s[0], outputs_s[-1])
+    fig_svhn = visualize_umap(outputs_s[1], outputs_s[-1])
+    fig_fashion = visualize_umap(outputs_s[2], outputs_s[-1])
+    
+    fig_mnist.savefig(str(save_to) + 'embedding_mnist.png')
+    fig_svhn.savefig(str(save_to) + 'embedding_svhn.png')
+    fig_fashion.savefig(str(save_to) + 'embedding_fashion.png')
+
+
+    
+    wandb.log({'embedding_svhn' : wandb.Image(str(save_to) + 'embedding_mnist.png')})
+    wandb.log({'embedding_mnist' : wandb.Image(str(save_to) + 'embedding_svhn.png')})
+    wandb.log({'embedding_fashion' : wandb.Image(str(save_to) + 'embedding_fashion.png')})
 
     print("Accuracy on view svhn (test data) is:", test_acc*100.0)
     # Saving new features in a gzip pickled file specified by save_to
