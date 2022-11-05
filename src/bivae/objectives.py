@@ -465,7 +465,7 @@ def m_elbo_nf(model, x, K, epoch, warmup, beta_prior):
             # We assume gaussian distribution for decoder
             elbo += (-1/2*torch.sum((recon-x[d])**2)) /len(model.vaes) * model.lik_scaling[d]
 
-    return elbo / len(x) , {}
+    return elbo  , {}
 
 def m_self_built(model, x, K, epoch, warmup, beta_prior):
     elbo = model.forward(x)['elbo']

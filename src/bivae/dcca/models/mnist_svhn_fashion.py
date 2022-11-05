@@ -15,7 +15,7 @@ class DeepCCA_MNIST_SVHN_FASHION(nn.Module):
         self.model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), outdim_size))
         self.model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), outdim_size))
         self.model3 = Encoder_VAE_MLP(VAEConfig(input_dim=(1,28,28), latent_dim=outdim_size))
-
+        
         self.loss = mcca_loss(outdim_size, use_all_singular_values, device).loss
         print('DeepCCA model initialized')
         
@@ -41,8 +41,9 @@ def load_dcca_mnist_svhn_fashion():
     model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 16))
     model3 = Encoder_VAE_MLP(VAEConfig((1,28,28), 16))
 
-    model1.load_state_dict(torch.load('../dcca/mnist_svhnmodel1.pt'))
-    model2.load_state_dict(torch.load('../dcca/mnist_svhnmodel2.pt'))
+    model1.load_state_dict(torch.load('../experiments/dcca/msf/model1.pt'))
+    model2.load_state_dict(torch.load('../experiments/dcca/msf/model2.pt'))
+    model3.load_state_dict(torch.load('../experiments/dcca/msf/model3.pt'))
 
     return [model1, model2, model3]
 

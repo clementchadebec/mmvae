@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
 from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
+import numpy as np
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -254,10 +255,15 @@ class MNIST_SVHN_DL():
         # load base datasets
         t1, s1 = MNIST_DL(self.data_path, type='numbers').getDataLoaders(batch_size, shuffle, device, transform)
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        
+        # shuffle to be able to reduce size of the dataset
+        rd_idx = np.random.permutation(len(t_mnist))
+        t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
+        len_train=len(t_mnist)
 
         train_mnist_svhn = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn))
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train)
         ])
         test_mnist_svhn = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
@@ -461,11 +467,19 @@ class MNIST_SVHN_FASHION_DL():
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         t3, s3 = MNIST_DL(self.data_path, type='fashion').getDataLoaders(batch_size, shuffle,device, transform)
 
+        # shuffle to be able to reduce size of the dataset
+        rd_idx = np.random.permutation(len(t_mnist))
+        t_mnist, t_svhn, t_fashion = t_mnist[rd_idx], t_svhn[rd_idx], t_fashion[rd_idx]
+        
+        len_train = 50000
+        # len_train = len(t_mnist)
+        
         train_msf = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn)),
-            ResampleDataset(t3.dataset, lambda d,i : t_fashion[i], size=len(t_fashion))
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train),
+            ResampleDataset(t3.dataset, lambda d,i : t_fashion[i], size=len_train)
         ])
+        
         test_msf = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
             ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn)),

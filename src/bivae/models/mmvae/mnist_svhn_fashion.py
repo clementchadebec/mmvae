@@ -16,10 +16,12 @@ from bivae.utils import update_details
 from bivae.vis import plot_hist
 from .mmvae import MMVAE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
+from pythae.models.nn.benchmarks.mnist import Encoder_ResNet_VAE_MNIST, Decoder_ResNet_AE_MNIST
 from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
 from bivae.utils import add_channels, unpack_data
 from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
+from bivae.analysis.accuracies import compute_accuracies
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -49,7 +51,9 @@ class MNIST_SVHN_FASHION(MMVAE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.vaes[2].modelName = 'fashion'
+        # self.lik_scaling = ((3*32*32)/(1*28*28),1,(3*32*32)/(1*28*28))
         self.lik_scaling = (1,1,1)
+        wandb.log({'lik_scaling' : self.lik_scaling})
 
     def set_classifiers(self):
         
@@ -79,41 +83,20 @@ class MNIST_SVHN_FASHION(MMVAE):
     
     
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100, freq=10):
-
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
-
-        # Compute general metrics (FID)
-        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq)
-        # general_metrics = {}
-        # Compute cross_coherence
-        labels = self.conditional_labels(data, n_data, ns)
-        # Create an extended classes array where each original label is replicated ns times
-        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
         
-        accuracies = [[None for _ in range(self.mod)] for _ in range(self.mod)]
-        for i in range(self.mod):
-            for j in range(self.mod):
-                if i!=j:
-                    accuracies[i][j] = torch.sum(classes_mul == labels[i][j])/(n_data*ns)
-        
-        acc_names = [f'acc_{i}_{j}' for i in range(self.mod) for j in range(self.mod) if i!=j]
-        acc = [accuracies[i][j] for i in range(self.mod) for j in range(self.mod) if i!=j]
-        metrics = dict(zip(acc_names,acc))
+        self.set_classifiers()
+        general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
+        accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
-        # Compute joint-coherence
-        data = self.generate(runPath, epoch, N=100)
-        labels_joint = [torch.argmax(self.classifier[i](data[i]), dim=1) for i in range(self.mod)]
-        
-        pairs_labels = torch.stack([labels_joint[i] == labels_joint[j] for i in range(self.mod) for j in range(self.mod)])
-        joint_acc = torch.sum(torch.all(pairs_labels, dim=0))/(n_data*ns)
-        metrics['joint_coherence'] = joint_acc
-        update_details(metrics, general_metrics)
-
-        return metrics
+        update_details(accuracies, general_metrics)
+        return accuracies
 
     def compute_fid(self, batch_size):
+        
+        #TODO : Check that this function is working
 
         model = wrapper_inception()
 
@@ -122,13 +105,13 @@ class MNIST_SVHN_FASHION(MMVAE):
 
         _, test, _ = self.getDataLoaders(batch_size, transform=tx)
 
-        ref_activations = [[],[]]
+        ref_activations = [[] for i in range(self.mod)]
 
         for dataT in test:
             data = unpack_data(dataT)
-
-            ref_activations[0].append(model(data[0]))
-            ref_activations[1].append(model(data[1]))
+            for i in range(self.mod):
+                ref_activations[i].append(model(data[i]))
+            
 
         ref_activations = [np.concatenate(r) for r in ref_activations]
 
@@ -136,37 +119,53 @@ class MNIST_SVHN_FASHION(MMVAE):
 
         _, test, _ = self.getDataLoaders(batch_size)
 
-        gen_samples = [[],[]]
+        gen_samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
         for dataT in test:
             data = unpack_data(dataT)
             gen = self._sample_from_conditional(data, n=1)
-            gen_samples[0].extend(gen[1][0])
-            gen_samples[1].extend(gen[0][1])
+            for i in range(self.mod):
+                for j in range(self.mod):
+                    gen_samples[i][j].extend(gen[i][j])
+            
 
-        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
+        gen_samples = [[torch.cat(g).squeeze(0) for g in row] for row in gen_samples]
         print(gen_samples[0].shape)
         tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
 
-        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
-        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
+        gen_activations = [[[] for j in range(self.mod)] for i in range( self.mod)]
+        
+        for i in range(self.mod):
+            for j in range(self.mod):
+                if i != j :
+                    gen = torch.cat(gen_samples[i][j]).squeeze(0)
+                    dataset = BasicDataset(gen,tx)
+                    dl = DataLoader(dataset, batch_size)
+                    # Compute all the activations
+                    for data in dl:
+                        gen_activations[i][j].append(model[data])
+                
 
-        gen_activations = [[],[]]
-        for dataT in gen_dataloader:
-            data = unpack_data(dataT)
-            gen_activations[0].append(model(data[0]))
-            gen_activations[1].append(model(data[1]))
-        gen_activations = [np.concatenate(g) for g in gen_activations]
 
         cond_fids = {}
-        for i in range(len(ref_activations)):
-            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
-            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
+        
+        for i in range(self.mod): # modality sampled
+            mu_ref = np.mean(ref_activations[i], axis=0)
+            sigma_ref = np.cov(ref_activations[i],rowvar=False )
+            for j in range(self.mod): # modality we condition on for sampling
+                if i != j:
+                    # Compute mean and sigma
+                    mu_gen = np.mean(np.concatenate(gen_activations[j][i]))
+                    sigma_gen = np.cov(np.concatenate(gen[j][i]), rowvar=False)
 
-            # print(mu1.shape, sigma1.shape)
 
-            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+                    cond_fids[f'fid_{j}_{i}'] = calculate_frechet_distance(mu_ref, sigma_ref, mu_gen, sigma_gen)
 
         return cond_fids
+
+
+
+
+
 
 
 

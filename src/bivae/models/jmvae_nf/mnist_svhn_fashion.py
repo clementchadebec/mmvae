@@ -20,7 +20,7 @@ from bivae.models.nn import Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
 from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
-from bivae.dataloaders import MNIST_SVHN_FASHION_DL, MultimodalBasicDataset
+from bivae.dataloaders import MNIST_SVHN_FASHION_DL, MultimodalBasicDataset, BasicDataset
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 import torch.nn.functional as F
 
@@ -106,7 +106,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
 
         general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
-        accuracies = compute_accuracies(self,self.classifier1,self.classifier2,data,classes,n_data,ns)
+        accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
         return accuracies
@@ -119,6 +119,8 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
 
     def compute_fid(self, batch_size):
+        
+        #TODO : Check that this function is working
 
         model = wrapper_inception()
 
@@ -127,13 +129,13 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
         _, test, _ = self.getDataLoaders(batch_size, transform=tx)
 
-        ref_activations = [[],[]]
+        ref_activations = [[] for i in range(self.mod)]
 
         for dataT in test:
             data = unpack_data(dataT)
-
-            ref_activations[0].append(model(data[0]))
-            ref_activations[1].append(model(data[1]))
+            for i in range(self.mod):
+                ref_activations[i].append(model(data[i]))
+            
 
         ref_activations = [np.concatenate(r) for r in ref_activations]
 
@@ -141,35 +143,46 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
         _, test, _ = self.getDataLoaders(batch_size)
 
-        gen_samples = [[],[]]
+        gen_samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
         for dataT in test:
             data = unpack_data(dataT)
             gen = self._sample_from_conditional(data, n=1)
-            gen_samples[0].extend(gen[1][0])
-            gen_samples[1].extend(gen[0][1])
+            for i in range(self.mod):
+                for j in range(self.mod):
+                    gen_samples[i][j].extend(gen[i][j])
+            
 
-        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
+        gen_samples = [[torch.cat(g).squeeze(0) for g in row] for row in gen_samples]
         print(gen_samples[0].shape)
         tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
 
-        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
-        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
+        gen_activations = [[[] for j in range(self.mod)] for i in range( self.mod)]
+        
+        for i in range(self.mod):
+            for j in range(self.mod):
+                if i != j :
+                    gen = torch.cat(gen_samples[i][j]).squeeze(0)
+                    dataset = BasicDataset(gen,tx)
+                    dl = DataLoader(dataset, batch_size)
+                    # Compute all the activations
+                    for data in dl:
+                        gen_activations[i][j].append(model[data])
+                
 
-        gen_activations = [[],[]]
-        for dataT in gen_dataloader:
-            data = unpack_data(dataT)
-            gen_activations[0].append(model(data[0]))
-            gen_activations[1].append(model(data[1]))
-        gen_activations = [np.concatenate(g) for g in gen_activations]
 
         cond_fids = {}
-        for i in range(len(ref_activations)):
-            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
-            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
+        
+        for i in range(self.mod): # modality sampled
+            mu_ref = np.mean(ref_activations[i], axis=0)
+            sigma_ref = np.cov(ref_activations[i],rowvar=False )
+            for j in range(self.mod): # modality we condition on for sampling
+                if i != j:
+                    # Compute mean and sigma
+                    mu_gen = np.mean(np.concatenate(gen_activations[j][i]))
+                    sigma_gen = np.cov(np.concatenate(gen[j][i]), rowvar=False)
 
-            # print(mu1.shape, sigma1.shape)
 
-            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+                    cond_fids[f'fid_{j}_{i}'] = calculate_frechet_distance(mu_ref, sigma_ref, mu_gen, sigma_gen)
 
         return cond_fids
 

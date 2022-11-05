@@ -31,6 +31,5 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn",
-  "wandb_mode" : "disabled"
+  "wandb_experiment": "mnist_svhn"
   }

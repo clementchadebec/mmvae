@@ -2,7 +2,7 @@
   "experiment": "jmvae_nf/msf",
   "model": "jnf_msf",
   "obj": "jmvae_nf",
-  "K": 30,
+  "K": 1,
   "recon_losses" : ["normal", "normal", "normal"],
   "looser": false,
   "llik_scaling": 1,
@@ -18,8 +18,8 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "normal",
-  "data_path": "/home/agathe/Code/datasets/",
-  "skip_warmup": false,
+  "data_path": "../data/",
+  "skip_warmup": true,
   "warmup": 50,
   "no_nf": false,
   "beta_prior": 1,
@@ -32,5 +32,5 @@
   "dcca": false,
   "device": "cuda",
   "wandb_experiment": "msf",
-  "wandb_mode" : "disabled"
+  "flow" : "maf"
   }

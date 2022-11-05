@@ -55,7 +55,7 @@ class my_VAE_IAF(VAE):
             include_batch_norm=False,
         )
 
-        self.iaf_flow = IAF(iaf_config)
+        self.flow = IAF(iaf_config)
 
     def forward(self, x, **kwargs):
         """
@@ -80,16 +80,14 @@ class my_VAE_IAF(VAE):
         z0 = z
 
         # Pass it through the Normalizing flows
-        flow_output = self.iaf_flow.inverse(z)  # sampling
+        flow_output = self.flow.inverse(z)  # sampling
 
         z = flow_output.out
         log_abs_det_jac = flow_output.log_abs_det_jac
 
         recon_x = self.decoder(z)["reconstruction"]
 
-        loss, recon_loss, kld = self.loss_function(
-            recon_x, x, mu, log_var, z0, z, log_abs_det_jac
-        )
+
 
         output = ModelOutput(
             recon_x=recon_x,
@@ -98,9 +96,7 @@ class my_VAE_IAF(VAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac = log_abs_det_jac,
-            recon_loss=recon_loss,
-            loss = loss,
-            kld = kld
+
 
         )
 

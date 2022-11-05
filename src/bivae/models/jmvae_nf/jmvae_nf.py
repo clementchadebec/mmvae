@@ -79,20 +79,20 @@ class JMVAE_NF(Multi_VAES):
         reg = 0
         details_reg = {}
         for m, vae in enumerate(self.vaes):
-            flow_output = vae.iaf_flow(z_xy) if hasattr(vae, "iaf_flow") else vae.inverse_flow(z_xy)
-            vae_output = vae.forward(x[m])
-            mu, log_var, z0 = vae_output.mu, vae_output.log_var, flow_output.out
+            flow_output = vae.flow(z_xy) if hasattr(vae, "flow") else vae.inverse_flow(z_xy)
+            vae_output = vae.encoder(x[m])
+            mu, log_var, z0 = vae_output.embedding, vae_output.log_covariance, flow_output.out
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
-            if self.ratio_kl_recon[m] is None:
-                if self.no_recon :
-                    self.ratio_kl_recon[m] = 0
-                else:
-                    self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
-            reg += (self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
+            if self.no_recon :
+                reg += self.beta_kl*details_reg[f'kld_{m}']
+            else:
+                vae_output = vae(x[m])
+                details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
+                self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                reg += ( self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}']) # I don't think any likelihood scaling is needed here
 
         return reg, details_reg
 
@@ -155,8 +155,16 @@ class JMVAE_NF(Multi_VAES):
         return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
 
 
+        
     def compute_recon_loss(self,x,recon,m):
-        return F.mse_loss(x.reshape(x.shape[0],-1),
+        """Change the way we compute the reocnstruction, through the filter of DCCA"""
+        if hasattr(self,'dcca') and self.params.dcca :
+            with torch.no_grad():
+                t = self.dcca[m](x).embedding
+                recon_t = self.dcca[m](recon).embedding
+            return F.mse_loss(t,recon_t,reduction='sum')
+        else : 
+            return F.mse_loss(x.reshape(x.shape[0],-1),
                           recon.reshape(x.shape[0],-1),reduction='sum')
 
 
