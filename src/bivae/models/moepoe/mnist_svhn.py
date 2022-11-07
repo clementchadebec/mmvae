@@ -50,6 +50,8 @@ class MNIST_SVHN(MOEPOE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        wandb.log({'lik_scaling' : self.lik_scaling})
+        # in the original implementation they use the same rescaling as in mmvae 
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
@@ -121,7 +123,7 @@ class MNIST_SVHN(MOEPOE):
     
 
     def set_classifiers(self):
-        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
 
 
 

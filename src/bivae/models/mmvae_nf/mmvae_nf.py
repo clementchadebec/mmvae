@@ -81,3 +81,10 @@ class MMVAE_NF(Multi_VAES):
         """ Reconstruction is not defined for the mmvae model since
         the conditional contains all the information"""
         pass
+    
+    
+    def compute_joint_ll_from_uni(self, data, cond_mod, K=1000, batch_size_K=100):
+        pass
+    
+    def compute_joint_likelihood(self, data, cond_mod, K=1000, batch_size_K=100):
+        pass

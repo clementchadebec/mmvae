@@ -27,7 +27,7 @@ from bivae.vis import save_samples
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from .mmvae_nf import MMVAE_NF
 from bivae.analysis import MnistClassifier, SVHNClassifier
-
+from bivae.models.modalities.celeba import compute_accuracies, compute_fid_celeba
 
 
 # Define the classifiers for analysis
@@ -66,44 +66,28 @@ class celeba(MMVAE_NF):
 
 
     def set_classifiers(self):
-        self.classifier1, self.classifier2 = load_celeba_classifiers()
+        self.classifiers = load_celeba_classifiers()
 
 
 
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=300, freq=10):
         """
+        Celeba special compute accuracies since each image has a vector of attribute 
+        and not one labels. 
 
-        inputs :
+        Args:
+            data (list of Tensors): the data to use to compute conditional accuracies (list of Tensors)
+            runPath (str or Path): The path to eventually save results
+            epoch (int): epoch
+            classes (list or array): multidimensional labels
+            n_data (int): How much of the data to use. Defaults to 100.
+            ns (int, optional): How much sample to generate conditionally. Defaults to 300.
+            freq (int, optional): _description_. Defaults to 10.
 
-        - classes of shape (batch_size, 40)"""
-
-
-
-        bdata = [d[:n_data] for d in data]
-        samples = self._sample_from_conditional(bdata, n=ns)
-        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
-
-        # Compute the labels
-        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
-        labels2 = (preds2 > 0).int().reshape(n_data, ns,40)
-
-        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
-        labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
-        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
-        print(classes_mul.shape)
-
-        acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
-        acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
-
-        metrics = dict(accuracy1=acc1, accuracy2=acc2)
-
-        # Compute the joint accuracy
-        data = self.generate('', 0, N=ns, save=False)
-        labels_celeb = self.classifier1(data[0]) > 0
-        labels_attributes = self.classifier2(data[1]) > 0
-
-        joint_acc = torch.sum(labels_attributes == labels_celeb) / (ns * 40)
-        metrics['joint_coherence'] = joint_acc
+        Returns:
+            Dict of metrics. Accuracies.
+        """
+        metrics = compute_accuracies(self,data, runPath, epoch, classes, n_data, ns, freq)
 
         general_metrics = MMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
 
@@ -120,8 +104,7 @@ class celeba(MMVAE_NF):
         for v in tensor:
             img = Image.new('RGB', (100, 100), color=(0, 0, 0))
             d = ImageDraw.Draw(img)
-            #fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
-            fnt = ImageFont.load_default()
+            fnt = ImageFont.load_default()#ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
             vector = v.squeeze()
 
 
@@ -192,7 +175,8 @@ class celeba(MMVAE_NF):
     def step(self, epoch):
         pass
 
-
+    def compute_fid(self, batch_size):
+        return compute_fid_celeba(self, batch_size)
 
 
 

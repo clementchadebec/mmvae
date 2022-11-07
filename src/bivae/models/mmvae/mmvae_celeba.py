@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from .mmvae import MMVAE
 from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
-
+from bivae.models.modalities.celeba import compute_accuracies, compute_fid_celeba
 
 
 
@@ -74,40 +74,7 @@ class celeba(MMVAE):
 
 
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=300, freq=10):
-        """
-
-        inputs :
-
-        - classes of shape (batch_size, 40)"""
-
-
-
-        bdata = [d[:n_data] for d in data]
-        samples = self._sample_from_conditional(bdata, n=ns)
-        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
-
-        # Compute the labels
-        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod2))  # 8*n x 40
-        labels2 = (preds2 > 0).int().reshape(n_data, ns,40)
-
-        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *self.shape_mod1))  # 8*n x 10
-        labels1 = (preds1 > 0).int().reshape(n_data, ns, 40)
-        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1, 0,2).cuda()
-        # print(classes_mul.shape)
-
-        acc2 = torch.sum(classes_mul == labels2) / (n_data * ns*40)
-        acc1 = torch.sum(classes_mul == labels1) / (n_data * ns*40)
-
-        metrics = dict(accuracy1=acc1, accuracy2=acc2)
-
-        # Compute the joint accuracy
-        data = self.generate('', 0, N=ns, save=False)
-        labels_celeb = self.classifier1(data[0]) > 0
-        labels_attributes = self.classifier2(data[1]) > 0
-
-        joint_acc = torch.sum(labels_attributes == labels_celeb) / (ns * 40)
-        metrics['joint_coherence'] = joint_acc
-
+        metrics = compute_accuracies(self, data, runPath, epoch, classes, n_data, ns, freq)
         general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
 
         update_details(metrics, general_metrics)
@@ -123,8 +90,7 @@ class celeba(MMVAE):
         for v in tensor:
             img = Image.new('RGB', (100, 100), color=(0, 0, 0))
             d = ImageDraw.Draw(img)
-            #fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
-            fnt = ImageFont.load_default()
+            fnt = ImageFont.load_default()#ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
             vector = v.squeeze()
 
 
@@ -198,68 +164,13 @@ class celeba(MMVAE):
 
 
     def compute_fid(self, batch_size):
-
-        # Define the inception model used to compute FID
-        model = wrapper_inception()
-
-        # Get the data with suited transform
-        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-
-        _, test,_ = self.getDataLoaders(batch_size,transform=tx)
-
-        ref_activations = []
-
-        for dataT in test:
-            data = unpack_data(dataT)
-
-            ref_activations.append(model(data[0]))
-
-        ref_activations = np.concatenate(ref_activations)
-
-        # Generate data from conditional
-
-        _, test,_ = self.getDataLoaders(batch_size)
-
-        gen_samples = []
-        for dataT in test:
-            data=unpack_data(dataT)
-            gen = self._sample_from_conditional(data, n=1)[1][0]
-
-
-            gen_samples.extend(gen)
-
-        gen_samples = torch.cat(gen_samples).squeeze()
-        # print(gen_samples.shape)
-        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-
-        gen_dataset = BasicDataset(gen_samples,transform=tx)
-        gen_dataloader = DataLoader(gen_dataset,batch_size=batch_size)
-
-        gen_activations = []
-        for data in gen_dataloader:
-            gen_activations.append(model(data[0]))
-        gen_activations = np.concatenate(gen_activations)
-
-        # print(ref_activations.shape, gen_activations.shape)
-
-        mu1, mu2 = np.mean(ref_activations, axis=0), np.mean(gen_activations, axis=0)
-        sigma1, sigma2 = np.cov(ref_activations, rowvar=False), np.cov(gen_activations, rowvar=False)
-
-        # print(mu1.shape, sigma1.shape)
-
-        fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
-
-        # print(fid)
-        return {'fid' : fid}
-
-
-
+        return compute_fid_celeba(self, batch_size)
 
 
     def set_classifiers(self):
 
         # Define the classifiers for analysis
-        self.classifier1, self.classifier2 = load_celeba_classifiers()    
+        self.classifiers = load_celeba_classifiers()    
 
 
 

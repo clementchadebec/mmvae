@@ -16,8 +16,6 @@ import torch.nn.functional as F
 
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
-input_dim = (1,32,32)
-
 
 
 
@@ -81,20 +79,20 @@ class JMVAE_NF(Multi_VAES):
         reg = 0
         details_reg = {}
         for m, vae in enumerate(self.vaes):
-            flow_output = vae.iaf_flow(z_xy) if hasattr(vae, "iaf_flow") else vae.inverse_flow(z_xy)
-            vae_output = vae.forward(x[m])
-            mu, log_var, z0 = vae_output.mu, vae_output.log_var, flow_output.out
+            flow_output = vae.flow(z_xy) if hasattr(vae, "flow") else vae.inverse_flow(z_xy)
+            vae_output = vae.encoder(x[m])
+            mu, log_var, z0 = vae_output.embedding, vae_output.log_covariance, flow_output.out
             log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
 
             # kld -= log_q_z0 + flow_output.log_abs_det_jac
-            details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
             details_reg[f'kld_{m}'] = qz_xy.log_prob(z_xy).sum() - (log_q_z0 + flow_output.log_abs_det_jac).sum()
-            if self.ratio_kl_recon[m] is None:
-                if self.no_recon :
-                    self.ratio_kl_recon[m] = 0
-                else:
-                    self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
-            reg += (self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}'])* self.lik_scaling[m]
+            if self.no_recon :
+                reg += self.beta_kl*details_reg[f'kld_{m}']
+            else:
+                vae_output = vae(x[m])
+                details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
+                self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                reg += ( self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}']) # I don't think any likelihood scaling is needed here
 
         return reg, details_reg
 
@@ -152,13 +150,21 @@ class JMVAE_NF(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
 
         return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
 
 
+        
     def compute_recon_loss(self,x,recon,m):
-        return F.mse_loss(x.reshape(x.shape[0],-1),
+        """Change the way we compute the reocnstruction, through the filter of DCCA"""
+        if hasattr(self,'dcca') and self.params.dcca :
+            with torch.no_grad():
+                t = self.dcca[m](x).embedding
+                recon_t = self.dcca[m](recon).embedding
+            return F.mse_loss(t,recon_t,reduction='sum')
+        else : 
+            return F.mse_loss(x.reshape(x.shape[0],-1),
                           recon.reshape(x.shape[0],-1),reduction='sum')
 
 
@@ -255,51 +261,9 @@ class JMVAE_NF(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
 
         return {'likelihood' : ll/len(data[0])}
 
 
-    def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
-
-        '''
-                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
-
-                ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
-
-                '''
-
-
-        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
-        ll = 0
-        for i in range(len(data[0])):
-            start_idx, stop_index = 0, batch_size_K
-            lnpxs = []
-            repeated_data_point = torch.stack(batch_size_K * [data[cond_mod][i]]) # batch_size_K, n_channels, h, w
-
-            while stop_index <= K:
-
-                # Encode with the conditional VAE
-                latents = self.vaes[cond_mod](repeated_data_point).z  # (batchsize_K, latent_dim)
-
-                # Decode with the opposite decoder
-                recon = self.vaes[gen_mod].decoder(latents).reconstruction
-
-                # Compute lnp(y|z)
-
-
-                if self.px_z[gen_mod] == dist.Bernoulli:
-                    lpx_z = self.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
-                else:
-                    lpx_z = self.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
-
-                lnpxs.append(torch.logsumexp(lpx_z,dim=0))
-                # next batch
-                start_idx += batch_size_K
-                stop_index += batch_size_K
-
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
-
-        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
-
-
+    

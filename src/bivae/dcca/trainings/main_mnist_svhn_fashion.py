@@ -34,15 +34,10 @@ class Solver():
 
         self.outdim_size = outdim_size
 
-        wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'asenellart', config = {'batch_size' : batch_size,
-                                                                                 'learning_rate': learning_rate,
-                                                                                 'reg_par' : reg_par,
-                                                                                 'linear_cca' : linear_cca is not None,
-                                                                                 'outdim_size' : outdim_size},
-                   mode = 'offline')
+        
         print('Solver initialized')
 
-    def fit(self, train_loader, vx1=None, vx2=None, tx1=None, tx2=None, checkpoint=None):
+    def fit(self, train_loader, val_loader = None, tx1=None, tx2=None, checkpoint=None):
         """
 
         x1, x2 are the vectors needs to be make correlated
@@ -53,15 +48,12 @@ class Solver():
 
         data_size = len(train_loader.dataset)
 
-        if vx1 is not None and vx2 is not None:
+        if val_loader is not None:
             best_val_loss = 0
-            vx1 = vx1.to(self.device)
-            vx2 = vx2.to(self.device)
-        if tx1 is not None and tx2 is not None:
-            tx1 = tx1.to(self.device)
-            tx2 = tx2.to(self.device)
+            
 
         train_losses = []
+        num_epochs_without_improvement = 0
         for epoch in range(self.epoch_num):
             epoch_start_time = time.time()
             self.model.train()
@@ -75,39 +67,43 @@ class Solver():
                 loss.backward()
                 self.optimizer.step()
             train_loss = np.mean(train_losses)
-
+            wandb.log({'train_loss' : train_loss})
             info_string = "Epoch {:d}/{:d} - time: {:.2f} - training_loss: {:.4f}"
-            if vx1 is not None and vx2 is not None:
+            if val_loader is not None:
                 with torch.no_grad():
                     self.model.eval()
-                    val_loss = self.test(vx1, vx2)
+                    val_loss = self.test(val_loader)[0]
+                    wandb.log({'val_loss' : val_loss})
                     info_string += " - val_loss: {:.4f}".format(val_loss)
                     if val_loss < best_val_loss:
                         print(
                             "Epoch {:d}: val_loss improved from {:.4f} to {:.4f}, saving model to {}".format(epoch + 1, best_val_loss, val_loss, checkpoint))
                         best_val_loss = val_loss
                         save_encoders(model,checkpoint)
+                        torch.save(model.state_dict(),str(checkpoint) + '/model.pt')
+                        num_epochs_without_improvement = 0 #reset early stop
                     else:
                         print("Epoch {:d}: val_loss did not improve from {:.4f}".format(
                             epoch + 1, best_val_loss))
+                        num_epochs_without_improvement+=1
             else:
                 save_encoders(model, checkpoint)
             epoch_time = time.time() - epoch_start_time
             print((info_string.format(
                 epoch + 1, self.epoch_num, epoch_time, train_loss)))
+            if num_epochs_without_improvement == 10:
+                break
         # train_linear_cca
         if self.linear_cca is not None:
             _, outputs = self._get_outputs(train_loader)
             self.train_linear_cca(outputs[0], outputs[1])
 
 
-        if vx1 is not None and vx2 is not None:
-            loss = self.test(vx1, vx2)
+        if val_loader is not None:
+            loss = self.test(val_loader)[0]
             print("loss on validation data: {:.4f}".format(loss))
 
-        if tx1 is not None and tx2 is not None:
-            loss = self.test(tx1, tx2)
-            print('loss on test data: {:.4f}'.format(loss))
+
 
     def test(self, test_loader, use_linear_cca=False):
         with torch.no_grad():
@@ -157,7 +153,7 @@ if __name__ == '__main__':
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('../experiments/dcca_msf/')
+    save_to = Path('../dcca/msf')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
@@ -166,10 +162,9 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 50
+    epoch_num = 30
     batch_size = 800
-    path_to_data = '/home/agathe/Code/datasets'
-    train_loader,test_loader, val_loader = MNIST_SVHN_FASHION_DL(path_to_data).getDataLoaders(batch_size=batch_size)
+    train_loader,test_loader, val_loader = MNIST_SVHN_FASHION_DL('../data').getDataLoaders(batch_size=batch_size)
 
 
     # the regularization parameter of the network
@@ -185,6 +180,13 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
+    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
+                                                                                 'learning_rate': learning_rate,
+                                                                                 'reg_par' : reg_par,
+                                                                                 'linear_cca' : linear_cca is not None,
+                                                                                 'outdim_size' : outdim_size, 
+                                                                                 'epochs_num' : epoch_num}, 
+               dir=str(save_to) + '/wandb')
 
 
     # Building, training, and producing the new features by DCCA
@@ -195,7 +197,7 @@ if __name__ == '__main__':
     solver = Solver(model, l_cca, outdim_size, epoch_num, batch_size,
                     learning_rate, reg_par, device=device)
 
-    solver.fit(train_loader, checkpoint=save_to)
+    solver.fit(train_loader,val_loader, checkpoint=save_to)
     
     # TODO: Save l_cca model if needed
 
@@ -203,23 +205,16 @@ if __name__ == '__main__':
     # Training and testing of SVM with linear kernel on the view 1 with new features
     losses, outputs_t =  solver.test(train_loader, use_linear_cca=apply_linear_cca)
     losses, outputs_s = solver.test(test_loader, use_linear_cca=apply_linear_cca)
-    test_acc = svm_classify_view(outputs_t, outputs_s, C=0.01,view=1)
     
-    # Plot and save embeddings
-    fig_mnist = visualize_umap(outputs_s[0], outputs_s[-1])
-    fig_svhn = visualize_umap(outputs_s[1], outputs_s[-1])
-    fig_fashion = visualize_umap(outputs_s[2], outputs_s[-1])
-    
-    fig_mnist.savefig(str(save_to) + 'embedding_mnist.png')
-    fig_svhn.savefig(str(save_to) + 'embedding_svhn.png')
-    fig_fashion.savefig(str(save_to) + 'embedding_fashion.png')
+    # Save all files :
+    visualize_umap(outputs_s[1], outputs_s[-1], save_file =str(save_to) + '/embedding_svhn')
+    visualize_umap(outputs_s[0], outputs_s[-1], save_file = str(save_to) + '/embedding_mnist')
+    visualize_umap(outputs_s[2], outputs_s[-1], save_file = str(save_to) + '/embedding_fashion')
 
 
-    
-    wandb.log({'embedding_svhn' : wandb.Image(str(save_to) + 'embedding_mnist.png')})
-    wandb.log({'embedding_mnist' : wandb.Image(str(save_to) + 'embedding_svhn.png')})
-    wandb.log({'embedding_fashion' : wandb.Image(str(save_to) + 'embedding_fashion.png')})
-
-    print("Accuracy on view svhn (test data) is:", test_acc*100.0)
+    for i in range(3):
+        test_acc = svm_classify_view(outputs_t, outputs_s, C=0.01,view=i)
+        
+        print(f"Accuracy on view {i} (test data) is:", test_acc*100.0)
     # Saving new features in a gzip pickled file specified by save_to
 

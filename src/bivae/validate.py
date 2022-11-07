@@ -4,6 +4,7 @@ import json
 import random
 import sys
 from pathlib import Path
+import os, glob
 
 import numpy as np
 import torch
@@ -14,15 +15,16 @@ from models.samplers import GaussianMixtureSampler
 from utils import Logger, Timer, unpack_data, update_dict_list, get_mean_std, print_mean_std
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
-parser.add_argument('--use-pretrain', type=str, default='')
+parser.add_argument('--model', type=str, default='')
 
 
 # args
 info = parser.parse_args()
 
 # load args from disk if pretrained model path is given
-pretrained_path = info.use_pretrain
-with open(pretrained_path + 'args.json', 'r') as fcc_file:
+day_path = max(glob.glob(os.path.join('../experiments/' + info.model, '*/')), key=os.path.getmtime)
+model_path = max(glob.glob(os.path.join(day_path, '*/')), key=os.path.getmtime)
+with open(model_path + 'args.json', 'r') as fcc_file:
     args = argparse.Namespace()
     args.__dict__.update(json.load(fcc_file))
 
@@ -37,8 +39,7 @@ random.seed(args.seed)
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment if hasattr(args,'wandb_experiment') else args.model
 # wand_mode = 'online' if not args.eval_mode else 'disabled'
-wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="clementchadebec", mode='disabled') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="clementchadebec") # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -56,8 +57,8 @@ model = modelC(args).to(device)
 
 
 # Load state_dict from training
-print('Loading model {} from {}'.format(model.modelName, pretrained_path))
-model.load_state_dict(torch.load(pretrained_path + '/model.pt'))
+print('Loading model {} from {}'.format(model.modelName, model_path))
+model.load_state_dict(torch.load(model_path + '/model.pt'))
 model._pz_params = model._pz_params
 
 
@@ -67,7 +68,7 @@ if not args.experiment:
 # set up run path
 runId = datetime.datetime.now().isoformat()
 
-runPath = Path(pretrained_path + '/validate_'+runId)
+runPath = Path(model_path + '/validate_'+runId)
 runPath.mkdir(parents=True, exist_ok=True)
 sys.stdout = Logger('{}/run.log'.format(runPath))
 print('Expt:', runPath)
@@ -83,14 +84,16 @@ print(f"Train : {len(train_loader.dataset)},"
 
 
 # Define a sampler for generating new samples
-model.sampler = GaussianMixtureSampler()
-# model.sampler = None
+# model.sampler = GaussianMixtureSampler()
+model.sampler = None
 
 # Define the parameters for assessing quality
 # assesser = Inception_quality_assess(model)
 # assesser.check_activations(runPath)
 
 # assesser = custom_mnist_fashion(model)
+
+
 def eval():
     """Compute all metrics on the entire test dataset"""
 
@@ -100,6 +103,7 @@ def eval():
 
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
+
         model.sampler.fit_from_latents(model.train_latents[0])
     b_metrics = {}
     with torch.no_grad():
@@ -107,13 +111,13 @@ def eval():
             data = unpack_data(dataT, device=device)
             # print(dataT)
             classes = dataT[0][1], dataT[1][1]
-
+            # Compute the classification accuracies
             update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
             if i == 0:
                 model.sample_from_conditional(data, runPath, epoch=0)
-                model.reconstruct(data, runPath, epoch=0)
-                model.analyse(data, runPath, epoch=0, classes=classes)
-                model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
+                # model.reconstruct(data, runPath, epoch=0)
+                # model.analyse(data, runPath, epoch=0, classes=classes)
+                # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
                 model.generate(runPath, epoch=0, N=32, save=True)
                 model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
 
