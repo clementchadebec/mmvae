@@ -111,21 +111,21 @@ def eval():
             data = unpack_data(dataT, device=device)
             # print(dataT)
             classes = dataT[0][1], dataT[1][1]
-
+            # Compute the classification accuracies
             update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes, freq=3, ns=30))
             if i == 0:
                 model.sample_from_conditional(data, runPath, epoch=0)
-                model.reconstruct(data, runPath, epoch=0)
-                model.analyse(data, runPath, epoch=0, classes=classes)
-                model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
+                # model.reconstruct(data, runPath, epoch=0)
+                # model.analyse(data, runPath, epoch=0, classes=classes)
+                # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=0, ticks=None, N=100)
                 model.generate(runPath, epoch=0, N=32, save=True)
                 model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
 
-        # for i in range(1):
-        #     # Compute fids 10 times to have a std
-        #     # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
+        for i in range(1):
+            # Compute fids 10 times to have a std
+            # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
-            # update_dict_list(b_metrics, model.compute_fid(batch_size=256))
+            update_dict_list(b_metrics, model.compute_fid(batch_size=256))
 
             # cond_gen_data = model.generate_from_conditional(runPath, 0)
             # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )
