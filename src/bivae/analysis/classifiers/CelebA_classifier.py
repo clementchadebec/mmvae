@@ -46,7 +46,7 @@ class attribute_classifier(torch.nn.Module):
 def load_celeba_classifiers():
 
     model1 = create_resnet_finetune()
-    model1.load_state_dict(torch.load('../experiments/classifier_celeba/2022-10-14/model.pt'))
+    model1.load_state_dict(torch.load('../experiments/classifier_celeba/model.pt'))
 
     model2 = attribute_classifier()
 

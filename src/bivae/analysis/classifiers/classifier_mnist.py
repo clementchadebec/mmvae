@@ -7,6 +7,7 @@ from torchvision import datasets, transforms
 from torch import optim
 import datetime
 from bivae.utils import accuracy
+import argparse
 
 
 def BinLabels(targets):
@@ -47,7 +48,7 @@ class MnistClassifier(nn.Module) :
         return f
 
 
-def load_pretrained_mnist(path = '../experiments/classifier_numbers/2022-06-09/model_4.pt', device = 'cuda'):
+def load_pretrained_mnist(path = '../experiments/classifier_numbers/model.pt', device = 'cuda'):
     # Define the classifiers for analysis
     classifier = MnistClassifier()
     classifier.load_state_dict(torch.load(path))
@@ -55,7 +56,7 @@ def load_pretrained_mnist(path = '../experiments/classifier_numbers/2022-06-09/m
     classifier.to(device)
     return classifier
 
-def load_pretrained_fashion(path = '../experiments/classifier_fashion/2022-06-09/model_4.pt', device='cuda'):
+def load_pretrained_fashion(path = '../experiments/classifier_fashion/model.pt', device='cuda'):
     classifier = MnistClassifier()
     classifier.load_state_dict(torch.load(path))
     classifier.eval()
@@ -69,19 +70,23 @@ def load_pretrained_fashion(path = '../experiments/classifier_fashion/2022-06-09
 
 
 if __name__ == '__main__':
-
-    mnist_type = 'numbers'
+    parser = argparse.ArgumentParser('classifier_mnist')
+    parser.add_argument('--mnist-type', type=str, default='numbers')
+    mnist_type = parser.parse_args().mnist_type
 
     tx = transforms.ToTensor()  # Mnist is already with values between 0 and 1
     batch_size = 256
+    num_epochs = 15
     shuffle = True
     dataset = datasets.FashionMNIST if mnist_type == 'fashion' else datasets.MNIST
+    print("loading datasets")
     train_loader = DataLoader(dataset('../data', train=True, download=True, transform=tx)
                               , batch_size=batch_size, shuffle=shuffle)
     test_loader = DataLoader(dataset('../data', train=False, download=True, transform=tx),
                              batch_size=batch_size, shuffle=False)
-
+    print("creating model")
     model = MnistClassifier()
+    print("setting the optimizer")
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     objective = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
@@ -114,14 +119,18 @@ if __name__ == '__main__':
 
         print(
             f"====> Epoch {epoch} Test Loss {loss / len(test_loader.dataset)} Accuracy {acc / len(test_loader.dataset)}")
+        return loss/(len(test_loader.dataset))
 
-
-    output_path = Path('../experiments/classifier_' + mnist_type + '/' + datetime.date.today().isoformat() +'/')
+    output_path = Path('../experiments/classifier_' + mnist_type + '/')
     output_path.mkdir(parents=True, exist_ok=True)
-    for epoch in range(5):
+    
+    best_loss = torch.inf
+    for epoch in range(num_epochs):
         train(epoch)
-        test(epoch)
-        torch.save(model.state_dict(), Path.joinpath(output_path, f'model_{epoch}.pt'))
+        test_loss = test(epoch)
+        if test_loss < best_loss:
+            best_loss = test_loss
+            torch.save(model.state_dict(), Path.joinpath(output_path, f'model.pt'))
 
 
 

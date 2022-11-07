@@ -7,8 +7,8 @@
   "recon_losses" : ["normal", "normal"],
   "looser": false,
   "llik_scaling": 0,
-  "batch_size": 128,
-  "epochs": 200,
+  "batch_size": 256,
+  "epochs": 100,
   "latent_dim": 20,
   "num_hidden_layers": 1,
   "use_pretrain": "",
@@ -20,8 +20,8 @@
   "seed": 1,
   "dist": "normal",
   "data_path": "../data/",
-  "skip_warmup": true,
-  "warmup": 100,
+  "skip_warmup": false,
+  "warmup": 5,
   "no_nf": true,
   "beta_prior": 1,
   "beta_kl": 1,
@@ -32,5 +32,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn"
+  "wandb_experiment": "mnist_svhn",
+  "wandb_mode" : "offline"
   }

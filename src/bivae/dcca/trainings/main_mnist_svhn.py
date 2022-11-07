@@ -80,6 +80,7 @@ class Solver():
                             "Epoch {:d}: val_loss improved from {:.4f} to {:.4f}, saving model to {}".format(epoch + 1, best_val_loss, val_loss, checkpoint))
                         best_val_loss = val_loss
                         save_encoders(model,checkpoint)
+                        num_epochs_without_improvement = 0 # reset early stop
                     else:
                         print("Epoch {:d}: val_loss did not improve from {:.4f}".format(
                             epoch + 1, best_val_loss))
@@ -160,12 +161,12 @@ if __name__ == '__main__':
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
-    outdim_size = 15
+    outdim_size = 16
 
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 100
+    epoch_num = 3
     batch_size = 800
     train_loader,test_loader, val_loader = MNIST_SVHN_DL('../data').getDataLoaders(batch_size=batch_size)
 
@@ -183,7 +184,7 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
-    wandb.init(project = 'DCCA_mnist_svhn', entity = 'asenellart', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_mnist_svhn', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None},

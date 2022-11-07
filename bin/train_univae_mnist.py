@@ -15,7 +15,7 @@ from models.nn import Encoder_VAE_MNIST,Decoder_AE_MNIST
 
 learning_rate = 1e-3
 
-wandb.init(project = 'vae_mnist', entity="asenellart", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = 'vae_mnist', entity="multimodal_vaes", config={'lr' : learning_rate}, mode='online') # mode = ['online', 'offline', 'disabled']
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
 

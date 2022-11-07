@@ -1,5 +1,4 @@
-{
-  "experiment": "mmvae/mnist_svhn",
+{ "experiment": "mmvae/mnist_svhn",
   "model": "mnist_svhn",
   "obj": "dreg",
   "K": 30,

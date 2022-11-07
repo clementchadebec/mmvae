@@ -81,6 +81,7 @@ class Solver():
                         best_val_loss = val_loss
                         save_encoders(model,checkpoint)
                         torch.save(model.state_dict(),str(checkpoint) + '/model.pt')
+                        num_epochs_without_improvement = 0 #reset early stop
                     else:
                         print("Epoch {:d}: val_loss did not improve from {:.4f}".format(
                             epoch + 1, best_val_loss))
@@ -179,7 +180,7 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
-    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'asenellart', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None,

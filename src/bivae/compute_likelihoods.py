@@ -26,23 +26,23 @@ from utils import Logger, Timer, save_model, save_vars, unpack_data, update_deta
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
 from tqdm import tqdm
+import os,glob
 
-parser = argparse.ArgumentParser(description='Compute likelihoods parameters')
-parser.add_argument('--use-pretrain', type=str, default='')
-parser.add_argument('--k', type=int, default = 1000)
+parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
+parser.add_argument('--model', type=str, default='')
 
 
 # args
 info = parser.parse_args()
 
 # load args from disk if pretrained model path is given
-pretrained_path = info.use_pretrain
-with open(pretrained_path + 'args.json', 'r') as fcc_file:
+day_path = max(glob.glob(os.path.join('../experiments/' + info.model, '*/')), key=os.path.getmtime)
+model_path = max(glob.glob(os.path.join(day_path, '*/')), key=os.path.getmtime)
+with open(model_path + 'args.json', 'r') as fcc_file:
     args = argparse.Namespace()
     args.__dict__.update(json.load(fcc_file))
-
-
-
+    
+    
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
 torch.backends.cudnn.benchmark = True
@@ -54,7 +54,7 @@ random.seed(args.seed)
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment if hasattr(args, 'wandb_experiment') else args.model
 wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart", mode='disabled') # mode = ['online', 'offline', 'disabled']
+wandb.init(project = experiment_name , entity="multimodal_vaes") # mode = ['online', 'offline', 'disabled']
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -72,8 +72,8 @@ model = modelC(args).to(device)
 
 
 # Load state_dict from training
-print('Loading model {} from {}'.format(model.modelName, pretrained_path))
-model.load_state_dict(torch.load(pretrained_path + '/model.pt'))
+print('Loading model {} from {}'.format(model.modelName, model_path))
+model.load_state_dict(torch.load(model_path + '/model.pt'))
 model._pz_params = model._pz_params
 
 
@@ -83,7 +83,7 @@ if not args.experiment:
 # set up run path
 runId = datetime.datetime.now().isoformat()
 
-runPath = Path(pretrained_path + '/validate_'+runId)
+runPath = Path(model_path + '/validate_'+runId)
 runPath.mkdir(parents=True, exist_ok=True)
 sys.stdout = Logger('{}/run.log'.format(runPath))
 print('Expt:', runPath)

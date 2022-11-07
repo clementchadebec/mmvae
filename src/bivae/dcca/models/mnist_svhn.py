@@ -35,8 +35,8 @@ class DeepCCA_MNIST_SVHN(nn.Module):
 
 def load_dcca_mnist_svhn():
 
-    model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), 15))
-    model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 15))
+    model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), 16))
+    model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 16))
 
     model1.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model1.pt'))
     model2.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model2.pt'))

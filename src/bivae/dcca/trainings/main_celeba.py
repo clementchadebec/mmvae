@@ -82,6 +82,7 @@ class Solver():
                             "Epoch {:d}: val_loss improved from {:.4f} to {:.4f}, saving model to {}".format(epoch + 1, best_val_loss, val_loss, checkpoint))
                         best_val_loss = val_loss
                         save_encoders(model,checkpoint)
+                        num_epochs_without_improvement = 0
                     else:
                         print("Epoch {:d}: val_loss did not improve from {:.4f}".format(
                             epoch + 1, best_val_loss))
@@ -190,7 +191,7 @@ if __name__ == '__main__':
     # end of parameters section
     ############
     
-    wandb.init(project = 'DCCA_celeba', entity = 'asenellart', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_celeba', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
                                                                             'learning_rate': learning_rate,
                                                                             'reg_par' : reg_par,
                                                                             'linear_cca' : linear_cca is not None,

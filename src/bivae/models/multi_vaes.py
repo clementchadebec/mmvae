@@ -275,7 +275,7 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - torch.log(K)
 
         return {f'uni_from_prior_{mod}': ll / len(data[0])}
 
@@ -296,13 +296,73 @@ class Multi_VAES(nn.Module):
         t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
         # print(t1, t2)
         return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
+    
+    
+    def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
+
+        '''
+                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
+
+                ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
+
+                '''
+
+
+        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            lnpxs = []
+            repeated_data_point = torch.stack(batch_size_K * [data[cond_mod][i]]) # batch_size_K, n_channels, h, w
+
+            while stop_index <= K:
+
+                # Encode with the conditional VAE
+                latents = self.vaes[cond_mod](repeated_data_point).z  # (batchsize_K, latent_dim)
+
+                # Decode with the opposite decoder
+                recon = self.vaes[gen_mod].decoder(latents).reconstruction
+
+                # Compute lnp(y|z)
+
+
+                if self.px_z[gen_mod] == dist.Bernoulli:
+                    lpx_z = self.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+                else:
+                    lpx_z = self.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+
+                lnpxs.append(torch.logsumexp(lpx_z,dim=0))
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+
+        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+
+
+
 
 
     def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        
+        """
+        
+        Compute the conditional likelihoods (two ways) for bimodal data only
+
+        Returns:
+            dict: dictionary containing the conditional likelihoods metrics. 
+        """
 
         metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
         update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
+        update_details(metrics, self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K))
+        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
+
+
         return metrics
+    
+    
 
 
 

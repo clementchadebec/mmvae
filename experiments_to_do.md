@@ -7,6 +7,7 @@
 |     MMVAE  | Laplace with softmax trick | Normal|False |dreg-looser|   K = 30 |      | |128
 |   MVAE    | Normal |  Normal |False| poe |  | no | x| 256
 | JMVAE-NF-DCCA | Normal | Normal|False | jmvae-nf | |yes || |256
+| JMVAE-NF-DCCA | Normal | Normal|False | jmvae-nf | |yes || |256
 |MMVAE with NF| Normal| Normal | False | Elbo |  | no | x | 256
 | MoePoe | Normal | Normal |False| moepoe | |no |x 
 

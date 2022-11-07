@@ -178,7 +178,7 @@ if __name__ == '__main__':
     learning_rate = 10 ** -4
     n_epochs = 20
 
-    wandb.init(project='train_oasis_classifier', entity='asenellart',
+    wandb.init(project='train_oasis_classifier', entity='multimodal_vaes',
                config={'lr': learning_rate, 'n_epochs': n_epochs})
 
     test_loader = DataLoader(test_data, batch_size=batchsize, shuffle=False, num_workers=8)
