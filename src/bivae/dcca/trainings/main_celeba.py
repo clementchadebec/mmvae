@@ -155,7 +155,7 @@ if __name__ == '__main__':
     ############
     # Parameters Section
     parser = argparse.ArgumentParser(description='DCCA training')
-    parser.add_argument('--num-epochs', type=int, default=10)
+    parser.add_argument('--num-epochs', type=int, default=30)
     parser.add_argument('--outdim-size', type=int, default=40)
     args = parser.parse_args()
 
