@@ -87,7 +87,7 @@ class celeba(MOEPOE):
         for v in tensor:
             img = Image.new('RGB', (100, 100), color=(0, 0, 0))
             d = ImageDraw.Draw(img)
-            fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+            fnt = ImageFont.load_default()#ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
             vector = v.squeeze()
 
 
@@ -100,7 +100,7 @@ class celeba(MOEPOE):
                    "Male {:.1f}\n"\
                    "No_Beard {:.1f}\n".format(vector[4], vector[5], vector[7], vector[9], vector[15], vector[20], vector[24])
 
-            offset = fnt.getoffset(text)
+            offset = fnt.getbbox(text)
             d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
 
             list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
