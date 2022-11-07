@@ -44,6 +44,7 @@ src/bivae/dcca/models/celeba.py
 src/bivae/dcca/models/celeba_masks.py
 src/bivae/dcca/models/mnist_contour.py
 src/bivae/dcca/models/mnist_svhn.py
+src/bivae/dcca/models/mnist_svhn_fashion.py
 src/bivae/models/__init__.py
 src/bivae/models/multi_vaes.py
 src/bivae/models/vae.py
@@ -55,6 +56,7 @@ src/bivae/models/jmvae_nf/jmvae_nf_circles.py
 src/bivae/models/jmvae_nf/jmvae_nf_mnist.py
 src/bivae/models/jmvae_nf/jmvae_nf_mnist_svhn_dcca.py
 src/bivae/models/jmvae_nf/mnist_contour.py
+src/bivae/models/jmvae_nf/mnist_svhn_fashion.py
 src/bivae/models/mmvae/__init__.py
 src/bivae/models/mmvae/mmave_mnist.py
 src/bivae/models/mmvae/mmvae.py

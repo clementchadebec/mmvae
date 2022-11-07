@@ -49,6 +49,7 @@ class linear_cca():
         self.w[0] = numpy.dot(SigmaHat11RootInv, U[:, 0:outdim_size])
         self.w[1] = numpy.dot(SigmaHat22RootInv, V[:, 0:outdim_size])
         D = D[0:outdim_size]
+        self.D = D # Save to observe later
 
     def _get_result(self, x, idx):
         result = x - self.m[idx].reshape([1, -1]).repeat(len(x), axis=0)

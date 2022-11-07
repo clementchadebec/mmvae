@@ -2,10 +2,11 @@
   "experiment": "moepoe/mnist_svhn",
   "model": "moepoe_mnist_svhn",
   "obj": "self_built",
-  "llik_scaling": 0.0,
+  "llik_scaling": 0,
+  "recon_losses": ["normal", "normal"],
 
   "K": 30,
-  "looser": true,
+  "looser": false,
 
   "batch_size": 256,
   "epochs": 100,
@@ -24,7 +25,7 @@
   "warmup": 0,
   "no_nf": true,
   "beta_prior": 1,
-  "beta_kl": 1,
+  "beta_kl": 20,
   "decrease_beta_kl": 1,
   "fix_decoders": true,
   "fix_jencoder": true,

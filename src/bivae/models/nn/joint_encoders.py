@@ -2,9 +2,11 @@
 
 import torch
 from torch import nn
+from bivae.models.multi_vaes import Multi_VAES
 from bivae.utils import Constants
 import torch.nn.functional as F
 from .encoders import Encoder_VAE_MNIST
+import numpy as np
 
 def extra_hidden_layer(hidden_dim):
     return nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.ReLU(True))
@@ -77,6 +79,32 @@ class DoubleHeadJoint(nn.Module):
         x0 = self.input1.forward(x[0])[0]
         x1 = self.input2.forward(x[1])[0]
         e = self.enc(torch.cat([x0, x1], dim=1))  # flatten data
+        lv = torch.exp(0.5 * self.fc22(e))
+        return self.fc21(e), lv + Constants.eta
+    
+    
+
+class MultipleHeadJoint(nn.Module):
+
+    def __init__(self, hidden_dim, args_list, encoder_list,args, state_dicts = None):
+        super(MultipleHeadJoint, self).__init__()
+
+        self.inputs = nn.ModuleList([encoder_list[i](args_list[i]) for i in range(len(args_list))])
+        
+        assert(state_dicts is None) # No pretrained support yet
+
+        modules = []
+        joint_input_dim = np.sum([a.latent_dim for a in args_list])
+        modules.append(nn.Sequential(nn.Linear(joint_input_dim, hidden_dim), nn.ReLU(True)))
+        modules.extend([extra_hidden_layer(hidden_dim) for _ in range(args.num_hidden_layers - 1)])
+        self.enc = nn.Sequential(*modules)
+        self.fc21 = nn.Linear(hidden_dim, args.latent_dim)
+        self.fc22 = nn.Linear(hidden_dim, args.latent_dim)
+
+    def forward(self, x_list):
+
+        xs = [self.inputs[i].forward(x)[0] for i, x in enumerate(x_list)]
+        e = self.enc(torch.cat(xs, dim=1))  # flatten data
         lv = torch.exp(0.5 * self.fc22(e))
         return self.fc21(e), lv + Constants.eta
 

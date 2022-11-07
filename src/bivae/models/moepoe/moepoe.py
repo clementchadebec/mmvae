@@ -9,10 +9,66 @@ import torch.nn.functional as F
 import wandb
 from torchvision.utils import save_image
 from tqdm import tqdm
+import torch.distributions as dist
 
 from bivae.models.multi_vaes import Multi_VAES
 from bivae.utils import unpack_data
 from bivae.objectives import kl_divergence
+from itertools import combinations 
+
+
+def mixture_component_selection(mus, logvars):
+    num_components = len(mus)
+    num_samples = len(mus[0])
+    idx_start = []
+    idx_end = []
+    for k in range(0, num_components):
+        if k == 0:
+            i_start = 0;
+        else:
+            i_start = int(idx_end[k-1]);
+        if k == num_components-1:
+            i_end = num_samples;
+        else:
+            i_end = i_start + num_samples//num_components
+        idx_start.append(i_start);
+        idx_end.append(i_end);
+
+    mu_sel = torch.cat([mus[k][idx_start[k]:idx_end[k], :] for k in range(num_components)]);
+    logvar_sel = torch.cat([logvars[k][ idx_start[k]:idx_end[k], :] for k in range(num_components)]);
+    return mu_sel, logvar_sel;
+
+
+
+def compute_poe_for_all_subsets(mus, log_vars):
+    # TODO
+    poe_mus=[]
+    poe_log_vars=[]
+    n_mod = len(mus)
+    for k in range(2, n_mod+1):
+        # when we reach the full joint poe, we add the prior to the poe (following original interpretation) 
+        # https://github.com/thomassutter/MoPoE/blob/023d3191e35e3d6e94cc9ce109125d553212ef14/utils/BaseMMVae.py
+
+        for tup in combinations(range(n_mod), k):
+            if k == n_mod:
+                mus_ = mus + [torch.zeros_like(mus[0])]
+                log_vars_ = log_vars + [torch.zeros_like(log_vars[0])]
+                tup = list(tup) + [n_mod]
+            else:
+                mus_= mus
+                log_vars_=log_vars
+            # print(tup)
+
+            lnT = torch.cat([-log_vars_[i].unsqueeze(0) for i in tup], dim=0) # Compute the inverse of variances
+            joint_lnV = - torch.logsumexp(lnT, dim=0) # variances of the product of expert
+
+            tensor_mus = torch.cat([mus_[i].unsqueeze(0) for i in tup], dim=0)
+            joint_mu = (torch.exp(lnT)*tensor_mus).sum(dim=0)*torch.exp(joint_lnV)
+            
+            poe_mus.append(joint_mu)
+            poe_log_vars.append(joint_lnV)
+    return poe_mus, poe_log_vars
+    
 
 
 
@@ -38,51 +94,44 @@ class MOEPOE(Multi_VAES):
 
         for m, vae in enumerate(self.vaes):
 
-            o = vae(x[m])
-            mus.append(o.mu)
-            log_vars.append(o.log_var)
+            o = vae.encoder(x[m])
+            mus.append(o.embedding)
+            log_vars.append(o.log_covariance)
 
+        # Compute the poes and add them to the list of mus. Here the prior is not included in the experts
+        poe_mus, poe_logvar = compute_poe_for_all_subsets(mus,log_vars)
+        mus.extend(poe_mus)
 
-        # Add the prior and the joint product to the mixture of experts
-        mus.append(torch.zeros_like(mus[0]))
-        log_vars.append(torch.zeros_like(log_vars[0]))
-
-        # Compute the joint posterior
-        lnT = torch.stack([-l for l in log_vars]) # Compute the inverse of variances
-        joint_lnV = - torch.logsumexp(lnT, dim=0) # variances of the product of expert
-
-        tensor_mus = torch.stack(mus)
-        joint_mu = (torch.exp(lnT)*tensor_mus).sum(dim=0)*torch.exp(joint_lnV)
-
-        mus.append(joint_mu)
-        log_vars.append(joint_lnV)
+        log_vars.extend(poe_logvar)
 
         # Compute the Elbo for each of this sampling distributions
         elbos = 0
-        zs = 0
-        for i, mu in enumerate(mus):
-            q = dist.Normal(mu, torch.exp(0.5*log_vars[i]))
-            # Sample from the distribution
-            z = q.rsample()
-            zs += z
-            # Decode in each modality
-            for m, vae in enumerate(self.vaes):
-                recon = vae.decoder(z)['reconstruction']
+        
+        mus_r, log_vars_r = mixture_component_selection(mus, log_vars)
 
-                # Decoder distribution is assumed to be a gaussian
-                lpx_z = -1/2*torch.sum((recon-x[m])**2)*self.lik_scaling[m]
-                elbos += lpx_z
+        q = dist.Normal(mus_r, torch.exp(0.5*log_vars_r))
+        # Sample from the distribution
+        z = q.rsample()
+        # Decode in each modality
+        for m, vae in enumerate(self.vaes):
+            recon = vae.decoder(z)['reconstruction']
+
+            # Decoder distribution is assumed to be a gaussian
+            # lpx_z = -1/2*torch.sum((recon-x[m])**2)*self.lik_scaling[m]
+            lpx_z = self.px_z[m](recon, scale=1).log_prob(x[m]).sum()*self.lik_scaling[m]
+            elbos += lpx_z  
 
             # And compute the KLD
+        for i,mu in enumerate(mus):
+            q = dist.Normal(mu, torch.exp(0.5*log_vars[i]))
             kld = kl_divergence(q, self.pz(*self.pz_params))
-            elbos -= kld.sum()
+            elbos -= kld.sum()*self.params.beta_kl/len(mus)
 
-        elbos = elbos/len(mus) # divide by the number of product of experts
-        zs = zs/len(mus)
+        
 
         res_dict = dict(
-            elbo = elbos/len(x),
-            z_joint = zs,
+            elbo = elbos,
+            z_joint = z,
             mus = torch.stack(mus), # n_mixture elements x batch_size x latent_dim
             log_vars = torch.stack(log_vars) # n_mixture elements x batch_size x latent_dim
         )
@@ -227,3 +276,7 @@ class MOEPOE(Multi_VAES):
             ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
 
         return {'likelihood': ll / len(data[0])}
+
+
+
+

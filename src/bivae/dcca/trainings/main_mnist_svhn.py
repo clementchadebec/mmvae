@@ -1,5 +1,6 @@
 
 import numpy as np
+from sklearn import svm
 from tqdm import tqdm
 import time
 from pathlib import Path
@@ -13,7 +14,7 @@ from torch.utils.data import BatchSampler, SequentialSampler, RandomSampler
 from bivae.dcca.linear_cca import linear_cca
 from bivae.dataloaders import MNIST_SVHN_DL
 from bivae.dcca.models import DeepCCA_MNIST_SVHN
-from bivae.dcca.utils import  svm_classify_svhn, unpack_data, visualize_umap, save_encoders
+from bivae.dcca.utils import  svm_classify_view, unpack_data, visualize_umap, save_encoders
 
 torch.set_default_tensor_type(torch.DoubleTensor)
 
@@ -34,14 +35,10 @@ class Solver():
 
         self.outdim_size = outdim_size
 
-        wandb.init(project = 'DCCA_mnist_svhn', entity = 'asenellart', config = {'batch_size' : batch_size,
-                                                                                 'learning_rate': learning_rate,
-                                                                                 'reg_par' : reg_par,
-                                                                                 'linear_cca' : linear_cca is not None},
-                   mode = 'online')
+        
         print('Solver initialized')
 
-    def fit(self, train_loader, vx1=None, vx2=None, tx1=None, tx2=None, checkpoint=None):
+    def fit(self, train_loader, val_loader=None, tx1=None, tx2=None, checkpoint=None):
         """
 
         x1, x2 are the vectors needs to be make correlated
@@ -50,16 +47,11 @@ class Solver():
         """
         print('Starting to optimization')
 
-        data_size = len(train_loader.dataset)
 
-        if vx1 is not None and vx2 is not None:
+        if val_loader is not None:
             best_val_loss = 0
-            vx1 = vx1.to(self.device)
-            vx2 = vx2.to(self.device)
-        if tx1 is not None and tx2 is not None:
-            tx1 = tx1.to(self.device)
-            tx2 = tx2.to(self.device)
-
+            
+        num_epochs_without_improvement =0
         train_losses = []
         for epoch in range(self.epoch_num):
             epoch_start_time = time.time()
@@ -78,10 +70,10 @@ class Solver():
             train_loss = np.mean(train_losses)
 
             info_string = "Epoch {:d}/{:d} - time: {:.2f} - training_loss: {:.4f}"
-            if vx1 is not None and vx2 is not None:
+            if val_loader is not None:
                 with torch.no_grad():
                     self.model.eval()
-                    val_loss = self.test(vx1, vx2)
+                    val_loss = self.test(val_loader)[0]
                     info_string += " - val_loss: {:.4f}".format(val_loss)
                     if val_loss < best_val_loss:
                         print(
@@ -91,24 +83,26 @@ class Solver():
                     else:
                         print("Epoch {:d}: val_loss did not improve from {:.4f}".format(
                             epoch + 1, best_val_loss))
+                        num_epochs_without_improvement+=1
             else:
                 save_encoders(model, checkpoint)
             epoch_time = time.time() - epoch_start_time
             print((info_string.format(
                 epoch + 1, self.epoch_num, epoch_time, train_loss)))
+
+            if num_epochs_without_improvement == 10:
+                break
         # train_linear_cca
         if self.linear_cca is not None:
             _, outputs = self._get_outputs(train_loader)
             self.train_linear_cca(outputs[0], outputs[1])
 
 
-        if vx1 is not None and vx2 is not None:
-            loss = self.test(vx1, vx2)
+        if val_loader is not None:
+            loss = self.test(val_loader)[0]
             print("loss on validation data: {:.4f}".format(loss))
 
-        if tx1 is not None and tx2 is not None:
-            loss = self.test(tx1, tx2)
-            print('loss on test data: {:.4f}'.format(loss))
+        
 
     def test(self, test_loader, use_linear_cca=False):
         with torch.no_grad():
@@ -162,7 +156,7 @@ if __name__ == '__main__':
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('./')
+    save_to = Path('../experiments/dcca/mnist_svhn/')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
@@ -171,9 +165,9 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 10
+    epoch_num = 100
     batch_size = 800
-    train_loader,test_loader = MNIST_SVHN_DL('/home/agathe/Code/vaes/mmvae/data').getDataLoaders(batch_size=batch_size)
+    train_loader,test_loader, val_loader = MNIST_SVHN_DL('../data').getDataLoaders(batch_size=batch_size)
 
 
     # the regularization parameter of the network
@@ -189,7 +183,11 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
-
+    wandb.init(project = 'DCCA_mnist_svhn', entity = 'asenellart', config = {'batch_size' : batch_size,
+                                                                                 'learning_rate': learning_rate,
+                                                                                 'reg_par' : reg_par,
+                                                                                 'linear_cca' : linear_cca is not None},
+                dir = str(save_to) + '/wandb')
 
     # Building, training, and producing the new features by DCCA
     model = DeepCCA_MNIST_SVHN(outdim_size, use_all_singular_values, device=device).double()
@@ -199,16 +197,22 @@ if __name__ == '__main__':
     solver = Solver(model, l_cca, outdim_size, epoch_num, batch_size,
                     learning_rate, reg_par, device=device)
 
-    solver.fit(train_loader, checkpoint=save_to)
+    solver.fit(train_loader,val_loader, checkpoint=save_to)
     # TODO: Save l_cca model if needed
-
+    if apply_linear_cca :
+        np.save(str(save_to) + '/l_cca_w.npy', l_cca.w)
+        np.save(str(save_to) + '/l_cca_m.npy', l_cca.m)
+        np.save(str(save_to) + '/l_cca_D.npy', l_cca.D)
 
     # Training and testing of SVM with linear kernel on the view 1 with new features
     losses, outputs_t =  solver.test(train_loader, use_linear_cca=apply_linear_cca)
     losses, outputs_s = solver.test(test_loader, use_linear_cca=apply_linear_cca)
-    test_acc = svm_classify_svhn(outputs_t, outputs_s, C=0.01)
-    wandb.log({'embedding_svhn' : visualize_umap(outputs_s[1], outputs_s[2])})
-    wandb.log({'embedding_mnist' : visualize_umap(outputs_s[0], outputs_s[2])})
+    test_acc = svm_classify_view(outputs_t, outputs_s, C=0.01, view=1)
+    visualize_umap(outputs_s[1], outputs_s[2], save_file=str(save_to) + '/embedding_svhn.png')
+    visualize_umap(outputs_s[0], outputs_s[2], save_file=str(save_to) + '/embedding_mnist.png')
+
+    wandb.log({'embedding_svhn' : wandb.Image(str(save_to) + '/embedding_svhn.png')})
+    wandb.log({'embedding_mnist' : wandb.Image(str(save_to) + '/embedding_mnist.png')})
     print("Accuracy on view svhn (test data) is:", test_acc*100.0)
     # Saving new features in a gzip pickled file specified by save_to
 

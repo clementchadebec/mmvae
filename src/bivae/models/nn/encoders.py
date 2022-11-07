@@ -179,6 +179,7 @@ class TwoStepsEncoder(BaseEncoder):
 
         BaseEncoder.__init__(self)
         self.first_encoder = pretrained_encoder
+        self.first_encoder.eval()
         self.hidden_dim = 512
         self.num_hidden = 3
         self.latent_dim = args.latent_dim

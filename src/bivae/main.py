@@ -12,12 +12,13 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch import optim
+import os
 
 import wandb
 import models
 import objectives
-from utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon\
-    ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std
+from bivae.utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon\
+    ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std, save_joint_vae
 from vis import plot_hist
 from models.samplers import GaussianMixtureSampler
 from bivae.analysis import compute_accuracies
@@ -37,7 +38,7 @@ with open(info.config_path, 'r') as fcc_file:
 learning_rate = 1e-3
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment
-wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}, mode=args.wandb_mode) 
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}) 
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -75,7 +76,8 @@ skip_warmup = args.skip_warmup
 # pretrained_joint_path = '../experiments/jmvae_nf_circles_squares/2022-06-14/2022-06-14T16:02:13.698346trcaealp/'
 # pretrained_joint_path = '../experiments/clean_mnist_svhn/2022-06-29/2022-06-29T11:41:41.132687__5qri92/'
 # pretrained_joint_path = '../experiments/jmvae/2022-06-28/2022-06-28T17:25:01.03903846svjh2d/'
-pretrained_joint_path = '../experiments/celeba/2022-10-13/2022-10-13T13:54:42.595068mmpybk9u/'
+# pretrained_joint_path = '../experiments/celeba/2022-10-13/2022-10-13T13:54:42.595068mmpybk9u/'
+pretrained_joint_path = '../experiments/joint_encoders/'+ args.experiment.split('/')[1] + '/'
 
 min_epoch = 1
 
@@ -128,7 +130,9 @@ objective = getattr(objectives,
 t_objective = objective
 
 # Define a sampler for generating new samples
-model.sampler = GaussianMixtureSampler()
+# model.sampler = GaussianMixtureSampler()
+model.sampler = None # During training no need to use a special sampler
+
 
 def train(epoch, agg):
     model.train()
@@ -159,14 +163,11 @@ def test(epoch, agg):
     model.eval()
 
     # re-fit the sampler before computing metrics
-    if model.sampler is not None:
-        # Compute all train latents
-        model.compute_all_train_latents(train_loader)
-        model.sampler.fit_from_latents(model.train_latents[0])
+
     b_loss = 0
     b_details = {}
     with torch.no_grad():
-        for i, dataT in enumerate(val_loader):
+        for i, dataT in enumerate(tqdm(val_loader)):
             data = unpack_data(dataT, device=device)
             classes = dataT[0][1], dataT[1][1]
             ticks = np.arange(len(data[0])) #or simply the indexes
@@ -177,10 +178,12 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                # wandb.log(model.compute_metrics(data, runPath, epoch, classes))
-                model.sample_from_conditional(data, runPath,epoch)
-                model.reconstruct(data, runPath, epoch)
+
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
+
+                    # wandb.log(model.compute_metrics(data, runPath, epoch, classes))
+                    model.sample_from_conditional(data, runPath,epoch)
+                    model.reconstruct(data, runPath, epoch)
                     # model.analyse(data, runPath, epoch, classes=classes)
                     # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
                     model.generate(runPath, epoch, N=32, save=True)
@@ -219,6 +222,7 @@ if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         agg = defaultdict(list)
         best_loss = torch.inf
+        num_epochs_without_improvement = 0
         for epoch in range(min_epoch, args.epochs + 1):
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
@@ -227,11 +231,33 @@ if __name__ == '__main__':
             train(epoch, agg)
             test_loss = test(epoch, agg)
             if test_loss < best_loss:
+                num_epochs_without_improvement = 0 # reset 
                 save_model(model, runPath + '/model.pt')
                 print("Saved model after improvement of {}".format(best_loss-test_loss))
                 best_loss = test_loss
+                
+                if hasattr(model, 'joint_encoder'):
+                    save_joint_path = Path('../experiments/joint_encoders/' + args.experiment.split('/')[1] )
+                    save_joint_path.mkdir(parents=True, exist_ok=True)
+                    save_joint_vae(model,save_joint_path)
+                    # Save info about the joint encoder
+                    with open('{}/args.json'.format(save_joint_path), 'w') as fp:
+                        json.dump(args.__dict__, fp)
+            else :
+                num_epochs_without_improvement +=1
 
-            save_vars(agg, runPath + '/losses_{}.pt'.format(epoch))
+            save_vars(agg, runPath + '/losses.pt')
+            if num_epochs_without_improvement == 10:
+                # if we are beyond warmup, we break
+                if epoch > args.warmup :
+                    break
+                # else we put an end to the warmup part of the training
+                else:
+                    args.warmup = epoch -1
+                    model.params.warmup = epoch -1
+                    num_epochs_without_improvement = 0
+                    best_loss = torch.inf
+                    wandb.log({'end_warmup' : epoch})
 
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)
