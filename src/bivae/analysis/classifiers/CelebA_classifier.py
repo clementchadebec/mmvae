@@ -63,6 +63,7 @@ if __name__ == '__main__':
 
     batch_size = 256
     shuffle = True
+    num_epochs = 30
 
     train_loader, test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size,shuffle, len_train=None)
 
@@ -105,11 +106,11 @@ if __name__ == '__main__':
             f"====> Epoch {epoch} Test Loss {test_loss} Accuracy {acc / len(val_loader.dataset)}")
         return test_loss
 
-    output_path = Path('../experiments/classifier_celeba/' + datetime.date.today().isoformat() +'/')
+    output_path = Path('../experiments/classifier_celeba/' )
     output_path.mkdir(parents=True, exist_ok=True)
 
     best_test_loss = np.inf
-    for epoch in range(50):
+    for epoch in range(num_epochs):
         train(epoch)
         test_loss = test(epoch)
         if test_loss < best_test_loss:

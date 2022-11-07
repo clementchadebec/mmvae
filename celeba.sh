@@ -23,7 +23,7 @@ python3 src/bivae/main.py --config-path src/configs_experiments/celeba/mvae.json
 # # Run all the validations and compute likelihoods
 
 # # Before that, train the classifiers
-
+python3 src/bivae/analysis/classifiers/CelebA_classifier.py 
 
 # # JMVAE_NF_DCCA
 # python3 src/bivae/validate.py --model jmvae_nf_dcca/celeba
