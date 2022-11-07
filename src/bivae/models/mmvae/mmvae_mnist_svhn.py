@@ -17,6 +17,7 @@ from bivae.vis import plot_hist
 from .mmvae import MMVAE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
 from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
+from bivae.analysis.accuracies import compute_accuracies
 from bivae.utils import add_channels, unpack_data
 from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
@@ -54,8 +55,7 @@ class MNIST_SVHN(MMVAE):
 
     def set_classifiers(self):
         
-        self.classifier1 = load_pretrained_mnist()
-        self.classifier2 = load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
         
 
 
@@ -91,33 +91,16 @@ class MNIST_SVHN(MMVAE):
 
 
 
-    def compute_metrics(self, data, runPath, epoch, classes, n_data=20, ns=100, freq=10):
-
+    def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
+        
+        self.set_classifiers()
+        general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
+        accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
-        # Compute general metrics (FID)
-        general_metrics = MMVAE.compute_metrics(self,runPath,epoch,freq=freq)
-        # general_metrics = {}
-        # Compute cross_coherence
-        labels2, labels1 = self.conditional_labels(data, n_data, ns)
-        # Create an extended classes array where each original label is replicated ns times
-        classes_mul = torch.stack([classes[0][:n_data] for _ in range(ns)]).permute(1,0).cuda()
-        acc2 = torch.sum(classes_mul == labels2)/(n_data*ns)
-        acc1 = torch.sum(classes_mul == labels1)/(n_data*ns)
-
-        metrics = dict(accuracy1 = acc1, accuracy2 = acc2)
-
-        # Compute joint-coherence
-        data = self.generate(runPath, epoch, N=100)
-        labels_mnist = torch.argmax(self.classifier1(data[0]), dim=1)
-        labels_svhn = torch.argmax(self.classifier2(data[1]), dim=1)
-
-        joint_acc = torch.sum(labels_mnist == labels_svhn)/100
-        metrics['joint_coherence'] = joint_acc
-        update_details(metrics, general_metrics)
-
-        return metrics
+        update_details(accuracies, general_metrics)
+        return accuracies
 
     def compute_fid(self, batch_size):
 

@@ -159,7 +159,7 @@ class MVAE(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - torch.log(K)
 
         return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
 
@@ -206,50 +206,8 @@ class MVAE(Multi_VAES):
                 ln_px = torch.logsumexp(lpx_zs + lpz - lqz_xs, dim=-1)
                 lnpxs.append(ln_px)
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
 
         return {'likelihood': ll / len(data[0])}
 
-    def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
-
-        '''
-        Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
-
-        ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
-
-        '''
-
-        o = self.vaes[cond_mod](data[cond_mod])
-        qz_xy_params = (o.mu, o.std)
-
-        qz_xs = self.qz_x(*qz_xy_params)
-        # Sample from the conditional encoder distribution
-        z_x = qz_xs.rsample([K]).permute(1, 0, 2)  # n_data_points,K,latent_dim
-
-        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
-        ll = 0
-        for i in range(len(data[0])):
-            start_idx, stop_index = 0, batch_size_K
-            lnpxs = []
-            while stop_index <= K:
-                latents = z_x[i][start_idx:stop_index]
-
-                # Compute p(x_m|z) for z in latents and for each modality m
-                mus = self.vaes[gen_mod].decoder(latents)['reconstruction']  # (batch_size_K, nb_channels, w, h)
-                x_m = data[gen_mod][i]  # (nb_channels, w, h)
-
-                # Compute lnp(y|z)
-                if self.px_z[gen_mod] == dist.Bernoulli:
-                    lp = self.px_z[gen_mod](mus).log_prob(x_m).sum(dim=(1, 2, 3))
-                else:
-                    lp = self.px_z[gen_mod](mus, scale=1).log_prob(x_m).sum(dim=(1, 2, 3))
-
-                lnpxs.append(torch.logsumexp(lp, dim=0))
-
-                # next batch
-                start_idx += batch_size_K
-                stop_index += batch_size_K
-
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0)
-
-        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+    

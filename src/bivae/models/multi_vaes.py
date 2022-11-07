@@ -33,10 +33,9 @@ class Multi_VAES(nn.Module):
     def __init__(self,params, vaes):
         super(Multi_VAES, self).__init__()
         self.pz = dist_dict[params.dist]
-        self.mod = 2
+        self.mod = len(vaes)
         self.vaes = vaes
-        # self.vaes = nn.ModuleList([ vae(model_config=vae_config) for _ in range(self.mod)])
-        self.modelName = None
+        self.modelName = None # to be populated in subclasses
         self.params = params
         self.data_path = params.data_path
         self._pz_params = nn.ParameterList([
@@ -48,7 +47,6 @@ class Multi_VAES(nn.Module):
         self.save_format = '.png'
         self.to_tensor = None # to define in each subclass. It says if the data must be formatted to tensor.
         self.ref_activations = None
-        self.loss = params.loss if hasattr(params, 'loss') else 'mse'
         self.eval_mode = False
 
         self.px_z = [ dist_dict[r] for r in params.recon_losses]
@@ -84,7 +82,7 @@ class Multi_VAES(nn.Module):
             for d, vae in enumerate(self.vaes):
                 data.append(vae.decoder(latents)["reconstruction"])
 
-        if save:
+        if save and self.mod == 2:
             data = [*adjust_shape(data[0],data[1])]
             file = ('{}/generate_{:03d}'+self.save_format).format(runPath, epoch)
             save_samples(data,file)
@@ -173,18 +171,19 @@ class Multi_VAES(nn.Module):
     def _sample_from_conditional(self,bdata, n=10):
         """Samples from q(z|x) and reconstruct y and conversely"""
         self.eval()
-        samples = [[[],[]],[[],[]]]
+        samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
+
         with torch.no_grad():
 
-            for i in range(n):
-                o0 = self.vaes[0].forward(bdata[0])
-                o1 = self.vaes[1].forward(bdata[1])
-                z0 = o0.z
-                z1 = o1.z
-                samples[0][1].append(self.vaes[1].decoder(z0)["reconstruction"])
-                samples[1][0].append(self.vaes[0].decoder(z1)["reconstruction"])
-                samples[0][0].append(o0.recon_x)
-                samples[1][1].append(o1.recon_x)
+            for _ in range(n):
+                                    
+                outputs = [self.vaes[i].forward(bdata[i]) for i in range(self.mod)]
+                zs = [o.z for o in outputs]
+                for i,o in enumerate(outputs):
+                    samples[i][i].append(o.recon_x)
+                    for j, vae in enumerate(self.vaes):
+                        if i!=j:
+                            samples[i][j].append(vae.decoder(zs[i])["reconstruction"])
         return samples
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -276,7 +275,7 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0)
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - torch.log(K)
 
         return {f'uni_from_prior_{mod}': ll / len(data[0])}
 
@@ -297,13 +296,73 @@ class Multi_VAES(nn.Module):
         t2 = self.compute_uni_ll_from_prior(data, cond_mod, K=K, batch_size_K=batch_size_K)[f'uni_from_prior_{cond_mod}']
         # print(t1, t2)
         return {f'conditional_likelihood_bis_{cond_mod}_{gen_mod} ' : t1 - t2}
+    
+    
+    def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
+
+        '''
+                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
+
+                ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
+
+                '''
+
+
+        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
+        ll = 0
+        for i in range(len(data[0])):
+            start_idx, stop_index = 0, batch_size_K
+            lnpxs = []
+            repeated_data_point = torch.stack(batch_size_K * [data[cond_mod][i]]) # batch_size_K, n_channels, h, w
+
+            while stop_index <= K:
+
+                # Encode with the conditional VAE
+                latents = self.vaes[cond_mod](repeated_data_point).z  # (batchsize_K, latent_dim)
+
+                # Decode with the opposite decoder
+                recon = self.vaes[gen_mod].decoder(latents).reconstruction
+
+                # Compute lnp(y|z)
+
+
+                if self.px_z[gen_mod] == dist.Bernoulli:
+                    lpx_z = self.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+                else:
+                    lpx_z = self.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+
+                lnpxs.append(torch.logsumexp(lpx_z,dim=0))
+                # next batch
+                start_idx += batch_size_K
+                stop_index += batch_size_K
+
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+
+        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+
+
+
 
 
     def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        
+        """
+        
+        Compute the conditional likelihoods (two ways) for bimodal data only
+
+        Returns:
+            dict: dictionary containing the conditional likelihoods metrics. 
+        """
 
         metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
         update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
+        update_details(metrics, self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K))
+        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
+
+
         return metrics
+    
+    
 
 
 

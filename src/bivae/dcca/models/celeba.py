@@ -38,12 +38,12 @@ class wrapper_encoder_lcca_celeb(nn.Module):
     def __init__(self):
         super(wrapper_encoder_lcca_celeb, self).__init__()
         model1 = Encoder_ResNet_AE_CELEBA(VAEConfig((3, 64, 64), 40))
-        model1.load_state_dict(torch.load('../dcca/celeba/model1.pt'))
+        model1.load_state_dict(torch.load('../experiments/dcca/celeba/model1.pt'))
         self.latent_dim = 40
 
         self.encoder = model1
-        self.m = np.load('../dcca/celeba/l_cca_m.npy')[0]
-        self.w = np.load('../dcca/celeba/l_cca_w.npy')[0]
+        self.m = np.load('../experiments/dcca/celeba/l_cca_m.npy')[0]
+        self.w = np.load('../experiments/dcca/celeba/l_cca_w.npy')[0]
 
     def forward(self, x):
 
@@ -58,12 +58,12 @@ class wrapper_encoder_lcca_attributes(nn.Module):
     def __init__(self):
         super(wrapper_encoder_lcca_attributes, self).__init__()
         model2 = Encoder_AE_MLP(VAEConfig((1, 1, 40), 40))
-        model2.load_state_dict(torch.load('../dcca/celeba/model2.pt'))
+        model2.load_state_dict(torch.load('../experiments/dcca/celeba/model2.pt'))
         self.latent_dim = 40
 
         self.encoder = model2
-        self.m = np.load('../dcca/celeba/l_cca_m.npy')[1]
-        self.w = np.load('../dcca/celeba/l_cca_w.npy')[1]
+        self.m = np.load('../experiments/dcca/celeba/l_cca_m.npy')[1]
+        self.w = np.load('../experiments/dcca/celeba/l_cca_w.npy')[1]
 
     def forward(self, x):
 

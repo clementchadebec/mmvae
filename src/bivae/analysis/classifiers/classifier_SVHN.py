@@ -88,12 +88,13 @@ if __name__ == '__main__':
 
     tx = transforms.ToTensor()  # Mnist is already with values between 0 and 1
     batch_size = 256
+    num_epochs = 15
     shuffle = True
-
+    print("loading dataset")
     train_loader, test_loader = SVHN_DL().getDataLoaders(batch_size, shuffle, tx)
 
     item, label = next(iter(train_loader))
-
+    print("creating model")
     model = SVHNClassifier()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     objective = torch.nn.BCEWithLogitsLoss(reduction='sum')
@@ -127,14 +128,17 @@ if __name__ == '__main__':
 
         print(
             f"====> Epoch {epoch} Test Loss {loss / len(test_loader.dataset)} Accuracy {acc / len(test_loader.dataset)}")
+        return loss/ len(test_loader.dataset)
 
-
-    output_path = Path('../experiments/classifier_svhn' + '/' + datetime.date.today().isoformat() +'/')
+    output_path = Path('../experiments/classifier_svhn' + '/' )
     output_path.mkdir(parents=True, exist_ok=True)
-    for epoch in range(15):
+    best_loss = torch.inf
+    for epoch in range(num_epochs):
         train(epoch)
-        test(epoch)
-        torch.save(model.state_dict(), Path.joinpath(output_path, f'model_{epoch}.pt'))
+        test_loss = test(epoch)
+        if test_loss<best_loss:
+            best_loss=test_loss
+            torch.save(model.state_dict(), Path.joinpath(output_path, f'model.pt'))
 
 
 

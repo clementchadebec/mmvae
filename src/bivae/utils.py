@@ -79,6 +79,7 @@ def save_model(model, filepath):
             save_vars(vae.decoder.state_dict(), fdir + '_' + vae.modelName + '_decoder' + fext)
     if hasattr(model, 'joint_encoder'):
         save_vars(model.joint_encoder.state_dict(), fdir + '_joint_encoder' + fext)
+        
 
 def load_joint_vae(model, filepath):
     """ Load the state of joint autoencoders and decoders from previous training"""
@@ -87,6 +88,11 @@ def load_joint_vae(model, filepath):
     for i, vae in enumerate(model.vaes):
         vae.decoder.load_state_dict(torch.load(filepath + 'model_' + vae.modelName + '_decoder.pt' ))
     return
+
+def save_joint_vae(model, save_joint_path):
+    torch.save(model.joint_encoder.state_dict(),str(save_joint_path)+'/model_joint_encoder.pt')
+    for i,vae in enumerate(model.vaes):
+        torch.save(vae.decoder.state_dict(),str(save_joint_path)+'/model_' +vae.modelName +'_decoder.pt')
 
 
 def is_multidata(dataB):

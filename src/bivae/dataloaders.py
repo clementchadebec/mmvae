@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import random_split
 import pandas as pd
 from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
+import numpy as np
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -254,10 +255,15 @@ class MNIST_SVHN_DL():
         # load base datasets
         t1, s1 = MNIST_DL(self.data_path, type='numbers').getDataLoaders(batch_size, shuffle, device, transform)
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        
+        # shuffle to be able to reduce size of the dataset
+        rd_idx = np.random.permutation(len(t_mnist))
+        t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
+        len_train=len(t_mnist)
 
         train_mnist_svhn = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn))
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train)
         ])
         test_mnist_svhn = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
@@ -265,16 +271,16 @@ class MNIST_SVHN_DL():
         ])
 
         # Split between test and validation while fixing the seed to ensure that we always have the same sets
-        val_set, test_set = random_split(test_mnist_svhn,
-                                         [len(test_mnist_svhn) // 2,
-                                          len(test_mnist_svhn) - len(test_mnist_svhn) // 2],
+        train_set, val_set = random_split(train_mnist_svhn,
+                                         [len(train_mnist_svhn)-10000,
+                                          10000],
                                          generator=torch.Generator().manual_seed(42))
 
 
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_mnist_svhn, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
 
@@ -461,11 +467,19 @@ class MNIST_SVHN_FASHION_DL():
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         t3, s3 = MNIST_DL(self.data_path, type='fashion').getDataLoaders(batch_size, shuffle,device, transform)
 
+        # shuffle to be able to reduce size of the dataset
+        rd_idx = np.random.permutation(len(t_mnist))
+        t_mnist, t_svhn, t_fashion = t_mnist[rd_idx], t_svhn[rd_idx], t_fashion[rd_idx]
+        
+        len_train = 50000
+        # len_train = len(t_mnist)
+        
         train_msf = TensorDataset([
-            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len(t_mnist)),
-            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len(t_svhn)),
-            ResampleDataset(t3.dataset, lambda d,i : t_fashion[i], size=len(t_fashion))
+            ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train),
+            ResampleDataset(t3.dataset, lambda d,i : t_fashion[i], size=len_train)
         ])
+        
         test_msf = TensorDataset([
             ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
             ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn)),

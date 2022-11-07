@@ -122,6 +122,8 @@ def save_encoders(model, path):
 
     torch.save(model.model1.state_dict(),str(path)+'/model1.pt')
     torch.save(model.model2.state_dict(),str(path) + '/model2.pt')
+    if hasattr(model, 'model3'): 
+        torch.save(model.model3.state_dict(), str(path) + '/model3.pt')
 
 class Constants(object):
     eta = 1e-6

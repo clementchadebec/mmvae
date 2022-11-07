@@ -1,5 +1,4 @@
-{
-  "experiment": "mmvae/mnist_svhn",
+{ "experiment": "mmvae/mnist_svhn",
   "model": "mnist_svhn",
   "obj": "dreg",
   "K": 30,
@@ -31,6 +30,5 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn",
-  "wandb_mode" : "disabled"
+  "wandb_experiment": "mnist_svhn"
   }

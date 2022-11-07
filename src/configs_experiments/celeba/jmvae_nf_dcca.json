@@ -1,0 +1,42 @@
+{
+  "comment":"The JMVAE model with added flows and dcca pre-embeddings. No reconstruction and maf flows",
+
+
+  "experiment": "jmvae_nf_dcca/celeba",
+  "model": "jnf_celeba",
+  "obj": "jmvae_nf",
+
+
+  "K": 1,
+  "recon_losses" : ["normal", "bernoulli"],
+  "looser": false,
+
+  "llik_scaling": 1,
+  "batch_size": 256,
+  "epochs": 60,
+  "latent_dim": 64,
+  "num_hidden_layers": 1,
+  "use_pretrain": "",
+  "learn_prior": false,
+  "logp": false,
+  "print_freq": 0,
+  "no_analytics": false,
+  "no_cuda": false,
+  "seed": 1,
+  "dist": "normal",
+  "data_path": "../data/",
+  "skip_warmup": false,
+  "warmup": 30,
+  "no_nf": false,
+  "beta_prior": 1,
+  "beta_kl": 1,
+  "decrease_beta_kl": 1,
+  "fix_decoders": true,
+  "fix_jencoder": true,
+  "no_recon": true,
+  "freq_analytics": 5,
+  "dcca": true,
+  "device": "cuda",
+  "wandb_experiment": "celeba",
+  "flow" : "maf"
+  }

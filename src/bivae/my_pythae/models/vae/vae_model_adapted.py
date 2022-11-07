@@ -86,7 +86,6 @@ class my_VAE(BaseAE):
         z, eps = self._sample_gauss(mu, std)
         recon_x = self.decoder(z)["reconstruction"]
 
-        loss, recon_loss, kld = self.loss_function(recon_x, x, mu, log_var, z)
 
         output = ModelOutput(
             recon_x=recon_x,
@@ -95,9 +94,6 @@ class my_VAE(BaseAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac=0,
-            recon_loss=recon_loss,
-            loss=loss,
-            kld=kld,
             std=std
         )
 

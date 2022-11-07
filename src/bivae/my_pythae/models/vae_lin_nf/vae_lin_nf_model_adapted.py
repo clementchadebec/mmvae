@@ -99,9 +99,7 @@ class my_VAE_LinNF(VAE):
 
         recon_x = self.decoder(z)["reconstruction"]
 
-        loss, recon_loss, kld = self.loss_function(
-            recon_x, x, mu, log_var, z0, z, log_abs_det_jac
-        )
+
 
         output = ModelOutput(
             recon_x=recon_x,
@@ -110,7 +108,7 @@ class my_VAE_LinNF(VAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac = log_abs_det_jac,
-            recon_loss = recon_loss
+          
 
         )
 

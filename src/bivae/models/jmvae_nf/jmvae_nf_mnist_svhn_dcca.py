@@ -1,18 +1,21 @@
 # JMVAE_NF specification for MNIST-SVHN experiment --> Using DCCA to extract shared information
 
 from itertools import combinations
+from sklearn import ensemble
 
 import torch
 import torch.nn as nn
 import torch.distributions as dist
 import numpy as np
 from torchvision import transforms
+from bivae.models.nn.joint_encoders import DoubleHeadJoint
 
 from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
 from torchvision.utils import save_image
 import pythae
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
+from bivae.my_pythae.models.vae_maf import VAE_MAF_Config, my_VAE_MAF
 from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from bivae.models.nn import Encoder_VAE_SVHN
@@ -23,7 +26,7 @@ from bivae.dataloaders import MNIST_SVHN_DL, MultimodalBasicDataset
 from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
 import torch.nn.functional as F
 
-from ..nn import DoubleHeadMLP, DoubleHeadJoint
+from ..nn import DoubleHeadMLP, MultipleHeadJoint
 from ..jmvae_nf import JMVAE_NF
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
 from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
@@ -37,27 +40,32 @@ dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
 class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
-    shape_mod1, shape_mod2 = (1, 28, 28), (3, 32, 32)
+    shape_mods = [(1, 28, 28), (3, 32, 32)]
+    mod = 2
     modelName = 'jmvae_nf_dcca_mnist_svhn'
 
 
     def __init__(self, params):
-
-        vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
-
+        if params.no_nf :
+            vae_config, vae = VAEConfig , my_VAE
+        else :
+            vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
+            vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
         # Define the joint encoder
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20)]
-        joint_encoder = DoubleHeadJoint(hidden_dim,pre_configs[0], pre_configs[1],
-                                        Encoder_VAE_MLP ,
-                                        Encoder_VAE_SVHN,
-                                        params)
+        joint_encoder = DoubleHeadJoint(hidden_dim, pre_configs[0], pre_configs[1],Encoder_VAE_MLP, Encoder_VAE_SVHN,params)
+        # joint_encoder = MultipleHeadJoint(hidden_dim,pre_configs,
+        #                                 [Encoder_VAE_MLP ,
+        #                                 Encoder_VAE_SVHN],
+        #                                 params)
+        
 
         # Define the unimodal encoders config
         vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 32, 32), params.latent_dim)
 
-        if self.params.dcca :
+        if params.dcca :
             # First load the DCCA encoders
             self.dcca = load_dcca_mnist_svhn()
 
@@ -73,7 +81,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         
 
         # Then define the vaes
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
+        
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
             vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)
@@ -90,7 +98,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
     
     def set_classifiers(self):
 
-        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
         return 
 
 
@@ -101,19 +109,15 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
-
-
+        
+        self.set_classifiers()
         general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
-        accuracies = compute_accuracies(self,self.classifier1,self.classifier2,data,classes,n_data,ns)
+        accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
         return accuracies
 
-    def compute_recon_loss(self,x,recon,m):
-        """Change the way we compute the reocnstruction, through the filter of DCCA"""
-        t = self.dcca[m](x).embedding
-        recon_t = self.dcca[m](recon).embedding
-        return F.mse_loss(t,recon_t,reduction='sum')
+
 
 
     def compute_fid(self, batch_size):
@@ -171,14 +175,39 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
         return cond_fids
 
-
-
-
-
-
-
-
-
+    def sample_from_conditional_subset(self, subsets, data, ns):
+        
+        """
+        We define the distribution p(z|s) where s is a subset of modality as a mixture of experts. 
+        Here we sample from this conditional.
+        
+        Parameters
+        ----------
+        
+        subset : List of lists
+            The subsets we condition on. for each subset, the first indices correpond to the one we condition on and the last one
+            correspond to the modality sampled.
+            
+        ns : int
+            The number of samples to produce
+            
+        Returns 
+        -------------
+        
+        recons : List of Tensors
+            Contains the generated samples for each subset 
+        """
+        
+        uni_modals = self._sample_from_conditional(data,ns)
+        recons = []
+        for subset in subsets:
+            s = dist.Categorical(torch.ones(len(subset-1))/len(subset-1)).sample()
+            
+            recons.append(uni_modals[subset[s]][subset[-1]])
+        return recons
+    
+            
+        
 
 
 
