@@ -231,6 +231,7 @@ if __name__ == '__main__':
             train(epoch, agg)
             test_loss = test(epoch, agg)
             if test_loss < best_loss:
+                num_epochs_without_improvement = 0 # reset 
                 save_model(model, runPath + '/model.pt')
                 print("Saved model after improvement of {}".format(best_loss-test_loss))
                 best_loss = test_loss
@@ -254,6 +255,9 @@ if __name__ == '__main__':
                 else:
                     args.warmup = epoch -1
                     model.params.warmup = epoch -1
+                    num_epochs_without_improvement = 0
+                    best_loss = torch.inf
+                    wandb.log({'end_warmup' : epoch})
 
         if args.logp:  # compute as tight a marginal likelihood as possible
             estimate_log_marginal(5000)

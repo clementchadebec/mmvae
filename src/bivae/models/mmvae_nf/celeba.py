@@ -66,7 +66,7 @@ class celeba(MMVAE_NF):
 
 
     def set_classifiers(self):
-        self.classifier1, self.classifier2 = load_celeba_classifiers()
+        self.classifiers = load_celeba_classifiers()
 
 
 

@@ -161,7 +161,7 @@ class celeba(MVAE):
     def set_classifiers(self):
 
         # Define the classifiers for analysis
-        self.classifier1, self.classifier2 = load_celeba_classifiers()
+        self.classifiers = load_celeba_classifiers()
 
 
     def step(self, epoch):

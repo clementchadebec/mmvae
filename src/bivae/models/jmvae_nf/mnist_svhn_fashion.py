@@ -26,7 +26,7 @@ import torch.nn.functional as F
 
 from ..nn import DoubleHeadMLP, MultipleHeadJoint
 from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
+from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies, load_pretrained_fashion
 from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
 from bivae.utils import unpack_data, add_channels
 from bivae.dcca.models.mnist_svhn_fashion import load_dcca_mnist_svhn_fashion
@@ -92,7 +92,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     
     def set_classifiers(self):
 
-        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn(), load_pretrained_fashion()]
         return 
 
 
@@ -104,7 +104,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
 
-
+        self.set_classifiers()
         general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
@@ -186,8 +186,12 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
         return cond_fids
 
-
-
+    def analyse(self, data, runPath, epoch, classes):
+        # TODO
+        pass
+    
+    def analyse_posterior(self, data, n_samples, runPath, epoch, ticks, N):
+        pass
 
 
 

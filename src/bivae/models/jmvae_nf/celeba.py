@@ -105,9 +105,8 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
     
     def set_classifiers(self):
-        classifier1, classifier2 = load_celeba_classifiers()
-        self.classifier1 = classifier1
-        self.classifier2 = classifier2
+        self.classifiers = load_celeba_classifiers()
+
 
 
 

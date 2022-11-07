@@ -22,6 +22,7 @@ from bivae.utils import add_channels, unpack_data
 from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
 from bivae.analysis.accuracies import compute_accuracies
+from bivae.dataloaders import BasicDataset
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 

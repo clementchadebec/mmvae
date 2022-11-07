@@ -84,8 +84,8 @@ print(f"Train : {len(train_loader.dataset)},"
 
 
 # Define a sampler for generating new samples
-model.sampler = GaussianMixtureSampler()
-# model.sampler = None
+# model.sampler = GaussianMixtureSampler()
+model.sampler = None
 
 # Define the parameters for assessing quality
 # assesser = Inception_quality_assess(model)
@@ -103,6 +103,7 @@ def eval():
 
     # re-fit the sampler before computing metrics
     if model.sampler is not None:
+
         model.sampler.fit_from_latents(model.train_latents[0])
     b_metrics = {}
     with torch.no_grad():
@@ -120,11 +121,11 @@ def eval():
                 model.generate(runPath, epoch=0, N=32, save=True)
                 model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
 
-        for i in range(1):
+        # for i in range(1):
         #     # Compute fids 10 times to have a std
         #     # update_dict_list(b_metrics,model.assess_quality(assesser,runPath))
 
-            update_dict_list(b_metrics, model.compute_fid(batch_size=256))
+            # update_dict_list(b_metrics, model.compute_fid(batch_size=256))
 
             # cond_gen_data = model.generate_from_conditional(runPath, 0)
             # np.save(f'{runPath}/cond_gen_data.npy',cond_gen_data.cpu().numpy() )

@@ -55,8 +55,7 @@ class MNIST_SVHN(MMVAE):
 
     def set_classifiers(self):
         
-        self.classifier1 = load_pretrained_mnist()
-        self.classifier2 = load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
         
 
 

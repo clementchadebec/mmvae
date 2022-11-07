@@ -123,7 +123,7 @@ class MNIST_SVHN(MOEPOE):
     
 
     def set_classifiers(self):
-        self.classifier1,self.classifier2 = load_pretrained_mnist(), load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
 
 
 
