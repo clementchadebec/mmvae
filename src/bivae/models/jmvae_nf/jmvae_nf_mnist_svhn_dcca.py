@@ -32,6 +32,7 @@ from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_
 from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
 from bivae.utils import unpack_data, add_channels
 from bivae.dcca.models import load_dcca_mnist_svhn
+from bivae.models.modalities.mnist_svhn import fid
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -121,94 +122,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
 
     def compute_fid(self, batch_size):
+        return fid(self, batch_size)
 
-        model = wrapper_inception()
 
-        # Get the data with suited transform
-        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-
-        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
-
-        ref_activations = [[],[]]
-
-        for dataT in test:
-            data = unpack_data(dataT)
-
-            ref_activations[0].append(model(data[0]))
-            ref_activations[1].append(model(data[1]))
-
-        ref_activations = [np.concatenate(r) for r in ref_activations]
-
-        # Generate data from conditional
-
-        _, test, _ = self.getDataLoaders(batch_size)
-
-        gen_samples = [[],[]]
-        for dataT in test:
-            data = unpack_data(dataT)
-            gen = self._sample_from_conditional(data, n=1)
-            gen_samples[0].extend(gen[1][0])
-            gen_samples[1].extend(gen[0][1])
-
-        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
-        print(gen_samples[0].shape)
-        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-
-        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
-        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
-
-        gen_activations = [[],[]]
-        for dataT in gen_dataloader:
-            data = unpack_data(dataT)
-            gen_activations[0].append(model(data[0]))
-            gen_activations[1].append(model(data[1]))
-        gen_activations = [np.concatenate(g) for g in gen_activations]
-
-        cond_fids = {}
-        for i in range(len(ref_activations)):
-            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
-            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
-
-            # print(mu1.shape, sigma1.shape)
-
-            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
-
-        return cond_fids
-
-    def sample_from_conditional_subset(self, subsets, data, ns):
-        
-        """
-        We define the distribution p(z|s) where s is a subset of modality as a mixture of experts. 
-        Here we sample from this conditional.
-        
-        Parameters
-        ----------
-        
-        subset : List of lists
-            The subsets we condition on. for each subset, the first indices correpond to the one we condition on and the last one
-            correspond to the modality sampled.
-            
-        ns : int
-            The number of samples to produce
-            
-        Returns 
-        -------------
-        
-        recons : List of Tensors
-            Contains the generated samples for each subset 
-        """
-        
-        uni_modals = self._sample_from_conditional(data,ns)
-        recons = []
-        for subset in subsets:
-            s = dist.Categorical(torch.ones(len(subset-1))/len(subset-1)).sample()
-            
-            recons.append(uni_modals[subset[s]][subset[-1]])
-        return recons
     
-            
-        
-
-
-
-

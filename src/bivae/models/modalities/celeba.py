@@ -4,9 +4,12 @@ import torch
 from torchvision import transforms
 import numpy as np
 from torch.utils.data import DataLoader
+from PIL import Image, ImageDraw, ImageFont
+import wandb
+from torchvision.utils import save_image
 
 from bivae.dataloaders import BasicDataset
-from bivae.utils import unpack_data, add_channels
+from bivae.utils import unpack_data, add_channels, adjust_shape
 from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
 
 def compute_accuracies(model, data, runPath, epoch, classes, n_data=100, ns=300, freq=10):
@@ -118,10 +121,65 @@ def compute_fid_celeba(model, batch_size):
 
  
 
+def attribute_array_to_image(tensor, device='cuda'):
 
-   
+
+    """tensor of size (n_batch, 1,1,40)
+
+    output size (3,64,64)
+    """
+    list_images=[]
+    for v in tensor:
+        img = Image.new('RGB', (100, 100), color=(0, 0, 0))
+        d = ImageDraw.Draw(img)
+        fnt =  ImageFont.load_default()#ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+        vector = v.squeeze()
 
 
+
+        text = "Bald {:.1f} \n"\
+                "Bangs {:.1f}\n"\
+                "Big_Nose {:.1f} \n"\
+                "Blond_Hair {:.1f}\n"\
+                "Eyeglasses {:.1f}\n"\
+                "Male {:.1f}\n"\
+                "No_Beard {:.1f}\n".format(vector[4], vector[5], vector[7], vector[9], vector[15], vector[20], vector[24])
+
+        offset = fnt.getbbox(text)
+        d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
+
+        list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
+
+    return torch.stack(list_images).to(device) # nb_batch x 3 x 100 x 100
+
+
+
+def sample_from_conditional_celeba(model, data, runPath, epoch, n=10):
+        """Sample from conditional with vector attributes transformed into words"""
+
+        bdata = [d[:8] for d in data]
+        model.eval()
+        samples = model._sample_from_conditional(bdata, n)
+
+        for r, recon_list in enumerate(samples):
+            for o, recon in enumerate(recon_list):
+                _data = bdata[r].cpu()
+                recon = torch.stack(recon)
+                _,_,ch,w,h = recon.shape
+                recon = recon.resize(n * 8, ch, w, h).cpu()
+
+                if r == 0 and o == 1:
+                    recon = attribute_array_to_image(recon, device='cpu')
+                elif r == 1 and o == 0:
+                    _data = attribute_array_to_image(_data, device='cpu')
+
+                if _data.shape[1:] != recon.shape[1:]:
+                        _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
+
+                comp = torch.cat([_data, recon])
+                filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
+                save_image(comp, filename)
+                wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
 
 

@@ -43,7 +43,7 @@ class Solver():
         dim=[batch_size, feats]
 
         """
-        print('Starting to optimization')
+        print('Starting the optimization')
 
         data_size = len(train_loader.dataset)
 

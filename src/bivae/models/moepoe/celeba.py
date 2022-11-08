@@ -27,11 +27,10 @@ from bivae.vis import save_samples
 from ..nn import DoubleHeadMLP, DoubleHeadJoint
 from .moepoe import MOEPOE
 from bivae.analysis import MnistClassifier, SVHNClassifier
-from bivae.models.modalities.celeba import compute_fid_celeba, compute_accuracies
+from bivae.models.modalities.celeba import *
 
 
 
-dist_dict = {'mse' : dist.Normal, 'l1' : dist.Laplace, 'bce' : dist.Bernoulli}
 
 class celeba(MOEPOE):
     def __init__(self, params):
@@ -78,35 +77,7 @@ class celeba(MOEPOE):
         return metrics
 
 
-    def attribute_array_to_image(self, tensor, device='cuda'):
-        """tensor of size (n_batch, 1,1,40)
-
-        output size (3,64,64)
-        """
-        list_images=[]
-        for v in tensor:
-            img = Image.new('RGB', (100, 100), color=(0, 0, 0))
-            d = ImageDraw.Draw(img)
-            fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
-            vector = v.squeeze()
-
-
-
-            text = "Bald {:.1f} \n"\
-                   "Bangs {:.1f}\n"\
-                   "Big_Nose {:.1f} \n"\
-                   "Blond_Hair {:.1f}\n"\
-                   "Eyeglasses {:.1f}\n"\
-                   "Male {:.1f}\n"\
-                   "No_Beard {:.1f}\n".format(vector[4], vector[5], vector[7], vector[9], vector[15], vector[20], vector[24])
-
-            offset = fnt.getoffset(text)
-            d.multiline_text((0 - offset[0], 0 - offset[1]), text, font=fnt)
-
-            list_images.append(torch.from_numpy(np.array(img).transpose([2,0,1])))
-
-        return torch.stack(list_images).to(device) # nb_batch x 3 x 100 x 100
-
+    
     def generate(self,runPath, epoch, N= 8, save=False):
         """Generate samples from sampling the prior distribution"""
         self.eval()
@@ -128,32 +99,7 @@ class celeba(MOEPOE):
         return data  # list of generations---one for each modality
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
-        """Sample from conditional with vector attributes transformed into words"""
-
-        bdata = [d[:8] for d in data]
-        self.eval()
-        samples = self._sample_from_conditional(bdata, n)
-
-        for r, recon_list in enumerate(samples):
-            for o, recon in enumerate(recon_list):
-                _data = bdata[r].cpu()
-                recon = torch.stack(recon)
-                _,_,ch,w,h = recon.shape
-                recon = recon.resize(n * 8, ch, w, h).cpu()
-
-                if r == 0 and o == 1:
-                    recon = self.attribute_array_to_image(recon, device='cpu')
-                elif r == 1 and o == 0:
-                    _data = self.attribute_array_to_image(_data, device='cpu')
-
-                if _data.shape[1:] != recon.shape[1:]:
-                        _data, recon = adjust_shape(_data, recon) # modify the shapes in place to match dimensions
-
-                comp = torch.cat([_data, recon])
-                filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
-                save_image(comp, filename)
-                wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
-
+        return sample_from_conditional_celeba(self, data, runPath, epoch,n)
 
 
 

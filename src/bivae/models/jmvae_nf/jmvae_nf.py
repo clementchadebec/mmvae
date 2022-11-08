@@ -150,7 +150,7 @@ class JMVAE_NF(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
 
         return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
 
@@ -213,6 +213,16 @@ class JMVAE_NF(Multi_VAES):
 
 
     def compute_joint_likelihood(self,data, K=1000, batch_size_K=100):
+        """Computes the mean joint log likelihood.
+
+        Args:
+            data (list): the multimodal data on which to compute the likelihood
+            K (int, optional):. Defaults to 1000.
+            batch_size_K (int, optional): . Defaults to 100.
+
+        Returns:
+            dict : contains likelihood metrics
+        """
 
         # First compute all the parameters of the joint posterior q(z|x,y)
         self.qz_xy_params = self.joint_encoder(data)
@@ -261,7 +271,7 @@ class JMVAE_NF(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
 
         return {'likelihood' : ll/len(data[0])}
 

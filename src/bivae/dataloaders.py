@@ -474,6 +474,9 @@ class MNIST_SVHN_FASHION_DL():
         len_train = 50000
         # len_train = len(t_mnist)
         
+        len_test = 1000
+        # len_test = len(s_mnist)
+        
         train_msf = TensorDataset([
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
             ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train),
@@ -481,21 +484,21 @@ class MNIST_SVHN_FASHION_DL():
         ])
         
         test_msf = TensorDataset([
-            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len(s_mnist)),
-            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn)),
-            ResampleDataset(s3.dataset, lambda d,i : s_fashion[i], size=len(s_fashion))
+            ResampleDataset(s1.dataset, lambda d, i: s_mnist[i], size=len_test),
+            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len_test),
+            ResampleDataset(s3.dataset, lambda d,i : s_fashion[i], size=len_test)
         ])
 
         # Split between test and validation while fixing the seed to ensure that we always have the same sets
-        val_set, test_set = random_split(test_msf,
-                                         [len(test_msf) // 2,
-                                          len(test_msf) - len(test_msf) // 2],
+        train_set, val_set = random_split(train_msf,
+                                         [len(train_msf)-10000,
+                                          10000],
                                          generator=torch.Generator().manual_seed(42))
 
 
 
         kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-        train = DataLoader(train_msf, batch_size=batch_size, shuffle=shuffle, **kwargs)
-        test = DataLoader(test_set, batch_size=batch_size, shuffle=False, **kwargs)
+        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_msf, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val

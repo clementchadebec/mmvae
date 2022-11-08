@@ -24,7 +24,7 @@
   "seed": 1,
   "dist": "normal",
   "data_path": "../data/",
-  "skip_warmup": false,
+  "skip_warmup": true,
   "warmup": 100,
   "no_nf": false,
   "beta_prior": 1,

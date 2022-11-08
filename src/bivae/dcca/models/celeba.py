@@ -1,4 +1,5 @@
 import torch
+import argparse, json
 import torch.nn as nn
 from ..objectives import cca_loss
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
@@ -37,7 +38,12 @@ class wrapper_encoder_lcca_celeb(nn.Module):
 
     def __init__(self):
         super(wrapper_encoder_lcca_celeb, self).__init__()
-        model1 = Encoder_ResNet_AE_CELEBA(VAEConfig((3, 64, 64), 40))
+        # get the outdim size of the encoders from the json file
+        with open('../experiments/dcca/celeba/args.json', 'r') as fcc_file:
+            args = argparse.Namespace()
+            args.__dict__.update(json.load(fcc_file))
+        
+        model1 = Encoder_ResNet_AE_CELEBA(VAEConfig((3, 64, 64), args.outdim_size_dcca))
         model1.load_state_dict(torch.load('../experiments/dcca/celeba/model1.pt'))
         self.latent_dim = 40
 
@@ -57,7 +63,11 @@ class wrapper_encoder_lcca_attributes(nn.Module):
 
     def __init__(self):
         super(wrapper_encoder_lcca_attributes, self).__init__()
-        model2 = Encoder_AE_MLP(VAEConfig((1, 1, 40), 40))
+        with open('../experiments/dcca/celeba/args.json', 'r') as fcc_file:
+            args = argparse.Namespace()
+            args.__dict__.update(json.load(fcc_file))
+            
+        model2 = Encoder_AE_MLP(VAEConfig((1, 1, 40), args.outdim_size_dcca))
         model2.load_state_dict(torch.load('../experiments/dcca/celeba/model2.pt'))
         self.latent_dim = 40
 

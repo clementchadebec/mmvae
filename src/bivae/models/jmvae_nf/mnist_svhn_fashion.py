@@ -30,6 +30,7 @@ from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_
 from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
 from bivae.utils import unpack_data, add_channels
 from bivae.dcca.models.mnist_svhn_fashion import load_dcca_mnist_svhn_fashion
+from ..modalities.trimodal import *
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -119,72 +120,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
 
     def compute_fid(self, batch_size):
-        
-        #TODO : Check that this function is working
-
-        model = wrapper_inception()
-
-        # Get the data with suited transform
-        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-
-        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
-
-        ref_activations = [[] for i in range(self.mod)]
-
-        for dataT in test:
-            data = unpack_data(dataT)
-            for i in range(self.mod):
-                ref_activations[i].append(model(data[i]))
-            
-
-        ref_activations = [np.concatenate(r) for r in ref_activations]
-
-        # Generate data from conditional
-
-        _, test, _ = self.getDataLoaders(batch_size)
-
-        gen_samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
-        for dataT in test:
-            data = unpack_data(dataT)
-            gen = self._sample_from_conditional(data, n=1)
-            for i in range(self.mod):
-                for j in range(self.mod):
-                    gen_samples[i][j].extend(gen[i][j])
-            
-
-        gen_samples = [[torch.cat(g).squeeze(0) for g in row] for row in gen_samples]
-        print(gen_samples[0].shape)
-        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-
-        gen_activations = [[[] for j in range(self.mod)] for i in range( self.mod)]
-        
-        for i in range(self.mod):
-            for j in range(self.mod):
-                if i != j :
-                    gen = torch.cat(gen_samples[i][j]).squeeze(0)
-                    dataset = BasicDataset(gen,tx)
-                    dl = DataLoader(dataset, batch_size)
-                    # Compute all the activations
-                    for data in dl:
-                        gen_activations[i][j].append(model[data])
-                
-
-
-        cond_fids = {}
-        
-        for i in range(self.mod): # modality sampled
-            mu_ref = np.mean(ref_activations[i], axis=0)
-            sigma_ref = np.cov(ref_activations[i],rowvar=False )
-            for j in range(self.mod): # modality we condition on for sampling
-                if i != j:
-                    # Compute mean and sigma
-                    mu_gen = np.mean(np.concatenate(gen_activations[j][i]))
-                    sigma_gen = np.cov(np.concatenate(gen[j][i]), rowvar=False)
-
-
-                    cond_fids[f'fid_{j}_{i}'] = calculate_frechet_distance(mu_ref, sigma_ref, mu_gen, sigma_gen)
-
-        return cond_fids
+        return fid(self, batch_size)
 
     def analyse(self, data, runPath, epoch, classes):
         # TODO
@@ -193,12 +129,6 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     def analyse_posterior(self, data, n_samples, runPath, epoch, ticks, N):
         pass
 
-
-
-
-
-
-
-
-
-
+    
+    
+    
