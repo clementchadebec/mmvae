@@ -179,7 +179,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     epoch_num = args.num_epochs_dcca
     batch_size = 800
-    train_loader,test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size=batch_size)
+    train_loader,test_loader, val_loader = CELEBA_DL(args.data_path).getDataLoaders(batch_size=batch_size)
 
 
     # the regularization parameter of the network
