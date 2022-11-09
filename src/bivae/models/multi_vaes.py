@@ -275,7 +275,7 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - np.log(K)
 
         return {f'uni_from_prior_{mod}': ll / len(data[0])}
 
@@ -336,7 +336,7 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
 
         return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
 

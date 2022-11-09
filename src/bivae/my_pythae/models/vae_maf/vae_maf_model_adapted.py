@@ -80,7 +80,7 @@ class my_VAE_MAF(VAE):
         z0 = z
 
         # Pass it through the Normalizing flows
-        flow_output = self.maf.inverse(z)  # sampling
+        flow_output = self.flow.inverse(z)  # sampling
 
         z = flow_output.out
         log_abs_det_jac = flow_output.log_abs_det_jac

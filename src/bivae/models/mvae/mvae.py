@@ -159,7 +159,7 @@ class MVAE(Multi_VAES):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(ln_pxs), dim=0) - np.log(K)
 
         return {f'joint_ll_from_{cond_mod}': ll / len(data[0])}
 
@@ -206,7 +206,7 @@ class MVAE(Multi_VAES):
                 ln_px = torch.logsumexp(lpx_zs + lpz - lqz_xs, dim=-1)
                 lnpxs.append(ln_px)
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - torch.log(K)
+            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
 
         return {'likelihood': ll / len(data[0])}
 

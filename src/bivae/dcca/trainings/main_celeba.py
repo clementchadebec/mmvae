@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 import argparse
 import matplotlib.pyplot as plt
+import json
 
 import torch
 from bivae.main import train
@@ -46,7 +47,7 @@ class Solver():
         dim=[batch_size, feats]
 
         """
-        print('Starting to optimization')
+        print('Starting the optimization')
 
 
         if val_loader is not None:
@@ -151,13 +152,18 @@ if __name__ == '__main__':
 
     print(torch.cuda.is_available())
 
+    parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
+    parser.add_argument('--config-path', type=str, default='')
+
+
+    # args
+    info = parser.parse_args()
 
     ############
     # Parameters Section
-    parser = argparse.ArgumentParser(description='DCCA training')
-    parser.add_argument('--num-epochs', type=int, default=30)
-    parser.add_argument('--outdim-size', type=int, default=40)
-    args = parser.parse_args()
+    with open(info.config_path, 'r') as fcc_file:
+        args = argparse.Namespace()
+        args.__dict__.update(json.load(fcc_file))
 
     device = torch.device('cuda')
     print("Using", torch.cuda.device_count(), "GPUs")
@@ -167,12 +173,12 @@ if __name__ == '__main__':
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
-    outdim_size = args.outdim_size
+    outdim_size = args.outdim_size_dcca
 
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = args.num_epochs
+    epoch_num = args.num_epochs_dcca
     batch_size = 800
     train_loader,test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size=batch_size)
 
@@ -198,6 +204,10 @@ if __name__ == '__main__':
                                                                             'outdim_size' : outdim_size,
                                                                             'num_epochs': epoch_num},
                    dir=str(save_to) + '/wandb')
+    
+    # Save parameters of training
+    with open('{}/args.json'.format(save_to), 'w') as fp:
+        json.dump(args.__dict__, fp)
 
 
     # Building, training, and producing the new features by DCCA

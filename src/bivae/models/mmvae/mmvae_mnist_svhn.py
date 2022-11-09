@@ -21,6 +21,7 @@ from bivae.analysis.accuracies import compute_accuracies
 from bivae.utils import add_channels, unpack_data
 from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
+from ..modalities.mnist_svhn import fid
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -63,33 +64,6 @@ class MNIST_SVHN(MMVAE):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
 
-    def conditional_labels(self, data, n_data=8, ns=30):
-        """ Sample ns from the conditional distribution (for each of the first n_data)
-        and compute the labels repartition in this conditional distribution (based on the
-        predefined classifiers)"""
-
-        bdata = [d[:n_data] for d in data]
-        samples = self._sample_from_conditional( bdata, n=ns)
-        cross_samples = [torch.stack(samples[0][1]), torch.stack(samples[1][0])]
-
-        # Compute the labels
-        preds2 = self.classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, 3, 32, 32))  # 8*n x 10
-        labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
-
-        preds1 = self.classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, 1, 28, 28))  # 8*n x 10
-        labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
-
-        return labels2, labels1
-
-    def conditional_dist(self, data, runPath, epoch, n=20):
-        """ Plot the conditional distribution of the labels that was computed with
-        conditional labels """
-        hist_values = torch.cat(self.extract_hist_values(data), dim=0)
-
-        plot_hist(hist_values, '{}/hist_{:03d}.png'.format(runPath, epoch), range=(0, 10))
-        wandb.log({'histograms' : wandb.Image('{}/hist_{:03d}.png'.format(runPath, epoch))})
-
-
 
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
@@ -103,64 +77,4 @@ class MNIST_SVHN(MMVAE):
         return accuracies
 
     def compute_fid(self, batch_size):
-
-        model = wrapper_inception()
-
-        # Get the data with suited transform
-        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-
-        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
-
-        ref_activations = [[],[]]
-
-        for dataT in test:
-            data = unpack_data(dataT)
-
-            ref_activations[0].append(model(data[0]))
-            ref_activations[1].append(model(data[1]))
-
-        ref_activations = [np.concatenate(r) for r in ref_activations]
-
-        # Generate data from conditional
-
-        _, test, _ = self.getDataLoaders(batch_size)
-
-        gen_samples = [[],[]]
-        for dataT in test:
-            data = unpack_data(dataT)
-            gen = self._sample_from_conditional(data, n=1)
-            gen_samples[0].extend(gen[1][0])
-            gen_samples[1].extend(gen[0][1])
-
-        gen_samples = [torch.cat(g).squeeze(0) for g in gen_samples]
-        print(gen_samples[0].shape)
-        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-
-        gen_dataset = MultimodalBasicDataset(gen_samples, tx)
-        gen_dataloader = DataLoader(gen_dataset, batch_size=batch_size)
-
-        gen_activations = [[],[]]
-        for dataT in gen_dataloader:
-            data = unpack_data(dataT)
-            gen_activations[0].append(model(data[0]))
-            gen_activations[1].append(model(data[1]))
-        gen_activations = [np.concatenate(g) for g in gen_activations]
-
-        cond_fids = {}
-        for i in range(len(ref_activations)):
-            mu1, mu2 = np.mean(ref_activations[i], axis=0), np.mean(gen_activations[i], axis=0)
-            sigma1, sigma2 = np.cov(ref_activations[i], rowvar=False), np.cov(gen_activations[i], rowvar=False)
-
-            # print(mu1.shape, sigma1.shape)
-
-            cond_fids[f'fid_{i}'] = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
-
-        return cond_fids
-
-
-
-
-
-
-
-
+        return fid(self, batch_size)

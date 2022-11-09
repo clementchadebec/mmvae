@@ -28,7 +28,7 @@ import torch.nn.functional as F
 from .mmvae_nf import MMVAE_NF
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies
 from bivae.dcca.models import load_dcca_mnist_svhn
-
+from ..modalities.mnist_svhn import fid
 
 
 
@@ -74,7 +74,13 @@ class MNIST_SVHN(MMVAE_NF):
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=100, freq=10):
         """ We want to evaluate how much of the generated samples are actually in the right classes and if
         they are well distributed in that class"""
-        return
+        
+        self.set_classifiers()
+        general_metrics = MMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+        accuracies = compute_accuracies(self,data,classes,n_data,ns)
+
+        update_details(accuracies, general_metrics)
+        return accuracies
 
     def compute_recon_loss(self,x,recon,m):
         return
@@ -87,7 +93,8 @@ class MNIST_SVHN(MMVAE_NF):
 
         self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
 
-
+    def compute_fid(self, batch_size):
+        return fid(self, batch_size)
 
 
 

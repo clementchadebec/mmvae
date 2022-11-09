@@ -30,6 +30,7 @@ import os,glob
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--model', type=str, default='')
+parser.add_argument('--k', type=int, default=1000)
 
 
 # args

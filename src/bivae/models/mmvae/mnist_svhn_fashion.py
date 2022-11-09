@@ -9,7 +9,7 @@ from pythae.models import VAEConfig
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from torchvision import transforms
 
-from bivae.analysis.classifiers import load_pretrained_mnist, load_pretrained_svhn
+from bivae.analysis.classifiers import load_pretrained_mnist, load_pretrained_svhn, load_pretrained_fashion
 from bivae.dataloaders import MNIST_SVHN_FASHION_DL, BINARY_MNIST_SVHN_DL
 from bivae.my_pythae.models import my_VAE, laplace_VAE
 from bivae.utils import update_details
@@ -23,6 +23,7 @@ from bivae.dataloaders import MultimodalBasicDataset
 from torch.utils.data import DataLoader
 from bivae.analysis.accuracies import compute_accuracies
 from bivae.dataloaders import BasicDataset
+from ..modalities.trimodal import *
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -52,14 +53,14 @@ class MNIST_SVHN_FASHION(MMVAE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.vaes[2].modelName = 'fashion'
-        # self.lik_scaling = ((3*32*32)/(1*28*28),1,(3*32*32)/(1*28*28))
-        self.lik_scaling = (1,1,1)
+        self.shape_mods = [(1,28,28),(3,32,32),(1,28,28)]
+        self.lik_scaling = ((3*32*32)/(1*28*28),1,(3*32*32)/(1*28*28))
+        # self.lik_scaling = (1,1,1)
         wandb.log({'lik_scaling' : self.lik_scaling})
 
     def set_classifiers(self):
         
-        self.classifier1 = load_pretrained_mnist()
-        self.classifier2 = load_pretrained_svhn()
+        self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn(), load_pretrained_fashion()]
         
 
 
@@ -96,82 +97,4 @@ class MNIST_SVHN_FASHION(MMVAE):
         return accuracies
 
     def compute_fid(self, batch_size):
-        
-        #TODO : Check that this function is working
-
-        model = wrapper_inception()
-
-        # Get the data with suited transform
-        tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
-
-        _, test, _ = self.getDataLoaders(batch_size, transform=tx)
-
-        ref_activations = [[] for i in range(self.mod)]
-
-        for dataT in test:
-            data = unpack_data(dataT)
-            for i in range(self.mod):
-                ref_activations[i].append(model(data[i]))
-            
-
-        ref_activations = [np.concatenate(r) for r in ref_activations]
-
-        # Generate data from conditional
-
-        _, test, _ = self.getDataLoaders(batch_size)
-
-        gen_samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
-        for dataT in test:
-            data = unpack_data(dataT)
-            gen = self._sample_from_conditional(data, n=1)
-            for i in range(self.mod):
-                for j in range(self.mod):
-                    gen_samples[i][j].extend(gen[i][j])
-            
-
-        gen_samples = [[torch.cat(g).squeeze(0) for g in row] for row in gen_samples]
-        print(gen_samples[0].shape)
-        tx = transforms.Compose([transforms.Resize((299, 299)), add_channels()])
-
-        gen_activations = [[[] for j in range(self.mod)] for i in range( self.mod)]
-        
-        for i in range(self.mod):
-            for j in range(self.mod):
-                if i != j :
-                    gen = torch.cat(gen_samples[i][j]).squeeze(0)
-                    dataset = BasicDataset(gen,tx)
-                    dl = DataLoader(dataset, batch_size)
-                    # Compute all the activations
-                    for data in dl:
-                        gen_activations[i][j].append(model[data])
-                
-
-
-        cond_fids = {}
-        
-        for i in range(self.mod): # modality sampled
-            mu_ref = np.mean(ref_activations[i], axis=0)
-            sigma_ref = np.cov(ref_activations[i],rowvar=False )
-            for j in range(self.mod): # modality we condition on for sampling
-                if i != j:
-                    # Compute mean and sigma
-                    mu_gen = np.mean(np.concatenate(gen_activations[j][i]))
-                    sigma_gen = np.cov(np.concatenate(gen[j][i]), rowvar=False)
-
-
-                    cond_fids[f'fid_{j}_{i}'] = calculate_frechet_distance(mu_ref, sigma_ref, mu_gen, sigma_gen)
-
-        return cond_fids
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return fid(self,batch_size)

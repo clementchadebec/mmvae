@@ -1,29 +1,4 @@
-.*
-**/*~
-**/_*
-**/auto
-**/*.aux
-**/*.bbl
-**/*.blg
-**/*.log
-**/*.pdf
-**/*.out
-**/*.old
-**/*.run.xml
-**/images/
-*.pyc
-**/__pycache__
-!__init__.py
-!_imgs
-
-data/
-experiments/**/
-/.bash_history
-
-bin/*.sh
-bin/*.png
-bin/face_extract_vgg/
-
+__pycache__
 wandb
 
 doc/
@@ -32,6 +7,3 @@ wandb/debug.log
 
 
 ./wandb
-
-
-

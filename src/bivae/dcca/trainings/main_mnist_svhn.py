@@ -45,7 +45,7 @@ class Solver():
         dim=[batch_size, feats]
 
         """
-        print('Starting to optimization')
+        print('Starting the optimization')
 
 
         if val_loader is not None:
