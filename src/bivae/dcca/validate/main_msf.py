@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 model = DeepCCA_MNIST_SVHN_FASHION(16,False, 'cuda')
 model.load_state_dict('../experiments/dcca_msf/model.pt')
-1/0
 train, test, val = MNIST_SVHN_FASHION_DL().getDataLoaders(batch_size = 128)
 
 def _get_outputs(dcca, test_loader):

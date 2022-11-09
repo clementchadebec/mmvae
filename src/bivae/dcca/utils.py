@@ -7,6 +7,7 @@ from umap import UMAP
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import math
+import os, shutil
 
 def load_data(data_file):
     """loads the data from the gzip pickled files, and converts to numpy arrays"""
@@ -119,6 +120,12 @@ def visualize_umap(z,classes, save_file = None):
     return fig
 
 def save_encoders(model, path):
+    if os.path.exists(str(path)+'/model1.pt'):
+        shutil.copyfile(str(path)+'/model1.pt', '{}.old'.format(str(path)+'/model1.pt'))
+        shutil.copyfile(str(path)+'/model2.pt', '{}.old'.format(str(path)+'/model2.pt'))
+    if os.path.exists(str(path)+'/model3.pt'):
+        shutil.copyfile(str(path)+'/model3.pt', '{}.old'.format(str(path)+'/model3.pt'))
+
 
     torch.save(model.model1.state_dict(),str(path)+'/model1.pt')
     torch.save(model.model2.state_dict(),str(path) + '/model2.pt')

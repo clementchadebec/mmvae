@@ -52,6 +52,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         else :
             vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
             vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
+            
         # Define the joint encoder
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20)]

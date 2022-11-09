@@ -14,7 +14,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 import pythae
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
+from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF, VAE_MAF_Config, my_VAE_MAF
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from bivae.models.nn import Encoder_VAE_SVHN
 from torchnet.dataset import TensorDataset
@@ -45,8 +45,12 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
     def __init__(self, params):
 
-        vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
-
+        if params.no_nf :
+            vae_config, vae = VAEConfig , my_VAE
+        else :
+            vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
+            vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
+            
         # Define the joint encoder
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20), VAEConfig((1,28,28),20)]
