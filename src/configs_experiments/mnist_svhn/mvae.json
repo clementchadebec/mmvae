@@ -3,6 +3,7 @@
   "model": "mvae_mnist_svhn",
   "obj": "self_built",
   "llik_scaling": 0.0,
+  "recon_losses" : ["normal", "normal"],
 
   "K": 30,
   "looser": true,
