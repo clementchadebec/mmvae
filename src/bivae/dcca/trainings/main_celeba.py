@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import json
 
 import torch
-from bivae.main import train
 import wandb
 from torch.utils.data import BatchSampler, SequentialSampler, RandomSampler
 

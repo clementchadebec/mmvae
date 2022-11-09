@@ -38,5 +38,9 @@
   "dcca": true,
   "device": "cuda",
   "wandb_experiment": "celeba",
-  "flow" : "maf"
+  "flow" : "maf",
+  "outdim_size_dcca":40,
+  "num_epochs_dcca" : 100
+
+
   }
