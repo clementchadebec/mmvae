@@ -12,7 +12,7 @@
 **/*.run.xml
 **/images/
 *.pyc
-**/__pycache__
+__pycache__/
 !__init__.py
 !_imgs
 
@@ -33,3 +33,5 @@ doc/
 
 
 
+src/bivae/models/jmvae_nf/__pycache__/
+src/bivae/my_pythae/models/__pycache__/
