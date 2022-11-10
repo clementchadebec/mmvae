@@ -21,10 +21,10 @@ def conditional_labels_(model,classifier1,classifier2, data, n_data=8, ns=30):
 
     # Compute the labels
     preds2 = classifier2(cross_samples[0].permute(1, 0, 2, 3, 4).resize(n_data * ns, *model.shape_mod2))  # 8*n x 10
-    labels2 = torch.argmax(preds2, dim=1).reshape(n_data, ns)
+    labels2 = torch.argmax(preds2, dim=1).reshape(len(bdata[0]), ns)
 
     preds1 = classifier1(cross_samples[1].permute(1, 0, 2, 3, 4).resize(n_data * ns, *model.shape_mod1))  # 8*n x 10
-    labels1 = torch.argmax(preds1, dim=1).reshape(n_data, ns)
+    labels1 = torch.argmax(preds1, dim=1).reshape(len(bdata[0]), ns)
 
     return labels2, labels1
 
@@ -68,8 +68,8 @@ def conditional_labels(model, data, n_data=8, ns=30):
             for j in range(model.mod):
                 if i!=j:
                     recon = torch.stack(samples[i][j])
-                    preds = model.classifiers[j](recon.permute(1,0,2,3,4).resize(n_data*ns, *model.shape_mods[j]))
-                    labels[i][j] = torch.argmax(preds, dim=1).reshape(n_data, ns)
+                    preds = model.classifiers[j](recon.permute(1,0,2,3,4).resize(len(bdata[0])*ns, *model.shape_mods[j]))
+                    labels[i][j] = torch.argmax(preds, dim=1).reshape(len(bdata[0]), ns)
         return labels
     
     

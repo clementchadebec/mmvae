@@ -20,6 +20,7 @@ class MVAE(Multi_VAES):
 
         super(MVAE, self).__init__(params, vaes)
         self.lik_scaling = [1, 1]
+        self.qz_x = dist.Normal
 
     def forward(self, x):
         """
@@ -168,8 +169,8 @@ class MVAE(Multi_VAES):
         # First we need to compute the joint posterior parameter for each data point
 
         output = self(data)
-        mus = output['joint_mu']
-        stds = output['joint_std']
+        joint_mus = output['joint_mu']
+        joint_stds = output['joint_std']
 
         ll = 0
         # Then iter on each data_point
@@ -177,7 +178,7 @@ class MVAE(Multi_VAES):
 
             lnpxs = []
             for _ in range(K // batch_size_K):
-                q = dist.Normal(mus[i], stds[i])
+                q = dist.Normal(joint_mus[i], joint_stds[i])
                 # Sample latent variables
                 latents = q.rsample([batch_size_K])
 

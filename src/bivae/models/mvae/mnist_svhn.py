@@ -27,6 +27,8 @@ from ..modalities.mnist_svhn import fid
 
 class MNIST_SVHN(MVAE):
     def __init__(self, params):
+        self.shape_mods = [(1,28,28),(3,32,32)]
+        
         vae_config = VAEConfig
         vae_config1 = vae_config((1,28,28), params.latent_dim)
         vae_config2 = vae_config((3,32,32), params.latent_dim)

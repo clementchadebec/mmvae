@@ -53,7 +53,8 @@ class MNIST_SVHN(MMVAE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-
+        self.shape_mods = [(1,28,28),(3,32,32)]
+        
     def set_classifiers(self):
         
         self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn()]
