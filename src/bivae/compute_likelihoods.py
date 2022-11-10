@@ -122,8 +122,11 @@ def eval():
             # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 0,1, K=info.k))
             update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
             update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
+ 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
+    wandb.log(m_metrics)
+    wandb.log(s_metrics)
     print_mean_std(m_metrics,s_metrics)
 
     return

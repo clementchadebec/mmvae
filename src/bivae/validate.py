@@ -132,6 +132,8 @@ def eval():
 
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
+    wandb.log(m_metrics)
+    wandb.log(s_metrics)
     print_mean_std(m_metrics,s_metrics)
 
     return
