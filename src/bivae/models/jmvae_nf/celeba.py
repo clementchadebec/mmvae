@@ -40,7 +40,6 @@ from bivae.analysis.pytorch_fid.inception import wrapper_inception
 from bivae.analysis.pytorch_fid.fid_score import get_activations
 from bivae.models.modalities.celeba import *
 
-print(dist)
 
 # Define the classifiers for analysis
 

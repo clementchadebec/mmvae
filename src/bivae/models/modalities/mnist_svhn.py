@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 def fid(model, batch_size):
 
-        model = wrapper_inception()
+        model_fid = wrapper_inception()
 
         # Get the data with suited transform
         tx = transforms.Compose([transforms.ToTensor(), transforms.Resize((299, 299)), add_channels()])
@@ -24,8 +24,8 @@ def fid(model, batch_size):
         for dataT in test:
             data = unpack_data(dataT)
 
-            ref_activations[0].append(model(data[0]))
-            ref_activations[1].append(model(data[1]))
+            ref_activations[0].append(model_fid(data[0]))
+            ref_activations[1].append(model_fid(data[1]))
 
         ref_activations = [np.concatenate(r) for r in ref_activations]
 
@@ -50,8 +50,8 @@ def fid(model, batch_size):
         gen_activations = [[],[]]
         for dataT in gen_dataloader:
             data = unpack_data(dataT)
-            gen_activations[0].append(model(data[0]))
-            gen_activations[1].append(model(data[1]))
+            gen_activations[0].append(model_fid(data[0]))
+            gen_activations[1].append(model_fid(data[1]))
         gen_activations = [np.concatenate(g) for g in gen_activations]
 
         cond_fids = {}
