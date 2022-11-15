@@ -26,6 +26,7 @@ from .moepoe.celeba import celeba as VAE_moepoe_celeba
 from .mmvae_nf.celeba import celeba as VAE_mmvae_nf_celeba
 from .jmvae_nf.mnist_svhn_fashion import MNIST_SVHN_FASHION as VAE_jnf_msf
 from .mmvae.mnist_svhn_fashion import MNIST_SVHN_FASHION as VAE_mmvae_msf
+from .mvae.msf import MNIST_SVHN_FASHION as VAE_mvae_msf
 
 __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
@@ -43,6 +44,7 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_moepoe_celeba',
             'VAE_mmvae_nf_celeba', 
             'VAE_jnf_msf',
-            'VAE_mmvae_msf'
+            'VAE_mmvae_msf', 
+            'VAE_mvae_msf'
 
             ]
