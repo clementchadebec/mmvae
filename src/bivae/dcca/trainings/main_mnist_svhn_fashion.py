@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 30
+    epoch_num = 100
     batch_size = 800
     train_loader,test_loader, val_loader = MNIST_SVHN_FASHION_DL('../data').getDataLoaders(batch_size=batch_size)
 
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
-    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'asenellart', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None,
