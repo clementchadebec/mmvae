@@ -1,19 +1,14 @@
 {
-  "comment":"The JMVAE model with added flows and dcca pre-embeddings. No reconstruction and maf flows. Train joint.",
-
-
-  "experiment": "jmvae_nf_dcca/mnist_svhn",
-  "model": "jnf_mnist_svhn_dcca",
-  "obj": "jmvae_nf",
-
-
+  "experiment": "mvae/msf",
+  "model": "mvae_msf",
+  "obj": "self_built",
   "K": 1,
-  "recon_losses" : ["normal", "normal"],
+  "recon_losses" : ["normal", "normal", "normal"],
   "looser": false,
-  "llik_scaling": 0,
-  "batch_size": 128,
+  "llik_scaling": 0.0,
+  "batch_size": 256,
   "epochs": 200,
-  "latent_dim": 20,
+  "latent_dim": 30,
   "num_hidden_layers": 1,
   "use_pretrain": "",
   "learn_prior": false,
@@ -25,8 +20,8 @@
   "dist": "normal",
   "data_path": "../data/",
   "skip_warmup": false,
-  "warmup": 100,
-  "no_nf": false,
+  "warmup": 0,
+  "no_nf": true,
   "beta_prior": 1,
   "beta_kl": 1,
   "decrease_beta_kl": 1,
@@ -34,8 +29,7 @@
   "fix_jencoder": true,
   "no_recon": true,
   "freq_analytics": 5,
-  "dcca": true,
+  "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn",
-  "flow" : "maf"
+  "wandb_experiment": "msf"
   }

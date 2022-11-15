@@ -309,7 +309,7 @@ class Multi_VAES(nn.Module):
 
 
         # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
-        ll = 0
+        ll = []
         for i in range(len(data[0])):
             start_idx, stop_index = 0, batch_size_K
             lnpxs = []
@@ -336,9 +336,9 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
+            ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K))
 
-        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+        return {f'cond_likelihood_{cond_mod}_{gen_mod}': torch.sum(torch.tensor(ll))/len(ll)}, torch.tensor(ll)
 
 
 
@@ -354,13 +354,28 @@ class Multi_VAES(nn.Module):
             dict: dictionary containing the conditional likelihoods metrics. 
         """
 
-        metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
-        update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
-        update_details(metrics, self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K))
-        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
+        # metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
+        # metrics_0_1, ll = self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K)
+        # update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
+        # update_details(metrics, )
+        # update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
 
-
+        metrics = {}
+        ll = [[None for j in range(self.mod)] for i in range(self.mod)]
+        for i in range(self.mod):
+            for j in range(self.mod):
+                if i!=j:
+                    metrics_, ll_ = self.compute_conditional_likelihood(data, j, i,K, batch_size_K)
+                    update_details(metrics, metrics_)
+                    ll[i][j] = ll_
+        if self.mod == 3:
+            
+            for i in range(3):
+                moe = torch.logsumexp(torch.stack([ll[i][j] for j in range(self.mod) if i!=j]), dim=0)
+                update_details(metrics, {f'cond_lw_subset_{i}' : torch.mean(moe)})
+                
         return metrics
+    
     
     
 
