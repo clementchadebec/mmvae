@@ -236,7 +236,7 @@ if __name__ == '__main__':
                 print("Saved model after improvement of {}".format(best_loss-test_loss))
                 best_loss = test_loss
                 
-                if hasattr(model, 'joint_encoder'):
+                if hasattr(model, 'joint_encoder') and epoch <= args.warmup :
                     save_joint_path = Path('../experiments/joint_encoders/' + args.experiment.split('/')[1] )
                     save_joint_path.mkdir(parents=True, exist_ok=True)
                     save_joint_vae(model,save_joint_path)
@@ -249,12 +249,12 @@ if __name__ == '__main__':
             save_vars(agg, runPath + '/losses.pt')
             if num_epochs_without_improvement == 10:
                 # if we are beyond warmup, we break
-                if epoch > args.warmup :
+                if epoch >= args.warmup :
                     break
                 # else we put an end to the warmup part of the training
                 else:
-                    args.warmup = epoch -1
-                    model.params.warmup = epoch -1
+                    args.warmup = epoch + 1
+                    model.params.warmup = epoch + 1
                     num_epochs_without_improvement = 0
                     best_loss = torch.inf
                     wandb.log({'end_warmup' : epoch})

@@ -88,7 +88,7 @@ def compute_accuracies(model, data, classes, n_data=20, ns=100):
         for i in range(model.mod):
             for j in range(model.mod):
                 if i!=j:
-                    accuracies[i][j] = torch.sum(classes_mul == labels[i][j])/(n_data*ns)
+                    accuracies[i][j] = torch.sum(classes_mul == labels[i][j])/(torch.mul(*classes_mul.size()))
         
         acc_names = [f'acc_{i}_{j}' for i in range(model.mod) for j in range(model.mod) if i!=j]
         acc = [accuracies[i][j] for i in range(model.mod) for j in range(model.mod) if i!=j]
