@@ -472,7 +472,7 @@ class MNIST_SVHN_FASHION_DL():
         t_mnist, t_svhn, t_fashion = t_mnist[rd_idx], t_svhn[rd_idx], t_fashion[rd_idx]
         
         rd_idx_test = np.random.permutation(len(s_mnist))
-        s_mnist, s_svhn, s_fashion = t_mnist[rd_idx_test], t_svhn[rd_idx_test], t_fashion[rd_idx_test]
+        s_mnist, s_svhn, s_fashion = s_mnist[rd_idx_test], s_svhn[rd_idx_test], s_fashion[rd_idx_test]
         
         
         # len_train = 50000
