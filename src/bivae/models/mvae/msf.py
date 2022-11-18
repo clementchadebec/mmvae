@@ -1,8 +1,7 @@
 "MVAE specification for MNIST-SVHN-FASHION"
 
-# JMVAE_NF specification for MNIST-SVHN experiment
 
-
+import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn as nn
@@ -55,7 +54,12 @@ class MNIST_SVHN_FASHION(MVAE):
         self.vaes[1].modelName = 'svhn'
         self.vaes[2].modelName = 'fashion'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-
+        self.subsampling = True
+        self.k_subsample = 3
+        self.subsets = np.array([np.array([0,1]), np.array([0,2]), np.array([1,2])])
+        wandb.config.update(dict(subsampling = self.subsampling,
+                                 k_subsample = self.k_subsample,
+                                 ))
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_FASHION_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
