@@ -46,10 +46,12 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     def __init__(self, params):
 
         if params.no_nf :
+            print('No normalizing flows')
             vae_config, vae = VAEConfig , my_VAE
         else :
             vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
             vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
+
             
         # Define the joint encoder
         hidden_dim = 512
@@ -80,7 +82,6 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         
 
         # Then define the vaes
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=e1, decoder=d1),
             vae(model_config=vae_config2, encoder=e2, decoder=d2),

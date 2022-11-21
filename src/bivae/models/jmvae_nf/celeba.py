@@ -89,7 +89,6 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # decoder1, decoder2 = None, None
 
         # Then define the vaes
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
             vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)

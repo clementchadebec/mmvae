@@ -274,6 +274,144 @@ class JMVAE_NF(Multi_VAES):
             ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
 
         return {'likelihood' : ll/len(data[0])}
+    
+    def sample_from_moe_subset(self, subset : list ,data : list):
+        """Sample z from the mixture of posteriors from the subset.
+        Torch no grad is activated, so that no gradient are computed durin the forward pass of the encoders.
+
+        Args:
+            subset (list): the modalities to condition on
+            data (list): The data 
+            K (int) : the number of samples per datapoint
+        """
+        # Choose randomly one modality for each sample
+        
+        indices = np.random.choice(subset, size=len(data[0])) 
+        zs = torch.zeros((len(data[0]), self.params.latent_dim)).to(self.params.device)
+        
+        for m in subset:
+            with torch.no_grad():
+                z = self.vaes[m](data[m][indices == m]).z
+                zs[indices==m] = z
+        return zs
+            
+
+    
+    def compute_poe_posterior(self, subset : list,z_ : torch.Tensor,data : list):
+        """Compute the log density of the product of experts for Hamiltonian sampling.
+
+        Args:
+            subset (list): the modalities of the poe posterior
+            z_ (torch.Tensor): the latent variables (len(data[0]), latent_dim)
+            data (list): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        
+        lnqzs = 0
+        z = z_.clone().detach().requires_grad_(True)
+        for m in subset:
+            # Compute lnqz
+            self.vaes[m].requires_grad_(True)
+            flow_output = self.vaes[m].flow(z) if hasattr(self.vaes[m], "flow") else self.vae[m].inverse_flow(z)
+            vae_output = self.vaes[m].encoder(data[m])
+            mu, log_var, z0 = vae_output.embedding, vae_output.log_covariance, flow_output.out
+
+            log_q_z0 = (-0.5 * (log_var + np.log(2*np.pi) + torch.pow(z0 - mu, 2) / torch.exp(log_var))).sum(dim=1)
+            lnqzs += (log_q_z0 + flow_output.log_abs_det_jac) # n_data_points x 1
+
+        
+
+        g = torch.autograd.grad(lnqzs.sum(), z)[0]
+        
+
+            
+        return lnqzs, g
 
 
+    def sample_from_poe_subset(self,subset, gen_mod,data, mcmc_steps=100, n_lf=10, eps_lf=0.01):
+        """Sample from the product of experts using Hamiltonian sampling.
+
+        Args:
+            subset (List[int]): 
+            gen_mod (int): 
+            data (List[Tensor]): 
+            K (int, optional): . Defaults to 100.
+        """
+        
+        n_samples = len(data[0])
+        acc_nbr = torch.zeros(n_samples, 1).to(self.params.device)
+
+        # First we need to sample an initial point from the mixture of experts
+        z0 = self.sample_from_moe_subset(subset,data)
+        z = z0
+
+        for i in tqdm(range(mcmc_steps)):
+            #print(i)
+            gamma = torch.randn_like(z, device=self.params.device)
+            rho = gamma# / self.beta_zero_sqrt
+            
+            # Compute ln q(z|X_s)
+            ln_q_zxs, g = self.compute_poe_posterior(subset,z,data)
+
+            H0 = -ln_q_zxs + 0.5 * torch.norm(rho, dim=1) ** 2
+            # print(H0)
+            # print(model.G_inv(z).det())
+            for k in range(n_lf):
+
+                #z = z.clone().detach().requires_grad_(True)
+                #log_det = G(z).det().log()
+
+                #g = torch.zeros(n_samples, model.latent_dim).cuda()
+                #for i in range(n_samples):
+                #    g[0] = -grad(log_det, z)[0][0]
+
+
+                # step 1
+                rho_ = rho - (eps_lf / 2) *(-g)
+
+                # step 2
+                z = z + eps_lf * rho_
+
+                #z_ = z_.clone().detach().requires_grad_(True)
+                #log_det = 0.5 * G(z).det().log()
+                #log_det = G(z_).det().log()
+
+                #g = torch.zeros(n_samples, model.latent_dim).cuda()
+                #for i in range(n_samples):
+                #    g[0] = -grad(log_det, z_)[0][0]
+
+                # Compute the updated gradient
+                ln_q_zxs, g = self.compute_poe_posterior(subset,z,data)
+                
+                #print(g)
+                # g = (Sigma_inv @ (z - mu).T).reshape(n_samples, 2)
+
+                # step 3
+                rho__ = rho_ - (eps_lf / 2) * (-g)
+
+                # tempering
+                beta_sqrt = 1
+
+                rho =  rho__
+                #beta_sqrt_old = beta_sqrt
+
+            H = -ln_q_zxs + 0.5 * torch.norm(rho, dim=1) ** 2
+            alpha = torch.exp(-H) / (torch.exp(-H0))
+            # print(alpha)
+
+            #print(-log_pi(best_model, z, best_model.G), 0.5 * torch.norm(rho, dim=1) ** 2)
+            acc = torch.rand(n_samples).to(self.params.device)
+            moves = (acc < alpha).type(torch.int).reshape(n_samples, 1)
+
+            acc_nbr += moves
+
+            z = z * moves + (1 - moves) * z0
+            z0 = z
+        print(acc_nbr[:10]/mcmc_steps)
+        return z.detach()
+        
+        
+    
     
