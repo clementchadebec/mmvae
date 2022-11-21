@@ -35,10 +35,10 @@ with open(info.config_path, 'r') as fcc_file:
     args = argparse.Namespace()
     args.__dict__.update(json.load(fcc_file))
 
-learning_rate = 1e-3
+learning_rate = args.learning_rate
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment
-wandb.init(project = experiment_name , entity="multimodal_vaes", config={'lr' : learning_rate}) 
+wandb.init(project = experiment_name , entity="asenellart", config={'lr' : learning_rate}) 
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')

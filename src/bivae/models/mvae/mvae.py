@@ -22,9 +22,10 @@ class MVAE(Multi_VAES):
         self.lik_scaling = [1, 1]
         self.qz_x = dist.Normal
         self.subsampling = False
+        self.subsets = []
         
         
-    def poe(self, mus_list, log_vars_list):
+    def poe(self, mus_list, log_vars_list, eps = 1e-8):
         
         mus = mus_list.copy()
         log_vars=log_vars_list.copy()
@@ -35,13 +36,27 @@ class MVAE(Multi_VAES):
 
         # Compute the joint posterior
         lnT = torch.stack([-l for l in log_vars])  # Compute the inverse of variances
+        # print(lnT)
         lnV = - torch.logsumexp(lnT, dim=0)  # variances of the product of expert
-
+        # print('lnV',lnV)
         mus = torch.stack(mus)
         joint_mu = (torch.exp(lnT) * mus).sum(dim=0) * torch.exp(lnV)
 
         joint_std = torch.exp(0.5 * lnV)
         return joint_mu, joint_std
+    
+    def poe_(self, mus_list, log_vars_list, eps = 1e-8):
+        print('using original poe')
+        mus_stack = torch.stack(mus_list + [torch.zeros_like(mus_list[0])])
+        log_vars_stack = torch.stack(log_vars_list + [torch.zeros_like(mus_list[0])])
+        
+        var       = torch.exp(log_vars_stack) + eps
+        # precision of i-th Gaussian expert at point x
+        T         = 1. / (var + eps)
+        pd_mu     = torch.sum(mus_stack * T, dim=0) / torch.sum(T, dim=0)
+        pd_var    = 1. / torch.sum(T, dim=0)
+        pd_logvar = torch.log(pd_var + eps)
+        return pd_mu, torch.exp(0.5*pd_logvar)
     
     def kl(self,mu, std):
         return kl_divergence(dist.Normal(mu, std), dist.Normal(*self.pz_params)).sum()
@@ -58,6 +73,8 @@ class MVAE(Multi_VAES):
         
         mus_tilde = []
         lnV_tilde = []
+        
+
 
         for m, vae in enumerate(self.vaes):
             o = vae.encoder(x[m])
@@ -67,8 +84,9 @@ class MVAE(Multi_VAES):
             lnV_tilde.append(u_log_var)
             
             # Compute the unimodal elbos
-            # mu, std =  self.poe([u_mu], [u_log_var])
-            mu, std = u_mu, torch.exp(0.5*u_log_var)
+            mu, std =  self.poe([u_mu], [u_log_var])
+            # print(m, mu, std)
+            # mu, std = u_mu, torch.exp(0.5*u_log_var)
             z = dist.Normal(mu, std).rsample()
             recon = vae.decoder(z).reconstruction
             elbo += -1/2*torch.sum((x[m]-recon)**2) * self.lik_scaling[m] - self.kl(mu, std)
@@ -123,6 +141,33 @@ class MVAE(Multi_VAES):
                 mu.append(z)
                 labels.append(dataT[0][1].to(self.params.device))
         self.train_latents = torch.cat(mu), torch.cat(labels)
+        
+    def _sample_from_conditional(self,bdata, n=10):
+        """sample_from_conditional_ adaptation for the mvae where the variational distribution 
+        is not the encoder distribution but the poe between the prior and the encoder distribution. 
+
+        Args:
+            bdata (list): data
+            n (int, optional): the number of samples per datapoint. Defaults to 10.
+
+        Returns:
+            _type_: _description_
+        """
+        self.eval()
+        print('Using custom _sample function')
+        samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
+
+        with torch.no_grad():
+
+            for _ in range(n):
+                                    
+                outputs_encoders = [self.vaes[i].encoder(bdata[i]) for i in range(self.mod)]
+                poe_mus_lnV = [self.poe([o.embedding], [o.log_covariance]) for o in outputs_encoders]
+                zs = [dist.Normal(p[0], p[1]).sample() for p in poe_mus_lnV]
+                for i,z in enumerate(zs):
+                    for j, vae in enumerate(self.vaes):
+                        samples[i][j].append(vae.decoder(z)["reconstruction"])
+        return samples
 
     def reconstruct(self, data, runPath, epoch):
         """ Reconstruction is not defined for the mvae model since

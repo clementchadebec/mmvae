@@ -161,7 +161,7 @@ class Multi_VAES(nn.Module):
         """ For all points in data, samples N points from q(z|x) and q(z|y)"""
         bdata = [d[:n_samples] for d in data]
         #zsamples[m] is of size N, n_samples, latent_dim
-        zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).__getitem__('z') for _ in range(N)]) for m in range(self.mod)]
+        zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).z for _ in range(N)]) for m in range(self.mod)]
         file = ('{}/samplepost_{:03d}' + self.save_format).format(runPath, epoch)
         plot_samples_posteriors(zsamples, file, None)
         wandb.log({'sample_posteriors' : wandb.Image(file)})

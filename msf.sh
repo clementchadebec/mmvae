@@ -2,25 +2,26 @@
 
 # Prepare the dataset
 
-python3 bin/make_trimodal.py # To launch from the mmvae directory
+# python3 bin/make_trimodal.py # To launch from the mmvae directory
 
 # Run all the experiments and the validation for mnist-svhn
 
 # JMVAE_NF_DCCA (checked)
-python3 src/bivae/dcca/trainings/main_mnist_svhn_fashion.py # 50s par epoch x 100 epochs
-python3 src/bivae/main.py --config-path src/configs_experiments/msf/jmvae_nf_dcca.json # 1 min par epoch x 150 epochs 
+# python3 src/bivae/dcca/trainings/main_mnist_svhn_fashion.py # 50s par epoch x 100 epochs
+# python3 src/bivae/main.py --config-path src/configs_experiments/msf/jmvae_nf_dcca.json # 1 min par epoch x 150 epochs 
 
 # JMVAE (checked)
 python3 src/bivae/main.py --config-path src/configs_experiments/msf/jmvae.json # 1 min par epoch x 150 epochs
 
 # # JMVAE_NF (checked)
-python3 src/bivae/main.py --config-path src/configs_experiments/msf/jmvae_nf.json # 1 min par epoch x 150 epochs
+# python3 src/bivae/main.py --config-path src/configs_experiments/msf/jmvae_nf.json # 1 min par epoch x 150 epochs
+# # MVAE (checked)
+python3 src/bivae/main.py --config-path src/configs_experiments/msf/mvae.json # 1 min par epoch x 150 epochs
 
 # # MMVAE (checked)
 python3 src/bivae/main.py --config-path src/configs_experiments/msf/mmvae.json # 1 min 15 par epoch x 150 epochs
 
-# # MVAE (checked)
-python3 src/bivae/main.py --config-path src/configs_experiments/msf/mvae.json # 1 min par epoch x 150 epochs
+
 
 
 # # # Run all the validations and compute likelihoods
@@ -29,7 +30,7 @@ python3 src/bivae/main.py --config-path src/configs_experiments/msf/mvae.json # 
 
 # python3 src/bivae/analysis/classifiers/classifier_mnist.py --mnist-type numbers
 # python3 src/bivae/analysis/classifiers/classifier_SVHN.py 
-python3 src/bivae/analysis/classifiers/classifier_mnist.py --mnist-type fashion
+# python3 src/bivae/analysis/classifiers/classifier_mnist.py --mnist-type fashion
 
 
 

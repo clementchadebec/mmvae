@@ -153,7 +153,7 @@ if __name__ == '__main__':
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('../dcca/msf')
+    save_to = Path('../dcca/experiments/msf')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
