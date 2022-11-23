@@ -1,35 +1,21 @@
 import argparse
 import datetime
-import glob
 import json
-import os
 import random
 import sys
-from collections import defaultdict
-from copy import deepcopy
 from pathlib import Path
-from tempfile import mkdtemp
+import os, glob
+
+import numpy as np
+import torch
+import wandb
 
 import models
-import numpy as np
-import objectives
-import torch
-from analysis import Inception_quality_assess, custom_mnist_fashion
-from analysis.pytorch_fid import wrapper_inception
 from models.samplers import GaussianMixtureSampler
-from torch import optim
-from torchvision import transforms
-from tqdm import tqdm
-from utils import (Logger, Timer, add_channels, extract_rayon, get_mean_std,
-                   load_joint_vae, print_mean_std, save_model, save_vars,
-                   unpack_data, update_details, update_dict_list)
-from vis import plot_hist
-
-import wandb
+from utils import Logger, Timer, unpack_data, update_dict_list, get_mean_std, print_mean_std
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--model', type=str, default='')
-parser.add_argument('--k', type=int, default=1000)
 
 
 # args
@@ -41,8 +27,7 @@ model_path = max(glob.glob(os.path.join(day_path, '*/')), key=os.path.getmtime)
 with open(model_path + 'args.json', 'r') as fcc_file:
     args = argparse.Namespace()
     args.__dict__.update(json.load(fcc_file))
-    
-    
+
 # random seed
 # https://pytorch.org/docs/stable/notes/randomness.html
 torch.backends.cudnn.benchmark = True
@@ -52,9 +37,9 @@ np.random.seed(args.seed)
 random.seed(args.seed)
 
 # Log parameters of the experiments
-experiment_name = args.wandb_experiment if hasattr(args, 'wandb_experiment') else args.model
-wand_mode = 'disabled'
-wandb.init(project = experiment_name , entity="asenellart") # mode = ['online', 'offline', 'disabled']
+experiment_name = args.wandb_experiment if hasattr(args,'wandb_experiment') else args.model
+
+wandb.init(project = experiment_name , entity="multimodal_vaes") 
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
@@ -90,7 +75,6 @@ print('Expt:', runPath)
 print('RunID:', runId)
 
 
-
 train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
@@ -108,20 +92,27 @@ model.sampler = None
 # assesser.check_activations(runPath)
 
 # assesser = custom_mnist_fashion(model)
+
+
 def eval():
     """Compute all metrics on the entire test dataset"""
 
-    model.eval()
+    # model.eval()
+    # Compute all train latents
+    # model.compute_all_train_latents(train_loader)
 
+    # re-fit the sampler before computing metrics
+    if model.sampler is not None:
+
+        model.sampler.fit_from_latents(model.train_latents[0])
     b_metrics = {}
 
-    for i, dataT in enumerate(tqdm(test_loader)):
+    for i, dataT in enumerate(test_loader):
         data = unpack_data(dataT, device=device)
-        # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 1, 0, K= info.k))
-        # update_dict_list(b_metrics, model.compute_conditional_likelihood(data, 0,1, K=info.k))
-        update_dict_list(b_metrics, model.compute_conditional_likelihoods(data, K=info.k))
-        update_dict_list(b_metrics, model.compute_joint_likelihood(data,K=info.k))
-
+        # model.sample_from_poe_subset([0,1], 2,data, mcmc_steps=100)
+        model.visualize_poe(data, runPath, n_data = 5, N=100)
+        1/0
+    
 
     m_metrics, s_metrics = get_mean_std(b_metrics)
     wandb.log(m_metrics)

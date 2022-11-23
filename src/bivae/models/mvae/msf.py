@@ -18,7 +18,7 @@ from bivae.vis import plot_hist
 from .mvae import MVAE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies, load_pretrained_fashion
-from ..modalities.trimodal import fid
+from ..modalities.trimodal import *
 from torchvision.utils import save_image
 
 
@@ -56,8 +56,8 @@ class MNIST_SVHN_FASHION(MVAE):
         self.vaes[2].modelName = 'fashion'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1)
         # self.lik_scaling = (1, 1,1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.subsampling = False
-        self.k_subsample = 3
+        self.subsampling = params.subsampling
+        self.k_subsample = params.k_subsample
         self.subsets = np.array([np.array([1,2]), np.array([0,2]), np.array([0,1])])
         wandb.config.update(dict(subsampling = self.subsampling,
                                  k_subsample = self.k_subsample,
@@ -78,6 +78,9 @@ class MNIST_SVHN_FASHION(MVAE):
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
+        # Compute conditional accuracies
+        cond_acc = compute_poe_subset_accuracy(self,data,classes,n_data,ns)
+        update_details(accuracies, cond_acc)
         return accuracies
 
 
@@ -95,17 +98,15 @@ class MNIST_SVHN_FASHION(MVAE):
         return fid(self, batch_size)
 
 
-    def sample_from_conditional(self, data, runPath, epoch, n=10):
-        super().sample_from_conditional(data, runPath, epoch, n)
-        
-        # In addition, visualize samples from the conditional subset distribution
-        b_data = [d[:8] for d in data]
-        for s,gen_mod in zip(self.subsets, range(self.mod)):
-            r = self.sample_from_subset_cond(s,gen_mod,b_data,K=n)['recons']
-            r = r.resize(n*8, *r.shape[2:])
-            filename = '{}/cond_samples_subset{}_{:03d}.png'.format(runPath, gen_mod, epoch)
-            save_image(torch.cat([b_data[gen_mod],r]), filename)
-            wandb.log({'cond_samples_subset{}.png'.format(gen_mod) : wandb.Image(filename)})
+    def sample_from_poe(self, data, runPath, epoch, n=10):
+        sample_from_poe_vis(self, data, runPath, epoch, n)
 
             
-    
+
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
+        
+        poe_ll = compute_all_cond_ll_from_poe_subsets(self,data,K,batch_size_K)
+        update_details(d,poe_ll)
+        
+        return d

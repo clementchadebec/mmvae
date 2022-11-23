@@ -130,18 +130,15 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         bdata = [torch.cat([d[:n_data]]*N) for d in data]
         
         # Sample from the unimodal posteriors
-        u_z = [self.vaes[m].forward(bdata[m]).z.reshape(N, n_data,2).permute(1,0) for m in range(self.mod)]
-
+        u_z = [self.vaes[m].forward(bdata[m]).z.reshape(N, n_data,2).permute(1,0,2) for m in range(self.mod)]
+        u_z = [t.detach().cpu() for t in u_z]
         
         # Sample from the joint posterior
-        j_z = self.forward(bdata)[-1].reshape(N, n_data,2).permute(1,0)
+        j_z = self.forward(bdata)[-1].reshape(N, n_data,2).permute(1,0,2).detach().cpu()
         
-        # Sample from the product of expert posterior
-        
-        poe_z = self.sample_from_poe_subset([0,1], 1,bdata, mcmc_steps=100, n_lf=10, eps_lf=0.01).reshape(N, n_data,2).permute(1,0)
-        
+
         # Plot
-        fig, axs = plt.subplots(2,n_data, sharex=True, sharey=True)
+        fig, axs = plt.subplots(2,n_data, sharex=True, sharey=True,figsize=(30,25))
         
         for i in range(n_data):
             # On the first row plot the true joint posterior, and unimodal posteriors
@@ -149,7 +146,12 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
             axs[0][i].scatter(u_z[1][i, :,0], u_z[1][i,:,1]) # second modality
             axs[0][i].scatter(j_z[i,:,0], j_z[i,:,1])
             
-
+        # Sample from the product of expert posterior
+        
+        poe_z = self.sample_from_poe_subset([0,1],bdata, axs[0][0], mcmc_steps=100, n_lf=10, eps_lf=0.01)
+        poe_z = poe_z.reshape(N, n_data,2).permute(1,0,2).detach().cpu()
+            
+        for i in range(n_data):
             # On the second, the poe and the unimodal posteriors
             axs[1][i].scatter(u_z[0][i, :,0], u_z[0][i,:,1]) # First modality
             axs[1][i].scatter(u_z[1][i, :,0], u_z[1][i,:,1]) # second modality

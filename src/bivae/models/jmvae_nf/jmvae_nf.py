@@ -6,6 +6,7 @@ import torch
 import torch.distributions as dist
 import wandb
 import torch.distributions as dist
+import matplotlib.pyplot as plt
 
 
 from ..multi_vaes import Multi_VAES
@@ -313,7 +314,7 @@ class JMVAE_NF(Multi_VAES):
         z = z_.clone().detach().requires_grad_(True)
         for m in subset:
             # Compute lnqz
-            self.vaes[m].requires_grad_(True)
+            self.vaes[m].requires_grad_(False)
             flow_output = self.vaes[m].flow(z) if hasattr(self.vaes[m], "flow") else self.vae[m].inverse_flow(z)
             vae_output = self.vaes[m].encoder(data[m])
             mu, log_var, z0 = vae_output.embedding, vae_output.log_covariance, flow_output.out
@@ -330,7 +331,7 @@ class JMVAE_NF(Multi_VAES):
         return lnqzs, g
 
 
-    def sample_from_poe_subset(self,subset, gen_mod,data, mcmc_steps=100, n_lf=10, eps_lf=0.01):
+    def sample_from_poe_subset(self,subset,data, ax=None, mcmc_steps=100, n_lf=10, eps_lf=0.01, K=1):
         """Sample from the product of experts using Hamiltonian sampling.
 
         Args:
@@ -339,6 +340,9 @@ class JMVAE_NF(Multi_VAES):
             data (List[Tensor]): 
             K (int, optional): . Defaults to 100.
         """
+        # Multiply the data to have multiple samples per datapoints
+        n_data = len(data[0])
+        data = [torch.cat([d]*K) for d in data]
         
         n_samples = len(data[0])
         acc_nbr = torch.zeros(n_samples, 1).to(self.params.device)
@@ -346,14 +350,21 @@ class JMVAE_NF(Multi_VAES):
         # First we need to sample an initial point from the mixture of experts
         z0 = self.sample_from_moe_subset(subset,data)
         z = z0
-
+        
+        # fig, ax = plt.subplots()
+        pos = []
+        grad = []
         for i in tqdm(range(mcmc_steps)):
+            pos.append(z[0].detach().cpu())
+
             #print(i)
             gamma = torch.randn_like(z, device=self.params.device)
             rho = gamma# / self.beta_zero_sqrt
             
             # Compute ln q(z|X_s)
             ln_q_zxs, g = self.compute_poe_posterior(subset,z,data)
+            
+            grad.append(g[0].detach().cpu())
 
             H0 = -ln_q_zxs + 0.5 * torch.norm(rho, dim=1) ** 2
             # print(H0)
@@ -398,8 +409,11 @@ class JMVAE_NF(Multi_VAES):
                 #beta_sqrt_old = beta_sqrt
 
             H = -ln_q_zxs + 0.5 * torch.norm(rho, dim=1) ** 2
-            alpha = torch.exp(-H) / (torch.exp(-H0))
+            # print(H, H0)
+    
+            alpha = torch.exp(H0-H) 
             # print(alpha)
+            
 
             #print(-log_pi(best_model, z, best_model.G), 0.5 * torch.norm(rho, dim=1) ** 2)
             acc = torch.rand(n_samples).to(self.params.device)
@@ -409,7 +423,17 @@ class JMVAE_NF(Multi_VAES):
 
             z = z * moves + (1 - moves) * z0
             z0 = z
+            
+        pos = torch.stack(pos)
+        grad = torch.stack(grad)
+        if ax is not None:
+            ax.plot(pos[:,0], pos[:,1])
+            ax.quiver(pos[:,0], pos[:,1], grad[:,0], grad[:,1])
+
+            # plt.savefig('monitor_hmc.png')
+        # 1/0
         print(acc_nbr[:10]/mcmc_steps)
+        z = z.detach().resize(K,n_data,self.params.latent_dim)
         return z.detach()
         
         

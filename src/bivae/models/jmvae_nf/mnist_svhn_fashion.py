@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.distributions as dist
 import numpy as np
 from torchvision import transforms
+import wandb
 
 from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
@@ -82,6 +83,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         
 
         # Then define the vaes
+
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=e1, decoder=d1),
             vae(model_config=vae_config2, encoder=e2, decoder=d2),
@@ -115,6 +117,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
+        update_details(accuracies, compute_poe_subset_accuracy(self,data,classes,n_data,ns))
         return accuracies
 
     def compute_recon_loss(self,x,recon,m):
@@ -133,7 +136,18 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     
     def analyse_posterior(self, data, n_samples, runPath, epoch, ticks, N):
         pass
-
+    
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
+        
+        poe_ll = compute_all_cond_ll_from_poe_subsets(self,data,K,batch_size_K)
+        update_details(d,poe_ll)
+        
+        return d
+    
+    
+    def sample_from_poe(self, data, runPath, epoch, n=10):
+        sample_from_poe_vis(self, data, runPath,epoch, n)
     
     
     

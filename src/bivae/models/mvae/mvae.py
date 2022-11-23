@@ -154,7 +154,7 @@ class MVAE(Multi_VAES):
             _type_: _description_
         """
         self.eval()
-        print('Using custom _sample function')
+        # print('Using custom _sample function')
         samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
 
         with torch.no_grad():
@@ -279,7 +279,7 @@ class MVAE(Multi_VAES):
 
     
     
-    def sample_from_subset_cond(self, subset, gen_mod,data, K=100):
+    def sample_from_poe_subset(self, subset,data,K=1):
         """ 
         
         Sample from the conditional using the product of experts.
@@ -288,8 +288,6 @@ class MVAE(Multi_VAES):
         Args:
             subset (List[int]): the modality to condition on
             data (List[Tensor]): the data to use for conditioning
-            gen_mod (int) : the modality to generate
-            K (int): number of samples to generate per datapoint
         """
         
         # First we need to compute the mus log vars for each of the encoding modalities
@@ -310,59 +308,8 @@ class MVAE(Multi_VAES):
         zs = qz_subset.sample([K]) # K x n_data x latent_dim
         
         # Decode in the target modality
-        with torch.no_grad():
-            reconstruct = self.vaes[gen_mod].decoder(zs.reshape(K*len(data[0]), -1)).reconstruction # K x n_data x c x w x h
-            reconstruct = reconstruct.reshape(K, len(data[0]), *reconstruct.shape[1:])
-        return dict(recons = reconstruct, z = zs)
+        return zs
     
-    
-    def compute_cond_ll_from_subset(self, data, subset, gen_mod, K=1000, batch_size_K=100):
-
-        '''
-                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
-
-                ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
-
-                '''
-
-
-        # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
-        ll = []
-        for i in range(len(data[0])):
-            start_idx, stop_index = 0, batch_size_K
-            lnpxs = []
-
-            while stop_index <= K:
-
-                # Encode with product of experts
-                bdata = [d[i].unsqueeze(0) for d in data]
-
-                dict_ = self.sample_from_subset_cond(subset,gen_mod,bdata,batch_size_K)  
-                
-                latents = dict_['z'].squeeze(1)
-                print(latents.size())
-                # Decode with the opposite decoder
-                recon = dict_['recons'].squeeze(1)
-                print('recon',recon.size())
-
-
-                # Compute lnp(y|z)
-
-
-                if self.px_z[gen_mod] == dist.Bernoulli:
-                    lpx_z = self.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
-                else:
-                    lpx_z = self.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
-
-                lnpxs.append(torch.logsumexp(lpx_z,dim=0))
-                # next batch
-                start_idx += batch_size_K
-                stop_index += batch_size_K
-
-            ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K))
-
-        return torch.sum(torch.tensor(ll))/len(ll)
-
     
     def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
         d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
@@ -372,5 +319,3 @@ class MVAE(Multi_VAES):
             d[f'cond_lw_subset_{m}'] = self.compute_cond_ll_from_subset(data,subset,m,K,batch_size_K)
 
         return d
-        
-        
