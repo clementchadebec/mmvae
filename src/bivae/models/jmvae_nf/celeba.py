@@ -16,7 +16,7 @@ from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_pos
 from torchvision.utils import save_image
 import pythae
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
+from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF, my_VAE_MAF, VAE_MAF_Config
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
 from bivae.models.nn import Encoder_VAE_SVHN
 from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
@@ -40,7 +40,6 @@ from bivae.analysis.pytorch_fid.inception import wrapper_inception
 from bivae.analysis.pytorch_fid.fid_score import get_activations
 from bivae.models.modalities.celeba import *
 
-print(dist)
 
 # Define the classifiers for analysis
 
@@ -52,8 +51,12 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
 
     def __init__(self, params):
-
-        vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
+        
+        if params.no_nf :
+            vae_config, vae = VAEConfig , my_VAE
+        else :
+            vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
+            vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
 
         # Define the joint encoder
         hidden_dim = 1024
@@ -86,7 +89,6 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         # decoder1, decoder2 = None, None
 
         # Then define the vaes
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=encoder1, decoder=decoder1),
             vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)

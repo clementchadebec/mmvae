@@ -1,18 +1,16 @@
 {
-  "experiment": "moepoe/celeba",
-  "model": "moepoe_celeba",
+  "experiment": "mvae/msf",
+  "model": "mvae_msf",
   "obj": "self_built",
-  "wandb_experiment": "celeba",
-  "recon_losses" : ["normal", "bernoulli"],
-
-  "llik_scaling": 50,
-
-  "K": 30,
+  "K": 1,
+  "recon_losses" : ["normal", "normal", "normal"],
   "looser": false,
-
-  "batch_size": 256, "learning_rate" : 1e-3,
+  "llik_scaling": 0.0,
+  "batch_size": 256, "learning_rate" : 1e-4,
+  "sub_sampling": true,
+  "k_subsample":3,
   "epochs": 100,
-  "latent_dim": 64,
+  "latent_dim": 30,
   "num_hidden_layers": 1,
   "use_pretrain": "",
   "learn_prior": false,
@@ -22,7 +20,7 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "normal",
-  "data_path": "/gpfsscratch/rech/wlr/uhw48em/mmvae_data/",
+  "data_path": "../data/",
   "skip_warmup": false,
   "warmup": 0,
   "no_nf": true,
@@ -31,9 +29,9 @@
   "decrease_beta_kl": 1,
   "fix_decoders": true,
   "fix_jencoder": true,
-  "no_recon": false,
+  "no_recon": true,
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_mode" : "disabled"
+  "wandb_experiment": "msf"
   }

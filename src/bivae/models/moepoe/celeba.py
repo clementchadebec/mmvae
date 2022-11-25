@@ -61,7 +61,7 @@ class celeba(MOEPOE):
         wandb.config.update({'lik_scalings' : self.lik_scaling})
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
-        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, len_train=20000)
+        train, test, val = CELEBA_DL(self.data_path).getDataLoaders(batch_size, shuffle, device)
         return train, test, val
 
 

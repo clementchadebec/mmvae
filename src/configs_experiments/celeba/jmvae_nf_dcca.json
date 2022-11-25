@@ -12,7 +12,7 @@
   "looser": false,
 
   "llik_scaling": 1,
-  "batch_size": 256,
+  "batch_size": 256, "learning_rate" : 1e-3,
   "epochs": 60,
   "latent_dim": 64,
   "num_hidden_layers": 1,
@@ -38,5 +38,10 @@
   "dcca": true,
   "device": "cuda",
   "wandb_experiment": "celeba",
-  "flow" : "maf"
+  "flow" : "maf",
+
+  "outdim_size_dcca":40,
+  "num_epochs_dcca" : 100
+
+
   }

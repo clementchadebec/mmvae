@@ -60,7 +60,6 @@ class JMVAE_NF_MNIST(JMVAE_NF):
         self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
-        self.to_tensor = True
 
     
     def set_classifiers(self):

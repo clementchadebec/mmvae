@@ -20,11 +20,14 @@ from .vae import my_VAE
 from .vae_iaf import my_VAE_IAF
 from .vae_lin_nf import my_VAE_LinNF
 from .laplace_vae import laplace_VAE
+from .vae_maf import my_VAE_MAF, VAE_MAF_Config
 
 __all__ = [
 
     "my_VAE_LinNF",
     "my_VAE_IAF",
     "my_VAE",
-    "laplace_VAE"
+    "laplace_VAE", 
+    "my_VAE_MAF", 
+    "VAE_MAF_Config"
 ]

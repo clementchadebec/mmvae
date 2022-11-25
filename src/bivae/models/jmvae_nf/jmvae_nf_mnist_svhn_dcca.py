@@ -52,6 +52,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         else :
             vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
             vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
+            
         # Define the joint encoder
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20)]
@@ -94,7 +95,6 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0.0 else (
         params.llik_scaling, 1)
-        self.to_tensor = True
 
     
     def set_classifiers(self):

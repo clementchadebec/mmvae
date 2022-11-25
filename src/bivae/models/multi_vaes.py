@@ -32,7 +32,7 @@ reducer = UMAP
 class Multi_VAES(nn.Module):
     def __init__(self,params, vaes):
         super(Multi_VAES, self).__init__()
-        self.pz = dist_dict[params.dist]
+
         self.mod = len(vaes)
         self.vaes = vaes
         self.modelName = None # to be populated in subclasses
@@ -40,17 +40,18 @@ class Multi_VAES(nn.Module):
         self.data_path = params.data_path
         self._pz_params = nn.ParameterList([
             nn.Parameter(torch.zeros(1, params.latent_dim), requires_grad=False),  # mu
-            nn.Parameter(torch.ones(1, params.latent_dim), requires_grad=False)  # logvar
+            nn.Parameter(torch.ones(1, params.latent_dim), requires_grad=False)  # std
         ])
+        self.pz = dist_dict[params.dist]
+        self.px_z = [ dist_dict[r] for r in params.recon_losses]
+        print(f"Set the decoder distributions to {self.px_z}")
+        
         self.max_epochs = params.epochs
         self.sampler = None
         self.save_format = '.png'
-        self.to_tensor = None # to define in each subclass. It says if the data must be formatted to tensor.
         self.ref_activations = None
-        self.eval_mode = False
 
-        self.px_z = [ dist_dict[r] for r in params.recon_losses]
-        print(f"Set the decoder distributions to {self.px_z}")
+
 
 
     @property
@@ -68,9 +69,22 @@ class Multi_VAES(nn.Module):
 
     def reconstruct(self):
         raise "reconstruct must be defined in the subclass"
+    
+    def infer_latent_from_mod(self,cond_mod,x):
+        """Compute latents from the specified cond_mod modality.
+        This is a function shared accross all models but redefined in MVAE.
+
+        Args:
+            cond_mod (int): the conditioning modality
+            x (tensor): the tensor containing the cond_mod data
+        """
+        return self.vaes[cond_mod](x).z
+    
+
 
     def generate(self,runPath, epoch, N= 8, save=False):
-        """Generate samples from sampling the prior distribution"""
+        """Generate multimodal samples."""
+        
         self.eval()
         with torch.no_grad():
             data = []
@@ -153,7 +167,7 @@ class Multi_VAES(nn.Module):
 
     def analyse_uni_posterior(self, data, n_samples):
         bdata = [d[:n_samples] for d in data]
-        zsamples = [self.vaes[m].forward(bdata[m]).z.cpu() for m in range(self.mod)]
+        zsamples = [self.infer_latent_from_mod(m,bdata[m]).cpu() for m in range(self.mod)]
         return zsamples
 
 
@@ -161,7 +175,7 @@ class Multi_VAES(nn.Module):
         """ For all points in data, samples N points from q(z|x) and q(z|y)"""
         bdata = [d[:n_samples] for d in data]
         #zsamples[m] is of size N, n_samples, latent_dim
-        zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).__getitem__('z') for _ in range(N)]) for m in range(self.mod)]
+        zsamples = [torch.stack([self.vaes[m].forward(bdata[m]).z for _ in range(N)]) for m in range(self.mod)]
         file = ('{}/samplepost_{:03d}' + self.save_format).format(runPath, epoch)
         plot_samples_posteriors(zsamples, file, None)
         wandb.log({'sample_posteriors' : wandb.Image(file)})
@@ -174,16 +188,11 @@ class Multi_VAES(nn.Module):
         samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
 
         with torch.no_grad():
-
             for _ in range(n):
-                                    
-                outputs = [self.vaes[i].forward(bdata[i]) for i in range(self.mod)]
-                zs = [o.z for o in outputs]
-                for i,o in enumerate(outputs):
-                    samples[i][i].append(o.recon_x)
+                zs = [self.infer_latent_from_mod(i, bdata[i]) for i in range(self.mod)]
+                for i,z in enumerate(zs):
                     for j, vae in enumerate(self.vaes):
-                        if i!=j:
-                            samples[i][j].append(vae.decoder(zs[i])["reconstruction"])
+                        samples[i][j].append(vae.decoder(z)["reconstruction"])
         return samples
 
     def sample_from_conditional(self, data, runPath, epoch, n=10):
@@ -204,42 +213,6 @@ class Multi_VAES(nn.Module):
                 filename = '{}/cond_samples_{}x{}_{:03d}.png'.format(runPath, r, o, epoch)
                 save_image(comp, filename)
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
-
-    def assess_quality(self, assesser,  runPath=None, epoch=0):
-
-        """Compute the three multimodal versions of FID and PRD : on the joint generation and on the two conditional
-                        generation"""
-        print("Starting to compute FID, PRD metrics")
-
-        # Compute fid between joint generation and test set
-        gen_data = self.generate(runPath, epoch, assesser.n_samples)
-        # Save the generated data
-        gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
-        rd = assesser.compute_fid_prd(gen_dataloader, runPath, compute_unimodal=True)
-
-        list_prds, prd0, prd1 = [rd['prd_data']], rd['prd_data0'], rd['prd_data1']
-        metrics = {'fid_joint': rd['fid'], 'unifid0': rd['fid0'], 'unifid1': rd['fid1']}
-
-        # Compute fid between test set and joint distributions computed from conditional
-        cond_gen_data = self.generate_from_conditional(runPath, epoch, N=assesser.n_samples)
-        for i, gen_data in enumerate(cond_gen_data):
-            gen_dataloader = assesser.GenerateDataloader(gen_data, assesser.gen_transform)
-            rd = assesser.compute_fid_prd(gen_dataloader, runPath)
-            list_prds.append(rd['prd_data'])
-            metrics[f'fids_{i}'] = rd['fid']
-            # save concatenation of activations
-            np.save(f'{runPath}/concat_activ_{i}.npy', rd['concat_activations'])
-
-        np.save('{}/prd_data_{}.npy'.format(runPath, epoch), list_prds)
-        np.save('{}/uniprd_data_{}.npy'.format(runPath, epoch), [prd0, prd1])
-        prd.plot(list_prds, out_path='{}/prd_plot_{:03d}.png'.format(runPath, epoch),
-                 labels=['Joint', 'Cond on 0', 'Cond on 1'])
-
-        # Plot unimodal prds
-        prd.plot([prd0,prd1], out_path='{}/uni_prd_plot.png'.format(runPath), labels=['Modality 0', 'Modality 1'],
-                 legend_loc = 'upper right')
-
-        return metrics
 
 
     def compute_metrics(self, runPath, epoch, freq = 5, num_clusters = 10):
@@ -299,17 +272,24 @@ class Multi_VAES(nn.Module):
     
     
     def compute_conditional_likelihood(self, data, cond_mod, gen_mod, K=1000, batch_size_K=100):
-
-        '''
-                Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
+        """Compute the conditional likelihoods ln p(x|y) , ln p(y|x) with MonteCarlo Sampling and the approximation :
 
                 ln p(x|y) = \sum_{z ~ q(z|y)} ln p(x|z)
 
-                '''
+        Args:
+            data (list): _description_
+            cond_mod (int): _description_
+            gen_mod (int): _description_
+            K (int, optional): number of samples per batch. Defaults to 1000.
+            batch_size_K (int, optional): _description_. Defaults to 100.
+
+        Returns:
+            dict: _description_
+        """
 
 
         # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
-        ll = 0
+        ll = []
         for i in range(len(data[0])):
             start_idx, stop_index = 0, batch_size_K
             lnpxs = []
@@ -318,7 +298,7 @@ class Multi_VAES(nn.Module):
             while stop_index <= K:
 
                 # Encode with the conditional VAE
-                latents = self.vaes[cond_mod](repeated_data_point).z  # (batchsize_K, latent_dim)
+                latents = self.infer_latent_from_mod(cond_mod,repeated_data_point)
 
                 # Decode with the opposite decoder
                 recon = self.vaes[gen_mod].decoder(latents).reconstruction
@@ -336,9 +316,9 @@ class Multi_VAES(nn.Module):
                 start_idx += batch_size_K
                 stop_index += batch_size_K
 
-            ll += torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K)
+            ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K))
 
-        return {f'cond_likelihood_{cond_mod}_{gen_mod}': ll / len(data[0])}
+        return {f'cond_likelihood_{cond_mod}_{gen_mod}': torch.sum(torch.tensor(ll))/len(ll)}, torch.tensor(ll)
 
 
 
@@ -348,19 +328,35 @@ class Multi_VAES(nn.Module):
         
         """
         
-        Compute the conditional likelihoods (two ways) for bimodal data only
+        Compute the conditional likelihoods between any two modalities. 
+        For datasets with more than two modalities : Computes also the moe conditional subset likelihood.
 
         Returns:
             dict: dictionary containing the conditional likelihoods metrics. 
         """
 
-        metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
-        update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
-        update_details(metrics, self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K))
-        update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
+        # metrics = self.compute_conditional_likelihood_bis(data, 0,1, K, batch_size_K)
+        # metrics_0_1, ll = self.compute_conditional_likelihood(data, 0, 1,K, batch_size_K)
+        # update_details(metrics, self.compute_conditional_likelihood_bis(data, 1, 0,K, batch_size_K))
+        # update_details(metrics, )
+        # update_details(metrics, self.compute_conditional_likelihood(data, 1, 0,K, batch_size_K))
 
-
+        metrics = {}
+        ll = [[None for j in range(self.mod)] for i in range(self.mod)]
+        for i in range(self.mod):
+            for j in range(self.mod):
+                if i!=j:
+                    metrics_, ll_ = self.compute_conditional_likelihood(data, j, i,K, batch_size_K)
+                    update_details(metrics, metrics_)
+                    ll[i][j] = ll_
+        if self.mod == 3:
+            
+            for i in range(3):
+                moe = torch.logsumexp(torch.stack([ll[i][j] for j in range(self.mod) if i!=j]), dim=0)
+                update_details(metrics, {f'cond_lw_subset_{i}' : torch.mean(moe)})
+                
         return metrics
+    
     
     
 

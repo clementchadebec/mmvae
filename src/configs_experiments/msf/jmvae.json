@@ -6,7 +6,7 @@
   "recon_losses" : ["normal", "normal", "normal"],
   "looser": false,
   "llik_scaling": 1,
-  "batch_size": 256,
+  "batch_size": 256, "learning_rate" : 1e-3,
   "epochs": 100,
   "latent_dim": 30,
   "num_hidden_layers": 1,
@@ -29,7 +29,7 @@
   "fix_jencoder": true,
   "no_recon": true,
   "freq_analytics": 5,
-  "dcca": true,
+  "dcca": false,
   "device": "cuda",
   "wandb_experiment": "msf",
   "flow" : "maf"

@@ -65,7 +65,6 @@ class MNIST_SVHN(MMVAE_NF):
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0.0 else (
         params.llik_scaling, 1)
-        self.to_tensor = True
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)

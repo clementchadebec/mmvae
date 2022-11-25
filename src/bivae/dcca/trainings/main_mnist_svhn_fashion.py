@@ -153,7 +153,7 @@ if __name__ == '__main__':
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('../dcca/msf')
+    save_to = Path('../dcca/experiments/msf')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     learning_rate = 1e-3
-    epoch_num = 30
+    epoch_num = 100
     batch_size = 800
     train_loader,test_loader, val_loader = MNIST_SVHN_FASHION_DL('../data').getDataLoaders(batch_size=batch_size)
 
@@ -180,13 +180,13 @@ if __name__ == '__main__':
     apply_linear_cca = False
     # end of parameters section
     ############
-    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_mnist_svhn_fashion', entity = 'asenellart', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None,
                                                                                  'outdim_size' : outdim_size, 
                                                                                  'epochs_num' : epoch_num}, 
-               dir=str(save_to) + '/wandb')
+               )
 
 
     # Building, training, and producing the new features by DCCA

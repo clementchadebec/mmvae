@@ -1,36 +1,26 @@
 # JMVAE_NF specification for MNIST-SVHN experiment --> Using DCCA to extract shared information
 
-from itertools import combinations
-from re import M
 
-import torch
-import torch.nn as nn
 import torch.distributions as dist
-import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+from pythae.models import VAE_IAF_Config, VAEConfig
+from pythae.models.nn.default_architectures import (Decoder_AE_MLP,
+                                                    Encoder_VAE_MLP)
 from torchvision import transforms
 
-from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
-from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
-from torchvision.utils import save_image
-import pythae
-from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
-from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
-from bivae.models.nn import Encoder_VAE_SVHN
-from torchnet.dataset import TensorDataset
-from torch.utils.data import DataLoader
-from bivae.utils import extract_rayon
-from bivae.dataloaders import MNIST_SVHN_FASHION_DL, MultimodalBasicDataset, BasicDataset
-from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
-import torch.nn.functional as F
-
-from ..nn import DoubleHeadMLP, MultipleHeadJoint
-from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies, load_pretrained_fashion
-from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
-from bivae.utils import unpack_data, add_channels
+from bivae.analysis import (compute_accuracies, load_pretrained_fashion,
+                            load_pretrained_mnist, load_pretrained_svhn)
+from bivae.dataloaders import MNIST_SVHN_FASHION_DL
 from bivae.dcca.models.mnist_svhn_fashion import load_dcca_mnist_svhn_fashion
+from bivae.models.nn import Encoder_VAE_SVHN
+from bivae.my_pythae.models import (VAE_MAF_Config, my_VAE, my_VAE_IAF,
+                                    my_VAE_MAF)
+from bivae.utils import add_channels, update_details
+
+from ..jmvae_nf import JMVAE_NF
 from ..modalities.trimodal import *
+from ..nn import Decoder_VAE_SVHN, MultipleHeadJoint, TwoStepsEncoder
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -45,8 +35,14 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
 
     def __init__(self, params):
 
-        vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
+        if params.no_nf :
+            print('No normalizing flows')
+            vae_config, vae = VAEConfig , my_VAE
+        else :
+            vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
+            vae = my_VAE_IAF if params.flow == 'iaf' else my_VAE_MAF
 
+            
         # Define the joint encoder
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20), VAEConfig((1,28,28),20)]
@@ -76,7 +72,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         
 
         # Then define the vaes
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
+
         vaes = nn.ModuleList([
             vae(model_config=vae_config1, encoder=e1, decoder=d1),
             vae(model_config=vae_config2, encoder=e2, decoder=d2),
@@ -110,6 +106,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)
+        update_details(accuracies, compute_poe_subset_accuracy(self,data,classes,n_data,ns))
         return accuracies
 
     def compute_recon_loss(self,x,recon,m):
@@ -128,7 +125,19 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     
     def analyse_posterior(self, data, n_samples, runPath, epoch, ticks, N):
         pass
-
+    
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
+        
+        poe_ll = compute_all_cond_ll_from_poe_subsets(self,data,K,batch_size_K)
+        update_details(d,poe_ll)
+        
+        return d
+    
+    
+    def sample_from_poe(self, data, runPath, epoch, n=10, divide_prior=False):
+        print("passing through sample_from_poe", divide_prior)
+        sample_from_poe_vis(self, data, runPath,epoch, n, divide_prior=divide_prior)
     
     
     

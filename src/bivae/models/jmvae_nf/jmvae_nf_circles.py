@@ -12,33 +12,39 @@ from bivae.utils import get_mean, kl_divergence, negative_entropy, update_detail
 from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist
 from torchvision.utils import save_image
 from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
+from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF, my_VAE_MAF, VAE_MAF_Config
 from torchnet.dataset import TensorDataset, ResampleDataset
 from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
 from ..nn import Encoder_VAE_SVHN,Decoder_VAE_SVHN
+import matplotlib.pyplot as plt
+
 
 from bivae.dataloaders import CIRCLES_SQUARES_DL
 from ..nn import DoubleHeadJoint
 from ..jmvae_nf import JMVAE_NF
 from bivae.analysis.classifiers.classifier_empty_full import load_classifier_circles, load_classifier_squares
 
-dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
-input_dim = (1,32,32)
-hidden_dim = 512
 
 
 
 class JMVAE_NF_CIRCLES(JMVAE_NF):
     def __init__(self, params):
-        params.input_dim = input_dim
+        params.input_dim = (1,32,32)
+        
 
-        joint_encoder = DoubleHeadJoint(hidden_dim, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN, params)
-        vae = my_VAE_IAF if not params.no_nf else my_VAE
-        vae_config = VAE_IAF_Config if not params.no_nf else VAEConfig
+        joint_encoder = DoubleHeadJoint(512, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN, params)
+        
+        if params.no_nf:
+            vae = my_VAE
+            vae_config = VAEConfig
+        else:
+            vae = my_VAE_IAF if params.flow=='iaf' else my_VAE_MAF
+            vae_config = VAE_IAF_Config if params.flow == 'iaf' else VAE_MAF_Config
+        
         flow_config = {'n_made_blocks' : 2} if not params.no_nf else {}
         wandb.config.update(flow_config)
-        vae_config = vae_config(input_dim, params.latent_dim,**flow_config )
+        vae_config = vae_config(params.input_dim, params.latent_dim,**flow_config )
 
         encoder1, encoder2 = None, None
         decoder1, decoder2 = None, None
@@ -53,7 +59,6 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
 
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
-        self.to_tensor = False
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
         # handle merging individual datasets appropriately in sub-class
@@ -109,14 +114,47 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         sm =  {'neg_entropy' : negative_entropy(r.cpu(), range, bins), 'acc0' : acc0, 'acc1' : acc1}
         update_details(sm,m)
 
-        print('Eval metrics : ', sm)
+        # print('Eval metrics : ', sm)
         return sm
 
     def set_classifiers(self):
 
         self.classifier1 = load_classifier_squares()
         self.classifier2 = load_classifier_circles()
+    
+    
+    def visualize_poe(self, data,runPath, n_data=4, N=30, divide_prior=False):
+        
+        
+        bdata = [torch.cat([d[:n_data]]*N) for d in data]
+        
+        # Sample from the unimodal posteriors
+        u_z = [self.vaes[m].forward(bdata[m]).z.reshape(N, n_data,2).permute(1,0,2) for m in range(self.mod)]
+        u_z = [t.detach().cpu() for t in u_z]
+        
+        # Sample from the joint posterior
+        j_z = self.forward(bdata)[-1].reshape(N, n_data,2).permute(1,0,2).detach().cpu()
         
 
+        # Plot
+        fig, axs = plt.subplots(2,n_data, sharex=True, sharey=True,figsize=(30,25))
         
-
+        for i in range(n_data):
+            # On the first row plot the true joint posterior, and unimodal posteriors
+            axs[0][i].scatter(u_z[0][i, :,0], u_z[0][i,:,1]) # First modality
+            axs[0][i].scatter(u_z[1][i, :,0], u_z[1][i,:,1]) # second modality
+            axs[0][i].scatter(j_z[i,:,0], j_z[i,:,1])
+            
+        # Sample from the product of expert posterior
+        
+        poe_z = self.sample_from_poe_subset([0,1],bdata, axs[0][0], mcmc_steps=100, n_lf=10, eps_lf=0.01, divide_prior=divide_prior)
+        poe_z = poe_z.reshape(N, n_data,2).permute(1,0,2).detach().cpu()
+            
+        for i in range(n_data):
+            # On the second, the poe and the unimodal posteriors
+            axs[1][i].scatter(u_z[0][i, :,0], u_z[0][i,:,1]) # First modality
+            axs[1][i].scatter(u_z[1][i, :,0], u_z[1][i,:,1]) # second modality
+            axs[1][i].scatter(poe_z[i,:,0], poe_z[i,:,1])
+        
+        fig.savefig('{}/product_of_posteriors.png'.format(runPath))
+            

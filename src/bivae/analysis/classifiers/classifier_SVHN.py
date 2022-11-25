@@ -72,7 +72,7 @@ class SVHN_DL():
                           batch_size=batch_size, shuffle=shuffle, **kwargs)
         return train, test
 
-def load_pretrained_svhn(path ='../experiments/classifier_svhn/2022-06-16/model_8.pt', device='cuda'):
+def load_pretrained_svhn(path ='../experiments/classifier_svhn/model.pt', device='cuda'):
     classifier = SVHNClassifier()
     classifier.load_state_dict(torch.load(path))
     classifier.eval()
