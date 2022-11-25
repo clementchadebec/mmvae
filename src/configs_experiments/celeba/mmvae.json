@@ -9,7 +9,7 @@
   "recon_losses" : ["normal", "bernoulli"],
   "looser": true,
   "llik_scaling": 1,
-  "batch_size": 256,
+  "batch_size": 256, "learning_rate" : 1e-3,
   "epochs": 60,
   "latent_dim": 64,
   "learn_prior": false,

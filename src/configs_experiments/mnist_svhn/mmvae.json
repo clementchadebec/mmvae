@@ -5,7 +5,7 @@
   "recon_losses" : ["normal", "normal"],
   "looser": true,
   "llik_scaling": 0.0,
-  "batch_size": 128,
+  "batch_size": 128, "learning_rate" : 1e-3,
   "epochs": 100,
   "latent_dim": 20,
   "num_hidden_layers": 1,

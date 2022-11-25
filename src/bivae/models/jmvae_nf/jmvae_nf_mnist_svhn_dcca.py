@@ -95,7 +95,6 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         self.vaes[1].modelName = 'svhn'
         self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1) if params.llik_scaling == 0.0 else (
         params.llik_scaling, 1)
-        self.to_tensor = True
 
     
     def set_classifiers(self):

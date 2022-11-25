@@ -25,8 +25,7 @@ class MMVAE(Multi_VAES):
     def __init__(self,params, vaes):
         super(MMVAE, self).__init__(params, vaes)
         self.qz_x = dist_dict[params.dist] # We use the same distribution for both modalities
-        device = params.device
-        self.px_z_std = torch.tensor(1).to(device)
+        self.px_z_std = torch.tensor(1).to(params.device)
         self.train_latents = None
 
     def forward(self, x, K=1):

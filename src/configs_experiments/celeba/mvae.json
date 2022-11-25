@@ -9,7 +9,7 @@
   "K": 30,
   "looser": false,
 
-  "batch_size": 256,
+  "batch_size": 256, "learning_rate" : 1e-4,
   "epochs": 60,
   "latent_dim": 64,
   "num_hidden_layers": 1,

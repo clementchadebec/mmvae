@@ -1,8 +1,7 @@
 "MVAE specification for MNIST-SVHN-FASHION"
 
-# JMVAE_NF specification for MNIST-SVHN experiment
 
-
+import numpy as np
 import torch
 import torch.distributions as dist
 import torch.nn as nn
@@ -19,7 +18,8 @@ from bivae.vis import plot_hist
 from .mvae import MVAE
 from ..nn import Encoder_VAE_SVHN, Decoder_VAE_SVHN
 from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies, load_pretrained_fashion
-from ..modalities.mnist_svhn import fid
+from ..modalities.trimodal import *
+from torchvision.utils import save_image
 
 
 
@@ -49,12 +49,14 @@ class MNIST_SVHN_FASHION(MVAE):
         
         super(MNIST_SVHN_FASHION, self).__init__(params, vaes)
         self.modelName = 'mvae_msf'
-        self.data_path = params.data_path
-        self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.vaes[2].modelName = 'fashion'
-        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        
+        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1,params.llik_scaling)
+        self.subsampling = params.subsampling
+        self.k_subsample = params.k_subsample
+        self.subsets = np.array([np.array([1,2]), np.array([0,2]), np.array([0,1])])
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
@@ -70,8 +72,11 @@ class MNIST_SVHN_FASHION(MVAE):
         self.set_classifiers()
         general_metrics = MVAE.compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
-
         update_details(accuracies, general_metrics)
+        
+        # Compute subset conditional accuracies
+        cond_acc = compute_poe_subset_accuracy(self,data,classes,n_data,ns)
+        update_details(accuracies, cond_acc)
         return accuracies
 
 
@@ -82,10 +87,21 @@ class MNIST_SVHN_FASHION(MVAE):
     
 
     def set_classifiers(self):
-
         self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn(), load_pretrained_fashion()]
 
     def compute_fid(self, batch_size):
         return fid(self, batch_size)
 
 
+    def sample_from_poe(self, data, runPath, epoch, n=10):
+        sample_from_poe_vis(self, data, runPath, epoch, n)
+
+            
+
+    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
+        d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
+        
+        poe_ll = compute_all_cond_ll_from_poe_subsets(self,data,K,batch_size_K)
+        update_details(d,poe_ll)
+        
+        return d
