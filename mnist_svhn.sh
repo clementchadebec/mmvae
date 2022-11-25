@@ -56,5 +56,5 @@ python3 src/bivae/main.py --config-path src/configs_experiments/mnist_svhn/jmvae
 # # # MMVAE
 # # python3 src/bivae/compute_likelihoods.py --model mmvae/mnist_svhn
 
-# # # MVAE (checked)
-# # python3 src/bivae/compute_likelihoods.py --model mvae/mnist_svhn
+# # MVAE
+# python3 src/bivae/compute_likelihoods.py --model mvae/mnist_svhn

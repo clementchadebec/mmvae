@@ -24,7 +24,7 @@
   "no_cuda": false,
   "seed": 1,
   "dist": "normal",
-  "data_path": "../data/",
+  "data_path": "/gpfsscratch/rech/wlr/uhw48em/mmvae_data/",
   "skip_warmup": false,
   "warmup": 30,
   "no_nf": false,
@@ -39,7 +39,6 @@
   "device": "cuda",
   "wandb_experiment": "celeba",
   "flow" : "maf",
-
   "outdim_size_dcca":40,
   "num_epochs_dcca" : 100
 
