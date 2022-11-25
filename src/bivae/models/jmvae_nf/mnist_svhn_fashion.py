@@ -1,37 +1,26 @@
 # JMVAE_NF specification for MNIST-SVHN experiment --> Using DCCA to extract shared information
 
-from itertools import combinations
-from re import M
 
-import torch
-import torch.nn as nn
 import torch.distributions as dist
-import numpy as np
-from torchvision import transforms
-import wandb
-
-from bivae.utils import get_mean, kl_divergence, negative_entropy, add_channels, update_details
-from bivae.vis import tensors_to_df, plot_embeddings_colorbars, plot_samples_posteriors, plot_hist, save_samples_mnist_svhn
-from torchvision.utils import save_image
-import pythae
-from pythae.models import VAE_LinNF_Config, VAE_IAF_Config, VAEConfig
-from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF, VAE_MAF_Config, my_VAE_MAF
-from pythae.models.nn.default_architectures import Encoder_VAE_MLP, Decoder_AE_MLP
-from bivae.models.nn import Encoder_VAE_SVHN
-from torchnet.dataset import TensorDataset
-from torch.utils.data import DataLoader
-from bivae.utils import extract_rayon
-from bivae.dataloaders import MNIST_SVHN_FASHION_DL, MultimodalBasicDataset, BasicDataset
-from ..nn import Encoder_VAE_MNIST, Decoder_AE_MNIST, Decoder_VAE_SVHN, TwoStepsDecoder, TwoStepsEncoder
+import torch.nn as nn
 import torch.nn.functional as F
+from pythae.models import VAE_IAF_Config, VAEConfig
+from pythae.models.nn.default_architectures import (Decoder_AE_MLP,
+                                                    Encoder_VAE_MLP)
+from torchvision import transforms
 
-from ..nn import DoubleHeadMLP, MultipleHeadJoint
-from ..jmvae_nf import JMVAE_NF
-from bivae.analysis import load_pretrained_svhn, load_pretrained_mnist, compute_accuracies, load_pretrained_fashion
-from bivae.analysis.pytorch_fid import calculate_frechet_distance, wrapper_inception
-from bivae.utils import unpack_data, add_channels
+from bivae.analysis import (compute_accuracies, load_pretrained_fashion,
+                            load_pretrained_mnist, load_pretrained_svhn)
+from bivae.dataloaders import MNIST_SVHN_FASHION_DL
 from bivae.dcca.models.mnist_svhn_fashion import load_dcca_mnist_svhn_fashion
+from bivae.models.nn import Encoder_VAE_SVHN
+from bivae.my_pythae.models import (VAE_MAF_Config, my_VAE, my_VAE_IAF,
+                                    my_VAE_MAF)
+from bivae.utils import add_channels, update_details
+
+from ..jmvae_nf import JMVAE_NF
 from ..modalities.trimodal import *
+from ..nn import Decoder_VAE_SVHN, MultipleHeadJoint, TwoStepsEncoder
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -146,8 +135,9 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         return d
     
     
-    def sample_from_poe(self, data, runPath, epoch, n=10):
-        sample_from_poe_vis(self, data, runPath,epoch, n)
+    def sample_from_poe(self, data, runPath, epoch, n=10, divide_prior=False):
+        print("passing through sample_from_poe", divide_prior)
+        sample_from_poe_vis(self, data, runPath,epoch, n, divide_prior=divide_prior)
     
     
     

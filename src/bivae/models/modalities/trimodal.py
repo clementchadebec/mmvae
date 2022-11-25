@@ -13,8 +13,6 @@ from bivae.dataloaders import BasicDataset
 
 def fid(model, batch_size):
         
-        #TODO : Check that this function is working
-
         model_fid = wrapper_inception()
 
         # Get the data with suited transform
@@ -125,9 +123,10 @@ def compute_poe_subset_accuracy(model,data, classes,n_data=100,ns=100):
         ns (int, optional): The number of samples per datapoint. Defaults to 100.
     """
 
+    if n_data == 'all' or n_data > len(data[0]):
+        n_data = len(data[0])
     
     subsets = [[1,2],[0,2],[0,1]]
-    n_data = min(len(data[0]), n_data)
     bdata = [d[:n_data] for d in data]
     mult_true_classes = torch.cat([classes[0][:n_data]]*ns) #(ns*n_data)
     
@@ -136,7 +135,7 @@ def compute_poe_subset_accuracy(model,data, classes,n_data=100,ns=100):
     for s,gen_mod in zip(subsets,range(3)):
         
         # Sample from the conditional subset
-        zs = model.sample_from_poe_subset(s, bdata, K = ns) # ns x n_data x latent_dim
+        zs = model.sample_from_poe_subset(s, bdata, K = ns, divide_prior=True) # ns x n_data x latent_dim
         
         # Reconstruct in the last modality
         with torch.no_grad():
@@ -219,7 +218,7 @@ def compute_all_cond_ll_from_poe_subsets(model,data, K=1000,batch_size_K=100):
     return r_dict
 
 
-def sample_from_poe_vis(model, data, runPath, epoch, n=10):
+def sample_from_poe_vis(model, data, runPath, epoch, n=10,divide_prior=False):
         """ Visualize the conditional distribution using the poe subset
 
         Args:
@@ -227,13 +226,15 @@ def sample_from_poe_vis(model, data, runPath, epoch, n=10):
             runPath (str): _description_
             epoch (int): _description_
             n (int, optional): number of samples per datapoint. Defaults to 10.
+            
         """
+        print('passing poe vis', divide_prior)
         
         b_data = [d[:8] for d in data]
         subsets = [[1,2],[0,2],[0,1]]
         for s,gen_mod in zip(subsets, range(3)):
             # Sample
-            zs = model.sample_from_poe_subset(s,b_data, K=n) # n x 8 x latent_dim
+            zs = model.sample_from_poe_subset(s,b_data, K=n, divide_prior=divide_prior) # n x 8 x latent_dim
             # Reconstruct
             with torch.no_grad():
                 r = model.vaes[gen_mod].decoder(zs.reshape(n*len(b_data[0]), -1)).reconstruction 

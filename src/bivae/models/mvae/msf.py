@@ -49,19 +49,15 @@ class MNIST_SVHN_FASHION(MVAE):
         
         super(MNIST_SVHN_FASHION, self).__init__(params, vaes)
         self.modelName = 'mvae_msf'
-        self.data_path = params.data_path
-        self.params = params
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'svhn'
         self.vaes[2].modelName = 'fashion'
-        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        # self.lik_scaling = (1, 1,1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
+        
+        self.lik_scaling = ((3 * 32 * 32) / (1 * 28 * 28), 1,(3 * 32 * 32) / (1 * 28 * 28)) if params.llik_scaling == 0 else (params.llik_scaling, 1,params.llik_scaling)
         self.subsampling = params.subsampling
         self.k_subsample = params.k_subsample
         self.subsets = np.array([np.array([1,2]), np.array([0,2]), np.array([0,1])])
-        wandb.config.update(dict(subsampling = self.subsampling,
-                                 k_subsample = self.k_subsample,
-                                 ))
+
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         train, test, val = MNIST_SVHN_FASHION_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
@@ -76,9 +72,9 @@ class MNIST_SVHN_FASHION(MVAE):
         self.set_classifiers()
         general_metrics = MVAE.compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
-
         update_details(accuracies, general_metrics)
-        # Compute conditional accuracies
+        
+        # Compute subset conditional accuracies
         cond_acc = compute_poe_subset_accuracy(self,data,classes,n_data,ns)
         update_details(accuracies, cond_acc)
         return accuracies
@@ -91,7 +87,6 @@ class MNIST_SVHN_FASHION(MVAE):
     
 
     def set_classifiers(self):
-
         self.classifiers = [load_pretrained_mnist(), load_pretrained_svhn(), load_pretrained_fashion()]
 
     def compute_fid(self, batch_size):

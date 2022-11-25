@@ -59,7 +59,6 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
 
         self.vaes[0].modelName = 'squares'
         self.vaes[1].modelName = 'circles'
-        self.to_tensor = False
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None):
         # handle merging individual datasets appropriately in sub-class
@@ -124,7 +123,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         self.classifier2 = load_classifier_circles()
     
     
-    def visualize_poe(self, data,runPath, n_data=4, N=30):
+    def visualize_poe(self, data,runPath, n_data=4, N=30, divide_prior=False):
         
         
         bdata = [torch.cat([d[:n_data]]*N) for d in data]
@@ -148,7 +147,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
             
         # Sample from the product of expert posterior
         
-        poe_z = self.sample_from_poe_subset([0,1],bdata, axs[0][0], mcmc_steps=100, n_lf=10, eps_lf=0.01)
+        poe_z = self.sample_from_poe_subset([0,1],bdata, axs[0][0], mcmc_steps=100, n_lf=10, eps_lf=0.01, divide_prior=divide_prior)
         poe_z = poe_z.reshape(N, n_data,2).permute(1,0,2).detach().cpu()
             
         for i in range(n_data):

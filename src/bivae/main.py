@@ -1,27 +1,24 @@
 import argparse
 import datetime
-import sys
 import json
+import random
+import sys
 from collections import defaultdict
 from pathlib import Path
 from tempfile import mkdtemp
-import random
-from tqdm import tqdm
-from copy import deepcopy
 
+import models
 import numpy as np
+import objectives
 import torch
 from torch import optim
-import os
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from tqdm import tqdm
+from vis import plot_hist
 
 import wandb
-import models
-import objectives
-from bivae.utils import Logger, Timer, save_model, save_vars, unpack_data, update_details, extract_rayon\
-    ,load_joint_vae, update_dict_list, get_mean_std, print_mean_std, save_joint_vae
-from vis import plot_hist
-from models.samplers import GaussianMixtureSampler
-from bivae.analysis import compute_accuracies
+from bivae.utils import (Logger, Timer, extract_rayon, load_joint_vae, save_joint_vae,
+                         save_model, save_vars, unpack_data, update_details)
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--config-path', type=str, default='')
@@ -114,6 +111,10 @@ torch.save(args, '{}/args.rar'.format(runPath))
 # preparation for training
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                        lr=learning_rate, amsgrad=True)
+
+scheduler = ReduceLROnPlateau(optimizer,'min')
+
+
 train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
@@ -245,9 +246,10 @@ if __name__ == '__main__':
                         json.dump(args.__dict__, fp)
             else :
                 num_epochs_without_improvement +=1
-
+                
+            scheduler.step(test_loss)
             save_vars(agg, runPath + '/losses.pt')
-            if num_epochs_without_improvement == 10:
+            if num_epochs_without_improvement == 20:
                 # if we are beyond warmup, we break
                 if epoch >= args.warmup :
                     break
@@ -259,5 +261,4 @@ if __name__ == '__main__':
                     best_loss = torch.inf
                     wandb.log({'end_warmup' : epoch})
 
-        if args.logp:  # compute as tight a marginal likelihood as possible
-            estimate_log_marginal(5000)
+        

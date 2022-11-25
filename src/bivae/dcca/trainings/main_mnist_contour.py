@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # seems necessary to avoid the gradient exploding especially when non-saturating activations are used
     reg_par = 1e-5
 
-    wandb.init(project='DCCA_mnist_contour', entity='multimodal_vaes', config={'batch_size': batch_size,
+    wandb.init(project='DCCA_mnist_contour', entity='asenellart', config={'batch_size': batch_size,
                                                                           'learning_rate': learning_rate,
                                                                           'reg_par': reg_par,
                                                                           'linear_cca': linear_cca is not None},

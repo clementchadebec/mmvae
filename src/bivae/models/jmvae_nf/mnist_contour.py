@@ -59,7 +59,6 @@ class JMVAE_NF_MNIST_CONTOUR(JMVAE_NF):
 
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'contour'
-        self.to_tensor = True
         self.classifier1 = None
         self.classifier2 = None
 

@@ -57,7 +57,6 @@ class MMVAE_CIRCLES(MMVAE):
 
         self.params = params
         self.lik_scaling = (1,1)
-        self.to_tensor = False
 
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform=None, random=False):

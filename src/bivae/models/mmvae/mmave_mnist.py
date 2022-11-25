@@ -55,7 +55,6 @@ class MMVAE_MNIST(MMVAE):
         self.vaes[0].modelName = 'mnist'
         self.vaes[1].modelName = 'fashion'
         self.lik_scaling = (1, 1) if params.llik_scaling == 0 else (params.llik_scaling, 1)
-        self.to_tensor = True
 
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = None):
             val: object

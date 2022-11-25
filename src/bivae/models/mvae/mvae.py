@@ -1,25 +1,22 @@
 ''' MVAE implementation '''
 
 import numpy as np
-from numpy.random import randint
 import torch
 import torch.distributions as dist
-import torch.nn.functional as F
-import wandb
-from torchvision.utils import save_image
 from tqdm import tqdm
 
 from bivae.models.multi_vaes import Multi_VAES
-from bivae.utils import unpack_data
 from bivae.objectives import kl_divergence
+from bivae.utils import unpack_data
 
 
 class MVAE(Multi_VAES):
 
     def __init__(self, params, vaes):
+        assert params.dist == 'normal' # This model assume gaussian prior and posterior
+
 
         super(MVAE, self).__init__(params, vaes)
-        self.lik_scaling = [1, 1]
         self.qz_x = dist.Normal
         self.subsampling = False
         self.subsets = []
@@ -60,7 +57,16 @@ class MVAE(Multi_VAES):
     
     def kl(self,mu, std):
         return kl_divergence(dist.Normal(mu, std), dist.Normal(*self.pz_params)).sum()
-
+    
+    
+    def infer_latent_from_mod(self, cond_mod, x):
+        o = self.vaes[cond_mod].encoder(x)
+        mu, log_var = o.embedding, o.log_covariance
+        # poe with prior
+        mu, std = self.poe([mu],[log_var]) 
+        z = dist.Normal(mu, std).rsample()
+        return z
+              
 
     def forward(self, x):
         """
@@ -142,32 +148,7 @@ class MVAE(Multi_VAES):
                 labels.append(dataT[0][1].to(self.params.device))
         self.train_latents = torch.cat(mu), torch.cat(labels)
         
-    def _sample_from_conditional(self,bdata, n=10):
-        """sample_from_conditional_ adaptation for the mvae where the variational distribution 
-        is not the encoder distribution but the poe between the prior and the encoder distribution. 
-
-        Args:
-            bdata (list): data
-            n (int, optional): the number of samples per datapoint. Defaults to 10.
-
-        Returns:
-            _type_: _description_
-        """
-        self.eval()
-        # print('Using custom _sample function')
-        samples = [[[] for j in range(self.mod)] for i in range(self.mod)]
-
-        with torch.no_grad():
-
-            for _ in range(n):
-                                    
-                outputs_encoders = [self.vaes[i].encoder(bdata[i]) for i in range(self.mod)]
-                poe_mus_lnV = [self.poe([o.embedding], [o.log_covariance]) for o in outputs_encoders]
-                zs = [dist.Normal(p[0], p[1]).sample() for p in poe_mus_lnV]
-                for i,z in enumerate(zs):
-                    for j, vae in enumerate(self.vaes):
-                        samples[i][j].append(vae.decoder(z)["reconstruction"])
-        return samples
+    
 
     def reconstruct(self, data, runPath, epoch):
         """ Reconstruction is not defined for the mvae model since
@@ -184,6 +165,9 @@ class MVAE(Multi_VAES):
         Each term is computed using importance sampling. In this function we only compute
         the first term
         '''
+        
+        # WARNING : this function is not up to date with the rest of the model. The unimodal posterior 
+        # are taken to be the encoders whereas it should be the poe between the encoder and prior
 
         o = self.vaes[cond_mod](data[cond_mod])
         qz_xy_params = (o.mu, o.std)
@@ -279,7 +263,7 @@ class MVAE(Multi_VAES):
 
     
     
-    def sample_from_poe_subset(self, subset,data,K=1):
+    def sample_from_poe_subset(self, subset,data,K=1, divide_prior=True):
         """ 
         
         Sample from the conditional using the product of experts.
@@ -291,6 +275,10 @@ class MVAE(Multi_VAES):
         """
         
         # First we need to compute the mus log vars for each of the encoding modalities
+        
+        if not divide_prior:
+            print('Override : for mvae model, we divide by the prior.')
+            divide_prior=True
         
         mus = []
         log_vars = []
@@ -311,11 +299,3 @@ class MVAE(Multi_VAES):
         return zs
     
     
-    def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
-        d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
-        
-        for m in range(self.mod):
-            subset = [i for i in range(self.mod) if i!=m]
-            d[f'cond_lw_subset_{m}'] = self.compute_cond_ll_from_subset(data,subset,m,K,batch_size_K)
-
-        return d

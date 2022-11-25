@@ -110,7 +110,8 @@ def eval():
     for i, dataT in enumerate(test_loader):
         data = unpack_data(dataT, device=device)
         # model.sample_from_poe_subset([0,1], 2,data, mcmc_steps=100)
-        model.visualize_poe(data, runPath, n_data = 5, N=100)
+        model.visualize_poe(data, runPath, n_data = 5, N=100, divide_prior=True)
+
         1/0
     
 

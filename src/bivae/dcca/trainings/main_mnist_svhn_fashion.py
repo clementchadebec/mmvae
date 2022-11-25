@@ -186,7 +186,7 @@ if __name__ == '__main__':
                                                                                  'linear_cca' : linear_cca is not None,
                                                                                  'outdim_size' : outdim_size, 
                                                                                  'epochs_num' : epoch_num}, 
-               dir=str(save_to) + '/wandb')
+               )
 
 
     # Building, training, and producing the new features by DCCA
