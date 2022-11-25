@@ -153,7 +153,7 @@ if __name__ == '__main__':
     print("Using", torch.cuda.device_count(), "GPUs")
 
     # the path to save the models
-    save_to = Path('../dcca/msf')
+    save_to = Path('../experiments/dcca/msf')
     save_to.mkdir(parents=True, exist_ok=True)
 
     # the size of the new space learned by the model (number of the new features)
@@ -185,8 +185,8 @@ if __name__ == '__main__':
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None,
                                                                                  'outdim_size' : outdim_size, 
-                                                                                 'epochs_num' : epoch_num}, 
-               dir=str(save_to) + '/wandb')
+                                                                                 'epochs_num' : epoch_num}
+                                                                                 )
 
 
     # Building, training, and producing the new features by DCCA

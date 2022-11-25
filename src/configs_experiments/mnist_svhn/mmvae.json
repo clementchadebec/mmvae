@@ -16,7 +16,7 @@
   "no_analytics": false,
   "no_cuda": false,
   "seed": 1,
-  "dist": "laplace",
+  "dist": "normal",
   "data_path": "../data/",
   "skip_warmup": false,
   "warmup": 0,

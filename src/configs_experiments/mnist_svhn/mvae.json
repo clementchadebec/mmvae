@@ -5,7 +5,7 @@
   "llik_scaling": 0.0,
   "recon_losses" : ["normal", "normal"],
 
-  "K": 30,
+  "K": 1,
   "looser": false,
 
   "batch_size": 128,

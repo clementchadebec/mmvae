@@ -4,8 +4,8 @@
 
   "model": "mmvae_celeba",
   "obj": "dreg",
-  "K": 15,
-  "dist": "laplace",
+  "K": 1,
+  "dist": "normal",
   "recon_losses" : ["normal", "bernoulli"],
   "looser": true,
   "llik_scaling": 1,

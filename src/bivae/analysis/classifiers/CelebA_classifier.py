@@ -65,7 +65,7 @@ if __name__ == '__main__':
     shuffle = True
     num_epochs = 30
 
-    train_loader, test_loader, val_loader = CELEBA_DL('../data/').getDataLoaders(batch_size,shuffle, len_train=None)
+    train_loader, test_loader, val_loader = CELEBA_DL('/gpfsscratch/rech/wlr/uhw48em/mmvae_data/').getDataLoaders(batch_size,shuffle, len_train=None)
 
     model = create_resnet_finetune().cuda()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
