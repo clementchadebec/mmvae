@@ -32,7 +32,7 @@ class BasicDataset(torch.utils.data.Dataset):
 
 class MultimodalBasicDataset(torch.utils.data.Dataset):
 
-    def __init__(self, data, transform):
+    def __init__(self, data, transform=None):
         # data of shape n_mods x len_data x ch x w x h
         self.lenght = len(data[0])
         self.datasets = [BasicDataset(d, transform) for d in data ]
@@ -260,6 +260,7 @@ class MNIST_SVHN_DL():
         rd_idx = np.random.permutation(len(t_mnist))
         t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
         len_train=len(t_mnist)
+        
 
         train_mnist_svhn = TensorDataset([
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
@@ -474,8 +475,7 @@ class MNIST_SVHN_FASHION_DL():
         rd_idx_test = np.random.permutation(len(s_mnist))
         s_mnist, s_svhn, s_fashion = s_mnist[rd_idx_test], s_svhn[rd_idx_test], s_fashion[rd_idx_test]
         
-        
-        # len_train = 50000
+        # len_train = 100000
         len_train = len(t_mnist)
         
         # len_test = 1000

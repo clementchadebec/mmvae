@@ -38,5 +38,6 @@
   "device": "cuda",
   "wandb_experiment": "mnist_svhn",
   "wandb_mode" : "offline",
-  "flow" : "maf"
+  "flow" : "maf", 
+  "use_gen" : true
   }
