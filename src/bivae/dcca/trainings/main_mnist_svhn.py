@@ -4,6 +4,7 @@ from sklearn import svm
 from tqdm import tqdm
 import time
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 import torch
@@ -181,14 +182,14 @@ if __name__ == '__main__':
 
     # if a linear CCA should get applied on the learned features extracted from the networks
     # it does not affect the performance on noisy MNIST significantly
-    apply_linear_cca = False
+    apply_linear_cca = True
     # end of parameters section
     ############
-    wandb.init(project = 'DCCA_mnist_svhn', entity = 'multimodal_vaes', config = {'batch_size' : batch_size,
+    wandb.init(project = 'DCCA_mnist_svhn', entity = 'asenellart', config = {'batch_size' : batch_size,
                                                                                  'learning_rate': learning_rate,
                                                                                  'reg_par' : reg_par,
                                                                                  'linear_cca' : linear_cca is not None},
-                dir = str(save_to) + '/wandb')
+                )
 
     # Building, training, and producing the new features by DCCA
     model = DeepCCA_MNIST_SVHN(outdim_size, use_all_singular_values, device=device).double()
@@ -204,6 +205,13 @@ if __name__ == '__main__':
         np.save(str(save_to) + '/l_cca_w.npy', l_cca.w)
         np.save(str(save_to) + '/l_cca_m.npy', l_cca.m)
         np.save(str(save_to) + '/l_cca_D.npy', l_cca.D)
+        
+        # Visualize the singular values to gauge if the outdimsize is well chosen 
+        plt.plot(l_cca.D)
+        plt.savefig(str(save_to) + '/singular_values.png')
+        plt.close()
+        wandb.log({'Singular Values of DCCA' : wandb.Image(str(save_to) + '/singular_values.png')})
+        wandb.log({'total_dcca_value' : np.mean(l_cca.D[:outdim_size])})
 
     # Training and testing of SVM with linear kernel on the view 1 with new features
     losses, outputs_t =  solver.test(train_loader, use_linear_cca=apply_linear_cca)
@@ -215,5 +223,5 @@ if __name__ == '__main__':
     wandb.log({'embedding_svhn' : wandb.Image(str(save_to) + '/embedding_svhn.png')})
     wandb.log({'embedding_mnist' : wandb.Image(str(save_to) + '/embedding_mnist.png')})
     print("Accuracy on view svhn (test data) is:", test_acc*100.0)
-    # Saving new features in a gzip pickled file specified by save_to
 
+    

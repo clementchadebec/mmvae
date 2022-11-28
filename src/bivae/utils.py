@@ -245,11 +245,12 @@ def update_dict_list(dict1, dict2):
             dict1[k] = [dict2[k]]
 
 def get_mean_std(dict):
-    return { k : torch.mean(torch.tensor(dict[k])) for k in dict.keys()}, {k : torch.std(torch.tensor(dict[k])) for k in dict.keys()}
+    return { k : torch.mean(torch.tensor(dict[k])) for k in dict.keys()}, \
+        {'std_' + k : torch.std(torch.tensor(dict[k])) for k in dict.keys()}
 
 def print_mean_std(dict_mean, dict_std):
     for k in dict_mean.keys():
-        print(k, f' {dict_mean[k]} +- {dict_std[k]}')
+        print(k, f' {dict_mean[k]} +- {dict_std["std_" + k]}')
 
 def tensor_classes_labels(l1, l2, l1_names, l2_names):
     """ Transform labels that are tuples (l1[i], l2[i]) to int"""
