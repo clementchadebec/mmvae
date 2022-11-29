@@ -103,7 +103,7 @@ def generate(n, batchsize = 1000):
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         for n_components in [20]:
-            n_samples = len(train_loader.dataset)
+            n_samples = 200000
             model.sampler = GaussianMixtureSampler(n_components=n_components)
             print("Sampling {} samples with n_components = {}".format(n_samples, n_components))
             generate(n=n_samples)
