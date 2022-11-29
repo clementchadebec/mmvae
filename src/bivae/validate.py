@@ -76,7 +76,7 @@ print('Expt:', runPath)
 print('RunID:', runId)
 
 
-train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
+train_loader, test_loader, val_loader = model.getDataLoaders(2000, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
       f"Val : {len(val_loader.dataset)}")
@@ -116,10 +116,10 @@ def eval():
         update_dict_list(b_metrics, model.compute_metrics(data, runPath, epoch=2, classes=classes,n_data='all', freq=3, ns=1))
         if i == 0:
             model.sample_from_conditional(data, runPath, epoch=0)
-            try: 
-                model.sample_from_poe(data, runPath, 0, n=10, divide_prior=True)
-            except:
-                print('No function implemented for poe generation')
+            # try: 
+            #     model.sample_from_poe(data, runPath, 0, n=10, divide_prior=True)
+            # except:
+            #     print('No function implemented for poe generation')
             
             # model.reconstruct(data, runPath, epoch=0)
             # model.analyse(data, runPath, epoch=0, classes=classes)
@@ -150,6 +150,7 @@ if __name__ == '__main__':
             update_dict_list(run_metrics, eval()) 
         m_run_metrics, s_run_metrics = get_mean_std(run_metrics)
         print_mean_std(m_run_metrics,s_run_metrics)
-        wandb.log(m_run_metrics, s_run_metrics)
+        wandb.log(m_run_metrics)
+        wandb.log(s_run_metrics)
         
         
