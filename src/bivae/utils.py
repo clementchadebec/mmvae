@@ -90,7 +90,7 @@ def load_joint_vae(model, filepath):
     return
 
 def save_joint_vae(model, save_joint_path):
-    torch.save(model.joint_encoder.state_dict(),str(save_joint_path)+'/model_joint_encoder.pt')
+    torch.save(model.joint_encoder.state_dict(),str(save_joint_path)+'/model_joint_encoder_{}.pt')
     for i,vae in enumerate(model.vaes):
         torch.save(vae.decoder.state_dict(),str(save_joint_path)+'/model_' +vae.modelName +'_decoder.pt')
 
