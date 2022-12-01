@@ -258,7 +258,8 @@ class MNIST_SVHN_DL():
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         
         # shuffle to be able to reduce size of the dataset
-        rd_idx = np.random.permutation(len(t_mnist))
+        
+        rd_idx = np.random.RandomState(seed=42).permutation(len(t_mnist))
         t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
         if len_train is None: 
             len_train = len(t_mnist)

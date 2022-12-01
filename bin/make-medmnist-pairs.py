@@ -1,6 +1,6 @@
 import torch
 from torchvision import datasets, transforms
-from medmnist import PathMNIST, TissueMNIST
+from medmnist import PathMNIST, BloodMNIST
 
 def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     """
@@ -8,7 +8,7 @@ def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     idx*: indices of sorted labels in original list
     """
     _idx1, _idx2 = [], []
-    for l in l1.unique():  # assuming both have same idxs
+    for l in l2.unique():  # assuming both have same idxs
         l_idx1, l_idx2 = idx1[l1 == l], idx2[l2 == l]
         n = min(l_idx1.size(0), l_idx2.size(0), max_d)
         print(n)
@@ -27,12 +27,13 @@ if __name__ == '__main__':
 
     for split in ['train', 'test', 'val']:
         d1 = PathMNIST(split=split, transform=tx, download=True)
-        d2 = TissueMNIST(split=split, transform=tx, download=True)
+        d2 = BloodMNIST(split=split, transform=tx, download=True)
     
     
         l1, li1 = torch.tensor(d1.labels.squeeze()).sort()
         print(l1, li1)
         l2, li2 = torch.tensor(d2.labels.squeeze()).sort()
+        print(l1.unique(), l2.unique())
         idx1, idx2 = rand_match_on_idx(l1, li1, l2, li2, max_d=max_d, dm=dm)
         shuffle = torch.randperm(len(idx1))
         print(idx1[:4], idx2[:4])

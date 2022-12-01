@@ -81,6 +81,8 @@ def generate_joint(n, batchsize = 5000):
         
     samples = [[], []]
     n_iter = n // batchsize
+    # Samples some for visualization
+    model.generate(model_path, 0, N=32, save=True)
     for i in range(n_iter):
 
         # Sample from the joint latent space
@@ -105,7 +107,7 @@ def generate_joint(n, batchsize = 5000):
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         for n_components in [20]:
-            n_samples = 200000
+            n_samples = 5000
             batchsize = 5000
             model.sampler = GaussianMixtureSampler(n_components=n_components)
             print("Sampling {} samples with n_components = {}".format(n_samples, n_components))

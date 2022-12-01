@@ -100,7 +100,8 @@ class Multi_VAES(nn.Module):
             data = [*adjust_shape(data[0],data[1])]
             file = ('{}/generate_{:03d}'+self.save_format).format(runPath, epoch)
             save_samples(data,file)
-            wandb.log({'generate_joint' : wandb.Image(file)})
+            if wandb.run is not None:
+                wandb.log({'generate_joint' : wandb.Image(file)})
         return data  # list of generations---one for each modality
 
     def generate_from_conditional(self,runPath, epoch, N=10, save=False):
