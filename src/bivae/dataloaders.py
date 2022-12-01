@@ -9,7 +9,7 @@ from torch.utils.data import random_split
 import pandas as pd
 from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
 import numpy as np
-from medmnist import PathMNIST, TissueMNIST
+from medmnist import PathMNIST, BloodMNIST
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -511,39 +511,15 @@ class MNIST_SVHN_FASHION_DL():
 
 
 
-class PATH_TISSUE_DL():
+class PATH_BLOOD_DL():
     
     def __init__(self) -> None:
         pass
     
-    # def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
-    #     dl = {}
-    #     id1, id2 = {},{}
-    #     # get the training datasets
-    #     for j,split in enumerate(['train', 'test', 'val']):
-    #         d1 = PathMNIST(split=split, transform=transform)
-    #         d2 = TissueMNIST(split=split, transform=transform)
-            
-    #         # Get the indices
-    #         id1.append(torch.load('../data/{}-med-path-idx.pt'.format(split)))
-    #         id2.append(torch.load('../data/{}-med-tissue-idx.pt'.format(split)))
-
-    #     # Resample
-    #     dl['train'] = TensorDataset([
-    #         ResampleDataset(d1, lambda d,i : id1[j][i], size=len(id1[j])), 
-    #         ResampleDataset(d2, lambda d,i : id2[j][i], size=len(id2[j]))
-    #     ])
-
-    #     kwargs = {'num_workers': 2, 'pin_memory': True} if device == 'cuda' else {}
-    #     train = DataLoader(dl['train'], batch_size=batch_size, shuffle=shuffle, **kwargs)
-    #     test = DataLoader(dl['test'], batch_size=batch_size, shuffle=False, **kwargs)
-    #     val = DataLoader(dl['val'], batch_size=batch_size, shuffle=False, **kwargs)
-    #     return train, test, val
-    
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(),dlargs={}):
         
         d1_train = PathMNIST('train',transform=transform)
-        d2_train = TissueMNIST('train', transform=transform)
+        d2_train = BloodMNIST('train', transform=transform)
         
         id1_train = torch.load('../data/train-med-path-idx.pt')
         id2_train = torch.load('../data/train-med-tissue-idx.pt')
@@ -553,10 +529,10 @@ class PATH_TISSUE_DL():
             ResampleDataset(d2_train, lambda d, i : id2_train[i], size=len(id2_train))
         ])
         
-        train_dl = DataLoader(tensor_train, batch_size=batch_size, shuffle=True)
+        train_dl = DataLoader(tensor_train, batch_size=batch_size, shuffle=True, **dlargs)
         
         d1_test = PathMNIST('test',transform=transform)
-        d2_test = TissueMNIST('test', transform=transform)
+        d2_test = BloodMNIST('test', transform=transform)
         
         id1_test = torch.load('../data/test-med-path-idx.pt')
         id2_test = torch.load('../data/test-med-tissue-idx.pt')
@@ -566,10 +542,10 @@ class PATH_TISSUE_DL():
             ResampleDataset(d2_test, lambda d, i : id2_test[i], size=len(id2_test))
         ])
         
-        test_dl = DataLoader(tensor_test, batch_size=batch_size, shuffle=False)
+        test_dl = DataLoader(tensor_test, batch_size=batch_size, shuffle=False, **dlargs)
         
         d1_val = PathMNIST('val',transform=transform)
-        d2_val = TissueMNIST('val', transform=transform)
+        d2_val = BloodMNIST('val', transform=transform)
         
         id1_val = torch.load('../data/val-med-path-idx.pt')
         id2_val = torch.load('../data/val-med-tissue-idx.pt')
@@ -579,6 +555,6 @@ class PATH_TISSUE_DL():
             ResampleDataset(d2_train, lambda d, i : id2_val[i], size=len(id1_val))
         ])
         
-        val_dl = DataLoader(tensor_val, batch_size=batch_size, shuffle=False)
+        val_dl = DataLoader(tensor_val, batch_size=batch_size, shuffle=False, **dlargs)
     
         return train_dl, test_dl, val_dl
