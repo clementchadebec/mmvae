@@ -40,7 +40,7 @@ random.seed(args.seed)
 # Log parameters of the experiments
 experiment_name = args.wandb_experiment if hasattr(args,'wandb_experiment') else args.model
 
-wandb.init(project = experiment_name , entity="multimodal_vaes") 
+wandb.init(project = experiment_name , entity="asenellart") 
 wandb.config.update(args)
 wandb.define_metric('epoch')
 wandb.define_metric('*', step_metric='epoch')
