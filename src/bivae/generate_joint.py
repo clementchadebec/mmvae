@@ -65,7 +65,7 @@ print(f"Train : {len(train_loader.dataset)},"
 # model.sampler = None
 
 
-def generate(n, batchsize = 1000):
+def generate_joint(n, batchsize = 5000):
     """Compute all metrics on the entire test dataset"""
     model.eval()
     # Compute all train latents
@@ -75,10 +75,13 @@ def generate(n, batchsize = 1000):
     if model.sampler is not None:
         model.sampler.fit_from_latents(model.train_latents[0])
         
-    
-    cpter = min(batchsize, n)
+    if n%batchsize != 0:
+        print("The number of samples is not a multiple of the batchsize, \
+            so the number of generated samples will be smaller than asked.")
+        
     samples = [[], []]
-    while cpter <= n:
+    n_iter = n // batchsize
+    for i in range(n_iter):
 
         # Sample from the joint latent space
         samples_ = model.generate(N=batchsize, runPath='', epoch=0)
@@ -87,12 +90,11 @@ def generate(n, batchsize = 1000):
         bdata = [s[:1000] for s in samples_ ]
         model.set_classifiers()
         joint_acc = compute_joint_accuracy(model, bdata)
-        print('Joint accuracy {}'.format(joint_acc))
+        print('cpter = {}/{} , Joint accuracy {}'.format(i, n_iter,joint_acc))
         
         for m, l in enumerate(samples):
             l.append(samples_[m])
         
-        cpter += min(batchsize, n-cpter)
 
     # Save the samples to reuse later
     for i,s in enumerate(samples):
@@ -104,8 +106,9 @@ if __name__ == '__main__':
     with Timer('MM-VAE') as t:
         for n_components in [20]:
             n_samples = 200000
+            batchsize = 5000
             model.sampler = GaussianMixtureSampler(n_components=n_components)
             print("Sampling {} samples with n_components = {}".format(n_samples, n_components))
-            generate(n=n_samples)
+            generate_joint(n_samples, batchsize)
             
         
