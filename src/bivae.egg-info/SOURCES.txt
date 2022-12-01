@@ -30,6 +30,7 @@ src/bivae/analysis/prd/__init__.py
 src/bivae/analysis/prd/prd_score.py
 src/bivae/analysis/pytorch_fid/__init__.py
 src/bivae/analysis/pytorch_fid/custom_encoders.py
+src/bivae/analysis/pytorch_fid/download_fid_weights.py
 src/bivae/analysis/pytorch_fid/fid_score.py
 src/bivae/analysis/pytorch_fid/fid_score_multi.py
 src/bivae/analysis/pytorch_fid/inception.py
@@ -63,6 +64,7 @@ src/bivae/models/mmvae/mmvae.py
 src/bivae/models/mmvae/mmvae_celeba.py
 src/bivae/models/mmvae/mmvae_circles.py
 src/bivae/models/mmvae/mmvae_mnist_svhn.py
+src/bivae/models/mmvae/mnist_svhn_fashion.py
 src/bivae/models/mmvae_nf/__init__.py
 src/bivae/models/mmvae_nf/celeba.py
 src/bivae/models/mmvae_nf/mmvae_nf.py
@@ -70,10 +72,13 @@ src/bivae/models/mmvae_nf/mnist_svhn.py
 src/bivae/models/moepoe/__init__.py
 src/bivae/models/moepoe/celeba.py
 src/bivae/models/moepoe/mnist_svhn.py
+src/bivae/models/moepoe/mnist_svhn_fashion.py
 src/bivae/models/moepoe/moepoe.py
+src/bivae/models/moepoe/moepoe_.py
 src/bivae/models/mvae/__init__.py
 src/bivae/models/mvae/celeba.py
 src/bivae/models/mvae/mnist_svhn.py
+src/bivae/models/mvae/msf.py
 src/bivae/models/mvae/mvae.py
 src/bivae/models/nn/__init__.py
 src/bivae/models/nn/encoders.py
@@ -113,6 +118,9 @@ src/bivae/my_pythae/models/vae_iaf/__init__.py
 src/bivae/my_pythae/models/vae_iaf/vae_iaf_model_adapted.py
 src/bivae/my_pythae/models/vae_lin_nf/__init__.py
 src/bivae/my_pythae/models/vae_lin_nf/vae_lin_nf_model_adapted.py
+src/bivae/my_pythae/models/vae_maf/__init__.py
+src/bivae/my_pythae/models/vae_maf/vae_maf_config.py
+src/bivae/my_pythae/models/vae_maf/vae_maf_model_adapted.py
 src/bivae/my_pythae/pipelines/__init__.py
 src/bivae/my_pythae/pipelines/base_pipeline.py
 src/bivae/my_pythae/pipelines/pipeline_utils.py

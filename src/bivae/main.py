@@ -122,7 +122,7 @@ train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, de
 # Train the unimodal encoders using both true and generated samples from the joint encoder
 if args.skip_warmup and args.use_gen:
     data = [torch.load(pretrained_joint_path + 'generated_modality_{}.pt'.format(i)).to('cpu') for i in range(model.mod)]
-    gen_dataset = MultimodalBasicDataset(data)
+    gen_dataset = MultimodalBasicDataset(data, length=args.len_gen)
     true_and_gen_dataset = ConcatDataset([train_loader.dataset, gen_dataset])
     train_loader = DataLoader(true_and_gen_dataset, args.batch_size, shuffle=True, pin_memory=True)
 

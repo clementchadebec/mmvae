@@ -36,9 +36,11 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn",
+  "wandb_experiment": "mnist_svhn_small",
   "wandb_mode" : "offline",
   "flow" : "maf", 
   "use_gen" : true,
-  "len_train":10000
+  "len_train":10000, 
+  "len_gen": 4000
   }
+

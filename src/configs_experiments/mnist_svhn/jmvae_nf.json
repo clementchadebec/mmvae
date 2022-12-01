@@ -40,6 +40,6 @@
   "wandb_mode" : "offline",
 
   "flow" : "maf", 
-  "use_gen" : true
+  "use_gen" : false
   }
 
