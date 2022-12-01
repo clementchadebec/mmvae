@@ -238,6 +238,7 @@ if __name__ == '__main__':
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
+                scheduler = ReduceLROnPlateau(optimizer,'min')
 
             train(epoch, agg)
             test_loss = test(epoch, agg)
