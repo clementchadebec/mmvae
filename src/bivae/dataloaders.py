@@ -33,9 +33,9 @@ class BasicDataset(torch.utils.data.Dataset):
 
 class MultimodalBasicDataset(torch.utils.data.Dataset):
 
-    def __init__(self, data, transform=None):
+    def __init__(self, data, transform=None, length=None):
         # data of shape n_mods x len_data x ch x w x h
-        self.lenght = len(data[0])
+        self.lenght = len(data[0]) if length is None else length
         self.datasets = [BasicDataset(d, transform) for d in data ]
 
     def __len__(self):
