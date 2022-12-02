@@ -2,7 +2,6 @@
 
 import torch
 from torch import nn
-from bivae.models.multi_vaes import Multi_VAES
 from bivae.utils import Constants
 import torch.nn.functional as F
 from .encoders import Encoder_VAE_MNIST

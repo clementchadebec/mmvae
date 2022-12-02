@@ -59,9 +59,7 @@ class Multi_VAES(nn.Module):
         return self._pz_params
 
 
-    def getDataLoaders(self):
-        raise "getDataLoaders class must be defined in the subclasses"
-        return
+
 
     def forward(self, x):
         raise "forward must be defined in the subclass"

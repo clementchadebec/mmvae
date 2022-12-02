@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # the parameters for training the network
     learning_rate = 1e-4
     epoch_num = 100
-    batch_size = 1000
+    batch_size = 500
     dlargs = {'drop_last':True}
     tx = transforms.Compose([transforms.ToTensor(), add_channels()])
     train_loader,test_loader, val_loader = PATH_BLOOD_DL().getDataLoaders(batch_size=batch_size, shuffle=True,dlargs=dlargs)

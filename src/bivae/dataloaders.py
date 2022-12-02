@@ -525,6 +525,7 @@ class PATH_BLOOD_DL():
         id1_train = torch.load('../data/train-med-path-idx.pt')
         id2_train = torch.load('../data/train-med-tissue-idx.pt')
         
+        
         tensor_train = TensorDataset([
             ResampleDataset(d1_train, lambda d,i : id1_train[i], size=len(id1_train)), 
             ResampleDataset(d2_train, lambda d, i : id2_train[i], size=len(id2_train))
