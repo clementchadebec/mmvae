@@ -18,10 +18,12 @@ from torch.utils.data import DataLoader
 from bivae.utils import extract_rayon
 from ..nn import Encoder_VAE_SVHN,Decoder_VAE_SVHN
 import matplotlib.pyplot as plt
+from bivae.dcca.models import load_dcca_circles
+from bivae.vis import plot_joint_latent_space
 
 
 from bivae.dataloaders import CIRCLES_SQUARES_DL
-from ..nn import DoubleHeadJoint
+from ..nn import DoubleHeadJoint, DoubleHeadMLP, TwoStepsEncoder
 from ..jmvae_nf import JMVAE_NF
 from bivae.analysis.classifiers.classifier_empty_full import load_classifier_circles, load_classifier_squares
 
@@ -33,7 +35,8 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         params.input_dim = (1,32,32)
         
 
-        joint_encoder = DoubleHeadJoint(512, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN, params)
+        # joint_encoder = DoubleHeadJoint(512, params,params,Encoder_VAE_SVHN,Encoder_VAE_SVHN, params)
+        joint_encoder = DoubleHeadMLP(32*32, 32*32,512,params.latent_dim, params.num_hidden_layers)
         
         if params.no_nf:
             vae = my_VAE
@@ -46,7 +49,13 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         wandb.config.update(flow_config)
         vae_config = vae_config(params.input_dim, params.latent_dim,**flow_config )
 
-        encoder1, encoder2 = None, None
+        if params.dcca :
+            print("loading dcca encoders")
+            self.dcca = load_dcca_circles()
+            encoder1 = TwoStepsEncoder(self.dcca[0], params,num_hidden=1)
+            encoder2 = TwoStepsEncoder(self.dcca[1], params, num_hidden=1)
+        else :
+            encoder1, encoder2 = None, None
         decoder1, decoder2 = None, None
 
         vaes = nn.ModuleList([
@@ -158,3 +167,27 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         
         fig.savefig('{}/product_of_posteriors.png'.format(runPath))
             
+    
+    def plot_joint_and_uni(self,data, rayons, classes,runPath, idx = 0, mod = 1, N=1000):
+        """Plot a two parts graph with on the left, the joint space organization
+        and on the right samples from the unimodal posterior. 
+
+        Args:
+            data (_type_): _description_
+            idx (int, optional): _description_. Defaults to 0.
+        """
+        
+        fig, ax = plt.subplots(1,1,sharex=True, sharey=True, figsize=(10,10))
+        
+        # On the left, plot the embeddings
+        
+        m,s, z = self.analyse_joint_posterior(data,len(data[0]))
+        plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
+        
+        # Then on the other side, take an image and sample from the posterior
+        samples= self.vaes[mod].forward(torch.stack([data[mod][idx]]*N)).z.cpu()
+        print(samples.shape)
+        
+        ax.scatter(samples[:,0], samples[:,1], c='red')
+        
+        fig.savefig(str(runPath) + '/joint_and_uni_idx_{}_mod_{}.png'.format(idx, mod))

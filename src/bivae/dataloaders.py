@@ -9,6 +9,8 @@ from torch.utils.data import random_split
 import pandas as pd
 from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
 import numpy as np
+from medmnist import PathMNIST, BloodMNIST, PneumoniaMNIST
+from bivae.utils import add_channels
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -32,9 +34,9 @@ class BasicDataset(torch.utils.data.Dataset):
 
 class MultimodalBasicDataset(torch.utils.data.Dataset):
 
-    def __init__(self, data, transform):
+    def __init__(self, data, transform=None, length=None):
         # data of shape n_mods x len_data x ch x w x h
-        self.lenght = len(data[0])
+        self.lenght = len(data[0]) if length is None else length
         self.datasets = [BasicDataset(d, transform) for d in data ]
 
     def __len__(self):
@@ -239,7 +241,7 @@ class MNIST_SVHN_DL():
     def __init__(self, data_path='../data'):
         self.data_path = data_path
 
-    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor()):
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(), len_train=None):
 
         if not (os.path.exists(self.data_path + '/train-ms-mnist-idx.pt')
                 and os.path.exists(self.data_path + '/train-ms-svhn-idx.pt')
@@ -257,10 +259,12 @@ class MNIST_SVHN_DL():
         t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
         
         # shuffle to be able to reduce size of the dataset
-        rd_idx = np.random.permutation(len(t_mnist))
+        
+        rd_idx = np.random.RandomState(seed=42).permutation(len(t_mnist))
         t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
-        len_train=len(t_mnist)
-
+        if len_train is None: 
+            len_train = len(t_mnist)
+        
         train_mnist_svhn = TensorDataset([
             ResampleDataset(t1.dataset, lambda d, i: t_mnist[i], size=len_train),
             ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train)
@@ -271,9 +275,10 @@ class MNIST_SVHN_DL():
         ])
 
         # Split between test and validation while fixing the seed to ensure that we always have the same sets
+        len_val = min(10000, len(train_mnist_svhn)//10)
         train_set, val_set = random_split(train_mnist_svhn,
-                                         [len(train_mnist_svhn)-10000,
-                                          10000],
+                                         [len(train_mnist_svhn)-len_val,
+                                          len_val],
                                          generator=torch.Generator().manual_seed(42))
 
 
@@ -474,8 +479,7 @@ class MNIST_SVHN_FASHION_DL():
         rd_idx_test = np.random.permutation(len(s_mnist))
         s_mnist, s_svhn, s_fashion = s_mnist[rd_idx_test], s_svhn[rd_idx_test], s_fashion[rd_idx_test]
         
-        
-        # len_train = 50000
+        # len_train = 100000
         len_train = len(t_mnist)
         
         # len_test = 1000
@@ -506,3 +510,57 @@ class MNIST_SVHN_FASHION_DL():
         test = DataLoader(test_msf, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
+
+
+
+class MEDMNIST_DL():
+    
+    def __init__(self) -> None:
+        pass
+    
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(),dlargs={}):
+        
+        # tx = transforms.Compose([transform, transforms.Normalize(0.5, 0.5)])
+        tx = transform
+        
+        d1_train = PneumoniaMNIST('train',transform=transforms.Compose([tx,add_channels()]))
+        d2_train = BloodMNIST('train', transform=tx)
+        
+        id1_train = torch.load('../data/train-med-path-idx.pt')
+        id2_train = torch.load('../data/train-med-tissue-idx.pt')
+        
+        
+        tensor_train = TensorDataset([
+            ResampleDataset(d1_train, lambda d,i : id1_train[i], size=len(id1_train)), 
+            ResampleDataset(d2_train, lambda d, i : id2_train[i], size=len(id2_train))
+        ])
+        
+        train_dl = DataLoader(tensor_train, batch_size=batch_size, shuffle=True, **dlargs)
+        
+        d1_test = PneumoniaMNIST('test',transform=transforms.Compose([tx,add_channels()]))
+        d2_test = BloodMNIST('test', transform=tx)
+        
+        id1_test = torch.load('../data/test-med-path-idx.pt')
+        id2_test = torch.load('../data/test-med-tissue-idx.pt')
+        
+        tensor_test = TensorDataset([
+            ResampleDataset(d1_test, lambda d,i : id1_test[i], size=len(id1_test)), 
+            ResampleDataset(d2_test, lambda d, i : id2_test[i], size=len(id2_test))
+        ])
+        
+        test_dl = DataLoader(tensor_test, batch_size=batch_size, shuffle=False, **dlargs)
+        
+        d1_val = PneumoniaMNIST('val',transform=transforms.Compose([tx,add_channels()]))
+        d2_val = BloodMNIST('val', transform=tx)
+        
+        id1_val = torch.load('../data/val-med-path-idx.pt')
+        id2_val = torch.load('../data/val-med-tissue-idx.pt')
+        
+        tensor_val = TensorDataset([
+            ResampleDataset(d1_train, lambda d,i : id1_val[i], size=len(id1_val)), 
+            ResampleDataset(d2_train, lambda d, i : id2_val[i], size=len(id1_val))
+        ])
+        
+        val_dl = DataLoader(tensor_val, batch_size=batch_size, shuffle=False, **dlargs)
+    
+        return train_dl, test_dl, val_dl

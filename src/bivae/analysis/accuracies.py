@@ -55,10 +55,14 @@ def compute_accuracies(model, data, classes, n_data=20, ns=100):
         # Compute joint-coherence
         N_joint = ns*n_data
         data = model.generate('', epoch=0, N=N_joint, save=False)
-        labels_joint = [torch.argmax(model.classifiers[i](data[i]), dim=1) for i in range(model.mod)]
+  
         
-        pairs_labels = torch.stack([labels_joint[i] == labels_joint[j] for i in range(model.mod) for j in range(model.mod)])
-        joint_acc = torch.sum(torch.all(pairs_labels, dim=0))/(N_joint)
-        metrics['joint_coherence'] = joint_acc
+        metrics['joint_coherence'] = compute_joint_accuracy(model,data)
 
         return metrics
+
+def compute_joint_accuracy(model, data):
+    labels_joint = [torch.argmax(model.classifiers[i](data[i]), dim=1) for i in range(model.mod)]
+    pairs_labels = torch.stack([labels_joint[i] == labels_joint[j] for i in range(model.mod) for j in range(model.mod)])
+    joint_acc = torch.sum(torch.all(pairs_labels, dim=0))/len(data[0])
+    return joint_acc

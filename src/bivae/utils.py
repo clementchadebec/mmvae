@@ -90,8 +90,14 @@ def load_joint_vae(model, filepath):
     return
 
 def save_joint_vae(model, save_joint_path):
+    if not os.path.exists(str(save_joint_path)+'/old/'):
+            os.mkdir(str(save_joint_path)+'/old/')
+    if os.path.exists(str(save_joint_path)+'/model_joint_encoder.pt'):
+        os.rename(str(save_joint_path)+'/model_joint_encoder.pt', str(save_joint_path)+'/old/'+'/model_joint_encoder.pt')
     torch.save(model.joint_encoder.state_dict(),str(save_joint_path)+'/model_joint_encoder.pt')
     for i,vae in enumerate(model.vaes):
+        if os.path.exists(str(save_joint_path)+'/model_' +vae.modelName +'_decoder.pt'):
+            os.rename(str(save_joint_path)+'/model_' +vae.modelName +'_decoder.pt', str(save_joint_path)+'/old/'+'/model_' +vae.modelName +'_decoder.pt')
         torch.save(vae.decoder.state_dict(),str(save_joint_path)+'/model_' +vae.modelName +'_decoder.pt')
 
 

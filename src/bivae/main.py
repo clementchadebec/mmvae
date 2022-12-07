@@ -15,10 +15,12 @@ from torch import optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from vis import plot_hist
+from torch.utils.data import ConcatDataset, DataLoader
 
 import wandb
 from bivae.utils import (Logger, Timer, extract_rayon, load_joint_vae, save_joint_vae,
                          save_model, save_vars, unpack_data, update_details)
+from bivae.dataloaders import MultimodalBasicDataset
 
 parser = argparse.ArgumentParser(description='Multi-Modal VAEs')
 parser.add_argument('--config-path', type=str, default='')
@@ -116,10 +118,17 @@ scheduler = ReduceLROnPlateau(optimizer,'min')
 
 
 train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
+
+# Train the unimodal encoders using both true and generated samples from the joint encoder
+if args.skip_warmup and args.use_gen:
+    data = [torch.load(pretrained_joint_path + 'generated_modality_{}.pt'.format(i)).to('cpu') for i in range(model.mod)]
+    gen_dataset = MultimodalBasicDataset(data, length=args.len_gen)
+    true_and_gen_dataset = ConcatDataset([train_loader.dataset, gen_dataset])
+    train_loader = DataLoader(true_and_gen_dataset, args.batch_size, shuffle=True, pin_memory=True)
+
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
       f"Val : {len(val_loader.dataset)}")
-
 
 # Objective function to use on train data
 objective = getattr(objectives,
@@ -140,6 +149,7 @@ def train(epoch, agg):
     b_loss = 0
     b_details = {}
     for i, dataT in enumerate(tqdm(train_loader)):
+        
         data = unpack_data(dataT, device=device)
         optimizer.zero_grad()
         loss, details = objective(model, data,args.K,epoch,args.warmup, args.beta_prior)
@@ -189,7 +199,7 @@ def test(epoch, agg):
                     # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
                     model.generate(runPath, epoch, N=32, save=True)
                     # model.generate_from_conditional(runPath, epoch, N=32, save=True)
-                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
+                    if args.model == 'jnf_circles_squares' :
                         if epoch == 1:
                             print("Computing test histogram")
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
@@ -228,6 +238,8 @@ if __name__ == '__main__':
             if epoch == args.warmup :
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
+                scheduler = ReduceLROnPlateau(optimizer,'min')
+                best_loss = torch.inf
 
             train(epoch, agg)
             test_loss = test(epoch, agg)

@@ -1,12 +1,8 @@
-{
-  "comment":"The JMVAE model with added flows but no dcca pre-embeddings. No reconstruction and maf flows",
+{ "comment" : "JMVAE model with two steps training, no annealing.",
 
-
-  "experiment": "jmvae_nf/mnist_svhn",
+  "experiment": "jmvae/mnist_svhn",
   "model": "jnf_mnist_svhn_dcca",
   "obj": "jmvae_nf",
-
-
   "K": 1,
   "recon_losses" : ["normal", "normal"],
   "looser": false,
@@ -26,7 +22,7 @@
   "data_path": "../data/",
   "skip_warmup": true,
   "warmup": 100,
-  "no_nf": false,
+  "no_nf": true,
   "beta_prior": 1,
   "beta_kl": 1,
   "decrease_beta_kl": 1,
@@ -36,8 +32,5 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn",
-  "wandb_mode" : "offline",
-  "flow" : "maf", 
-  "use_gen" : false
+  "wandb_experiment": "mnist_svhn"
   }
