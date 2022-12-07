@@ -109,11 +109,7 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
         update_details(accuracies, compute_poe_subset_accuracy(self,data,classes,n_data,ns))
         return accuracies
 
-    def compute_recon_loss(self,x,recon,m):
-        """Change the way we compute the reocnstruction, through the filter of DCCA"""
-        t = self.dcca[m](x).embedding
-        recon_t = self.dcca[m](recon).embedding
-        return F.mse_loss(t,recon_t,reduction='sum')
+
 
 
     def compute_fid(self, batch_size):

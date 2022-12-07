@@ -81,8 +81,7 @@ class MNIST_SVHN(MMVAE_NF):
         update_details(accuracies, general_metrics)
         return accuracies
 
-    def compute_recon_loss(self,x,recon,m):
-        return
+
 
     def step(self, epoch):
         return
