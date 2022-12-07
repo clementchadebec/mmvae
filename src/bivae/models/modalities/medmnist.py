@@ -11,7 +11,7 @@ from bivae.models.modalities.mnist_svhn import fid
 from bivae.my_pythae.models import my_VAE, my_VAE_IAF
 from bivae.my_pythae.models.vae_maf import VAE_MAF_Config, my_VAE_MAF
 from bivae.models.nn.medmnist import Encoder_ResNet_VAE_medmnist, Decoder_ResNet_AE_medmnist
-from bivae.dataloaders import PATH_BLOOD_DL
+from bivae.dataloaders import MEDMNIST_DL
 from bivae.analysis.classifiers import ClassifierBLOOD, ClassifierPATH
 
 from ..nn import Decoder_VAE_SVHN, TwoStepsEncoder
@@ -73,7 +73,7 @@ class medmnist_utils():
     
     def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
         
-        train, test, val = PATH_BLOOD_DL().getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = MEDMNIST_DL().getDataLoaders(batch_size, shuffle, device, transform)
         return train, test, val
     
     def set_classifiers(self):

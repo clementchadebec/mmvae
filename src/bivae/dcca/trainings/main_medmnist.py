@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 from bivae.dcca.linear_cca import linear_cca
-from bivae.dataloaders import PATH_BLOOD_DL
+from bivae.dataloaders import MEDMNIST_DL
 from bivae.dcca.models import DeepCCA_MedMNIST
 from bivae.dcca.utils import  svm_classify_view, unpack_data, visualize_umap, save_encoders
 from torchvision import transforms
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     batch_size = 500
     dlargs = {'drop_last':True}
     tx = transforms.Compose([transforms.ToTensor(), add_channels()])
-    train_loader,test_loader, val_loader = PATH_BLOOD_DL().getDataLoaders(batch_size=batch_size, shuffle=True,dlargs=dlargs)
+    train_loader,test_loader, val_loader = MEDMNIST_DL().getDataLoaders(batch_size=batch_size, shuffle=True,dlargs=dlargs)
 
 
     # the regularization parameter of the network
