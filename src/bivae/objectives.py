@@ -211,8 +211,7 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     else :
         details['reg']=0
 
-    return (- details['reg'], details) if epoch >= warmup \
-        else (loss - beta_prior*details['kld_prior'], details)
+    return  (loss - beta_prior*details['kld_prior'] - details['reg'], details)
 
 
 def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):

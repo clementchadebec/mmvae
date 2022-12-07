@@ -9,7 +9,8 @@ from torch.utils.data import random_split
 import pandas as pd
 from bivae.data_utils.transforms import contour_transform, random_grey_transform, binary_transform
 import numpy as np
-from medmnist import PathMNIST, BloodMNIST
+from medmnist import PathMNIST, BloodMNIST, PneumoniaMNIST
+from bivae.utils import add_channels
 
 ########################################################################################################################
 ########################################## DATASETS ####################################################################
@@ -512,15 +513,18 @@ class MNIST_SVHN_FASHION_DL():
 
 
 
-class PATH_BLOOD_DL():
+class MEDMNIST_DL():
     
     def __init__(self) -> None:
         pass
     
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(),dlargs={}):
         
-        d1_train = PathMNIST('train',transform=transform)
-        d2_train = BloodMNIST('train', transform=transform)
+        # tx = transforms.Compose([transform, transforms.Normalize(0.5, 0.5)])
+        tx = transform
+        
+        d1_train = PneumoniaMNIST('train',transform=transforms.Compose([tx,add_channels()]))
+        d2_train = BloodMNIST('train', transform=tx)
         
         id1_train = torch.load('../data/train-med-path-idx.pt')
         id2_train = torch.load('../data/train-med-tissue-idx.pt')
@@ -533,8 +537,8 @@ class PATH_BLOOD_DL():
         
         train_dl = DataLoader(tensor_train, batch_size=batch_size, shuffle=True, **dlargs)
         
-        d1_test = PathMNIST('test',transform=transform)
-        d2_test = BloodMNIST('test', transform=transform)
+        d1_test = PneumoniaMNIST('test',transform=transforms.Compose([tx,add_channels()]))
+        d2_test = BloodMNIST('test', transform=tx)
         
         id1_test = torch.load('../data/test-med-path-idx.pt')
         id2_test = torch.load('../data/test-med-tissue-idx.pt')
@@ -546,8 +550,8 @@ class PATH_BLOOD_DL():
         
         test_dl = DataLoader(tensor_test, batch_size=batch_size, shuffle=False, **dlargs)
         
-        d1_val = PathMNIST('val',transform=transform)
-        d2_val = BloodMNIST('val', transform=transform)
+        d1_val = PneumoniaMNIST('val',transform=transforms.Compose([tx,add_channels()]))
+        d2_val = BloodMNIST('val', transform=tx)
         
         id1_val = torch.load('../data/val-med-path-idx.pt')
         id2_val = torch.load('../data/val-med-tissue-idx.pt')
