@@ -139,10 +139,11 @@ class JMVAE_NF(Multi_VAES):
     def compute_recon_loss(self,x,recon,m):
         """Change the way we compute the reocnstruction, through the filter of DCCA"""
         if hasattr(self,'dcca') and self.params.dcca :
-            with torch.no_grad():
-                t = self.dcca[m](x).embedding
-                recon_t = self.dcca[m](recon).embedding
-            return F.mse_loss(t,recon_t,reduction='sum')
+            self.dcca[m].requires_grad_(False)
+            t = self.dcca[m](x).embedding
+            recon_t = self.dcca[m](recon).embedding
+            loss = F.mse_loss(t,recon_t,reduction='sum')
+            return loss
         else : 
             return F.mse_loss(x.reshape(x.shape[0],-1),
                           recon.reshape(x.shape[0],-1),reduction='sum')
