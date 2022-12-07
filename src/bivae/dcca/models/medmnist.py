@@ -6,14 +6,18 @@ from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
 from bivae.models.nn.medmnist import Encoder_ResNet_AE_medmnist, Encoder_Resnet18_AE_medmnist
 
 
+encoder = Encoder_Resnet18_AE_medmnist
+
 
 class DeepCCA_MedMNIST(nn.Module):
 
     def __init__(self, outdim_size, use_all_singular_values, device=torch.device('cpu')):
         super(DeepCCA_MedMNIST, self).__init__()
 
-        self.model1 = Encoder_Resnet18_AE_medmnist(VAEConfig((3,28,28), outdim_size))
-        self.model2 = Encoder_Resnet18_AE_medmnist(VAEConfig((3,28,28), outdim_size))
+        
+        self.model1 = encoder(VAEConfig((3,28,28), outdim_size))
+        self.model2 = encoder(VAEConfig((3,28,28), outdim_size))
+        
 
         self.loss = cca_loss(outdim_size, use_all_singular_values, device).loss
         print('DeepCCA model initialized')
@@ -35,8 +39,8 @@ class DeepCCA_MedMNIST(nn.Module):
 
 def load_dcca_medmnist(outdim_size):
 
-    model1 = Encoder_ResNet_AE_medmnist(VAEConfig((1,28,28), outdim_size))
-    model2 = Encoder_ResNet_AE_medmnist(VAEConfig((3,32,32), outdim_size))
+    model1 = encoder(VAEConfig((3,28,28), outdim_size))
+    model2 = encoder(VAEConfig((3,28,28), outdim_size))
 
     model1.load_state_dict(torch.load('../experiments/dcca/medmnist/model1.pt'))
     model2.load_state_dict(torch.load('../experiments/dcca/medmnist/model2.pt'))

@@ -77,6 +77,20 @@ def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, filters=None, ax
     plt.suptitle(r'Représentation latente $q_{\phi}(z|x,y)$')
     plt.savefig(filepath)
     plt.close()
+    
+def plot_joint_latent_space(emb,rayons,ax, fig, filters=None):
+    point_shapes = ['o', '^']
+    if filters is None:
+        filters = [torch.ones_like(rayons)]
+    
+    for m,filter in enumerate(filters):
+        filter = filter.numpy().astype(bool)
+        embf = emb[filter]
+        rf = rayons[filter]
+        sc = ax.scatter(embf[:,0],embf[:,1],marker=point_shapes[m], c = rf)
+
+    fig.colorbar(sc, ax=ax)
+    
 
 def plot_posteriors_ellipsoid(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
     fig, ax = plt.subplots()

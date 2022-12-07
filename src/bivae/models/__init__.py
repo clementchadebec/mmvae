@@ -27,6 +27,7 @@ from .mmvae_nf.celeba import celeba as VAE_mmvae_nf_celeba
 from .jmvae_nf.mnist_svhn_fashion import MNIST_SVHN_FASHION as VAE_jnf_msf
 from .mmvae.mnist_svhn_fashion import MNIST_SVHN_FASHION as VAE_mmvae_msf
 from .mvae.msf import MNIST_SVHN_FASHION as VAE_mvae_msf
+from .jmvae_nf.medmnist import MEDMNIST as VAE_jnf_medmnist
 
 __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
@@ -45,6 +46,7 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_mmvae_nf_celeba', 
             'VAE_jnf_msf',
             'VAE_mmvae_msf', 
-            'VAE_mvae_msf'
+            'VAE_mvae_msf',
+            'VAE_jnf_medmnist'
 
             ]

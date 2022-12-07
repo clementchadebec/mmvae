@@ -199,7 +199,7 @@ def test(epoch, agg):
                     # model.analyse_posterior(data, n_samples=10, runPath=runPath, epoch=epoch, ticks=ticks, N=100)
                     model.generate(runPath, epoch, N=32, save=True)
                     # model.generate_from_conditional(runPath, epoch, N=32, save=True)
-                    if args.model in ['circles_discs','j_circles_discs', 'jnf_circles_squares', 'circles_squares'] :
+                    if args.model == 'jnf_circles_squares' :
                         if epoch == 1:
                             print("Computing test histogram")
                             plot_hist(extract_rayon(data[0].unsqueeze(1)), runPath + '/hist_test_0.png')
@@ -239,6 +239,7 @@ if __name__ == '__main__':
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
                 scheduler = ReduceLROnPlateau(optimizer,'min')
+                best_loss = torch.inf
 
             train(epoch, agg)
             test_loss = test(epoch, agg)
