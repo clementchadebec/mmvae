@@ -7,7 +7,7 @@ import torch.distributions as dist
 import torch.nn.functional as F
 from torchvision.utils import save_image
 from tqdm import tqdm
-
+from torch.autograd import grad
 import wandb
 from bivae.utils import (unpack_data)
 
@@ -71,7 +71,12 @@ class JMVAE_NF(Multi_VAES):
             else:
                 vae_output = vae(x[m])
                 details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
-                self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                # self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                self.ratio_kl_recon[m] = 1
+                # for p in iter(vae.encoder.parameters()):
+                #     print(grad(details_reg[f'kld_{m}'], p,retain_graph=True)[0].norm())
+                #     print(grad(details_reg[f'recon_loss_{m}'],p, retain_graph=True)[0].norm())
+                #     1/0
                 reg += ( self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}']) # I don't think any likelihood scaling is needed here
 
         return reg, details_reg
@@ -139,10 +144,16 @@ class JMVAE_NF(Multi_VAES):
     def compute_recon_loss(self,x,recon,m):
         """Change the way we compute the reocnstruction, through the filter of DCCA"""
         if hasattr(self,'dcca') and self.params.dcca :
-            with torch.no_grad():
-                t = self.dcca[m](x).embedding
-                recon_t = self.dcca[m](recon).embedding
-            return F.mse_loss(t,recon_t,reduction='sum')
+            self.dcca[m].requires_grad_(False)
+            t = self.dcca[m](x).embedding
+
+            recon_t = self.dcca[m](recon).embedding
+
+            loss = F.mse_loss(t,recon_t,reduction='sum')
+            # print(torch.autograd.grad(loss,recon, retain_graph=True))
+            
+            # print(m,loss)
+            return loss
         else : 
             return F.mse_loss(x.reshape(x.shape[0],-1),
                           recon.reshape(x.shape[0],-1),reduction='sum')

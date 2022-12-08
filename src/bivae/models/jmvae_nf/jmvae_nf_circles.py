@@ -20,6 +20,8 @@ from ..nn import Encoder_VAE_SVHN,Decoder_VAE_SVHN
 import matplotlib.pyplot as plt
 from bivae.dcca.models import load_dcca_circles
 from bivae.vis import plot_joint_latent_space
+from seaborn import kdeplot
+import pandas as pd
 
 
 from bivae.dataloaders import CIRCLES_SQUARES_DL
@@ -168,7 +170,7 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         fig.savefig('{}/product_of_posteriors.png'.format(runPath))
             
     
-    def plot_joint_and_uni(self,data, rayons, classes,runPath, idx = 0, mod = 1, N=1000):
+    def plot_joint_and_uni(self,data, rayons, classes,ax, fig, idx = 0, mod = 1, N=1000):
         """Plot a two parts graph with on the left, the joint space organization
         and on the right samples from the unimodal posterior. 
 
@@ -177,17 +179,43 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
             idx (int, optional): _description_. Defaults to 0.
         """
         
-        fig, ax = plt.subplots(1,1,sharex=True, sharey=True, figsize=(10,10))
-        
         # On the left, plot the embeddings
         
         m,s, z = self.analyse_joint_posterior(data,len(data[0]))
-        plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
+        sc = plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
         
         # Then on the other side, take an image and sample from the posterior
         samples= self.vaes[mod].forward(torch.stack([data[mod][idx]]*N)).z.cpu()
         print(samples.shape)
         
-        ax.scatter(samples[:,0], samples[:,1], c='red')
+        # ax.scatter(samples[:,0], samples[:,1], c='red')
+        df = pd.DataFrame(samples, columns=[r'z_1', r'z_2'])
+        kdeplot(df, x='z_1',y='z_2', ax=ax, color='red', levels=5)
         
-        fig.savefig(str(runPath) + '/joint_and_uni_idx_{}_mod_{}.png'.format(idx, mod))
+        return sc
+        
+
+    def plot_dcca_values(self, data, runPath, classes):
+        """Visualize dcca values to understand better the impact of dcca.
+
+        Args:
+            data (_type_): _description_
+            runPath (_type_): _description_
+            
+        """
+        fig, ax = plt.subplots(1,4)
+        
+        # Compute the embeddings
+        m,s, z = self.analyse_joint_posterior(data,len(data[0]))
+        
+        # Compute the dcca_values
+        for mod in range(self.mod):
+            with torch.no_grad():
+                hues = self.dcca[mod](data[mod]).embedding.squeeze().cpu()
+                sc = plot_joint_latent_space(z,hues,ax[mod], fig, filters=[classes == 1])
+                fig.colorbar(sc, ax=ax[mod])
+                # Plot the histogram of dcca values
+                # print(hues.unique())
+                ax[mod + 2].hist(hues, bins=100)
+        
+        fig.savefig(str(runPath) + '/dcca_vis.png')
