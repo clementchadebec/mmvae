@@ -189,8 +189,8 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-                if hasattr(model, 'dcca'):
-                    model.plot_dcca_values(data,runPath, classes[0])
+                # if hasattr(model, 'dcca'):
+                #     model.plot_dcca_values(data,runPath, classes[0])
                     
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
 
