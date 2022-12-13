@@ -18,6 +18,7 @@ from bivae.models.nn.joint_encoders import DoubleHeadJoint
 from bivae.my_pythae.models import my_VAE, my_VAE_IAF
 from bivae.my_pythae.models.vae_maf import VAE_MAF_Config, my_VAE_MAF
 from bivae.utils import add_channels, update_details
+import wandb
 
 from ..jmvae_nf import JMVAE_NF
 from ..nn import Decoder_VAE_SVHN, TwoStepsEncoder
@@ -57,7 +58,9 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
         if params.dcca :
             # First load the DCCA encoders
-            self.dcca = load_dcca_mnist_svhn()
+            dim_dcca = 9
+            self.dcca = load_dcca_mnist_svhn(dim=dim_dcca)
+            wandb.log({'dcca_dim' : dim_dcca})
 
             # Then add the flows
             encoder1 = TwoStepsEncoder(self.dcca[0], params)

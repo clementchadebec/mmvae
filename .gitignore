@@ -40,3 +40,6 @@ src/bivae/dcca/__pycache__/utils.cpython-38.pyc
 examples/model.pt
 *.cpython-38.pyc
 
+
+toy_compare/
+

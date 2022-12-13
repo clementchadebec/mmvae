@@ -182,15 +182,16 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         # On the left, plot the embeddings
         
         m,s, z = self.analyse_joint_posterior(data,len(data[0]))
-        sc = plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
-        
+        # sc = plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
+        sc = plot_joint_latent_space(z,rayons[mod],ax, fig,classes)
         # Then on the other side, take an image and sample from the posterior
         samples= self.vaes[mod].forward(torch.stack([data[mod][idx]]*N)).z.cpu()
         print(samples.shape)
         
-        # ax.scatter(samples[:,0], samples[:,1], c='red')
-        df = pd.DataFrame(samples, columns=[r'z_1', r'z_2'])
-        kdeplot(df, x='z_1',y='z_2', ax=ax, color='red', levels=5)
+        # ax.scatter(samples[:,0], samples[:,1], c='black')
+        df = pd.DataFrame(samples, columns=[r'$z_1$', r'$z_2$'])
+        kdeplot(df, x=r'$z_1$',y=r'$z_2$', ax=ax, color='black', levels=5, linewidths = 1, bw_adjust=1)
+            
         
         return sc
         
