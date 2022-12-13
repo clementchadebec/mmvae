@@ -55,7 +55,7 @@ class wrapper_encoder_lcca_model1(nn.Module):
 
         model1 = Encoder_VAE_MLP(VAEConfig((1,28,28), 16))
         model1.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model1.pt'))
-        self.dim = dim
+        self.latent_dim = dim
 
         self.encoder = model1
         self.m = np.load('../experiments/dcca/mnist_svhn/l_cca_m.npy')[0]
@@ -67,7 +67,7 @@ class wrapper_encoder_lcca_model1(nn.Module):
         h = self.encoder(x)['embedding']
         result = h - self.m.reshape([1, -1]).repeat(len(h), 1)
         result = torch.mm(result, self.w)
-        o = ModelOutput(embedding = result.float()[:,:self.dim])
+        o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
         return o
 
 class wrapper_encoder_lcca_model2(nn.Module):
@@ -77,7 +77,7 @@ class wrapper_encoder_lcca_model2(nn.Module):
 
         model2 = Encoder_VAE_SVHN(VAEConfig((3,32,32), 16))
         model2.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model2.pt'))
-        self.dim = dim
+        self.latent_dim = dim
 
         self.encoder = model2
         self.m = np.load('../experiments/dcca/mnist_svhn/l_cca_m.npy')[1]
@@ -91,7 +91,7 @@ class wrapper_encoder_lcca_model2(nn.Module):
         result = h - self.m.reshape([1, -1]).repeat(len(h), 1)
         result = torch.mm(result, self.w)
 
-        o = ModelOutput(embedding = result.float()[:,:self.dim])
+        o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
         return o
 
 def load_dcca_mnist_svhn(dim=16):
