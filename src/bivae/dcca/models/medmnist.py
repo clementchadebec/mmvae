@@ -6,7 +6,7 @@ from bivae.my_pythae.models import my_VAE, my_VAE_LinNF, my_VAE_IAF
 from bivae.models.nn.medmnist import Encoder_ResNet_AE_medmnist, Encoder_Resnet18_AE_medmnist
 
 
-encoder = Encoder_Resnet18_AE_medmnist
+encoder = Encoder_ResNet_AE_medmnist
 
 
 class DeepCCA_MedMNIST(nn.Module):
@@ -15,7 +15,7 @@ class DeepCCA_MedMNIST(nn.Module):
         super(DeepCCA_MedMNIST, self).__init__()
 
         
-        self.model1 = encoder(VAEConfig((3,28,28), outdim_size))
+        self.model1 = encoder(VAEConfig((1,28,28), outdim_size))
         self.model2 = encoder(VAEConfig((3,28,28), outdim_size))
         
 
@@ -39,7 +39,7 @@ class DeepCCA_MedMNIST(nn.Module):
 
 def load_dcca_medmnist(outdim_size):
 
-    model1 = encoder(VAEConfig((3,28,28), outdim_size))
+    model1 = encoder(VAEConfig((1,28,28), outdim_size))
     model2 = encoder(VAEConfig((3,28,28), outdim_size))
 
     model1.load_state_dict(torch.load('../experiments/dcca/medmnist/model1.pt'))

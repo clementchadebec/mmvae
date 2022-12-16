@@ -1,15 +1,15 @@
 {
-  "experiment": "mvae/mnist_svhn",
-  "model": "mvae_mnist_svhn",
+  "experiment": "mvae/medmnist",
+  "model": "mvae_medmnist",
   "obj": "self_built",
   "llik_scaling": 0.0,
   "recon_losses" : ["normal", "normal"],
 
-  "K": 30,
+  "K": 1,
   "looser": false,
 
   "batch_size": 128, "learning_rate" : 1e-3,
-  "epochs": 100,
+  "epochs": 200,
   "latent_dim": 20,
   "num_hidden_layers": 1,
   "use_pretrain": "",
@@ -33,5 +33,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "mnist_svhn"
+  "wandb_experiment": "medmnist",
+  "use_gen": false
   }

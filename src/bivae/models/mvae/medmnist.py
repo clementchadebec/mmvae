@@ -19,28 +19,25 @@ from bivae.my_pythae.models.vae_maf import VAE_MAF_Config, my_VAE_MAF
 from bivae.utils import add_channels, update_details
 from ..modalities.medmnist import medmnist_utils
 
-from ..jmvae_nf import JMVAE_NF
+from ..mvae import MVAE
 from ..nn import Decoder_VAE_SVHN, TwoStepsEncoder
 from bivae.models.nn.medmnist import Encoder_ResNet_VAE_medmnist
 
 
 
-class MEDMNIST(JMVAE_NF,medmnist_utils):
+class MEDMNIST(MVAE,medmnist_utils):
 
-    modelName = 'jnf_medmnist'
+    modelName = 'mvae_medmnist'
 
 
     def __init__(self, params):
         
         # Define the joint encoder
-        hidden_dim = 512
-        pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 28, 28), 20)]
-        joint_encoder = DoubleHeadJoint(hidden_dim, *pre_configs,Encoder_ResNet_VAE_medmnist, Encoder_ResNet_VAE_medmnist,params)
-        
+       
         medmnist_utils.__init__(self,params)
         vaes = self.get_vaes(params)
 
-        JMVAE_NF.__init__(self,params, joint_encoder, vaes)
+        MVAE.__init__(self,params, vaes)
 
         
        

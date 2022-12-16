@@ -243,9 +243,9 @@ class Encoder_ResNet_VAE_medmnist(BaseEncoder):
     def __init__(self, args: BaseAEConfig):
         BaseEncoder.__init__(self)
 
-        self.input_dim = (3, 28, 28)
+        self.input_dim = args.input_dim
         self.latent_dim = args.latent_dim
-        self.n_channels = 3
+        self.n_channels = self.input_dim[0]
 
         layers = nn.ModuleList()
 
@@ -386,9 +386,9 @@ class Decoder_ResNet_AE_medmnist(BaseDecoder):
     def __init__(self, args: BaseAEConfig):
         BaseDecoder.__init__(self)
 
-        self.input_dim = (3, 28, 28)
+        self.input_dim = args.input_dim
         self.latent_dim = args.latent_dim
-        self.n_channels = 3
+        self.n_channels = self.input_dim[0]
 
         layers = nn.ModuleList()
 

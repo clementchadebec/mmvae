@@ -518,17 +518,37 @@ class MEDMNIST_DL():
     def __init__(self) -> None:
         pass
     
+    def transform_blood_labels(self,targets):
+        targets[targets == 1] = 1
+        targets[targets == 6] = 0
+        return targets.squeeze()
+    
+    def transform_chest_labels(self, targets):
+        targets = 1-targets
+        return targets.squeeze()
+    
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(),dlargs={}):
         
-        # tx = transforms.Compose([transform, transforms.Normalize(0.5, 0.5)])
-        tx = transform
+        d1_train = PneumoniaMNIST('train',transform=transform, target_transform = self.transform_chest_labels)
+        d1_test  = PneumoniaMNIST('test' ,transform=transform, target_transform = self.transform_chest_labels)
+        d1_val   = PneumoniaMNIST('val'  ,transform=transform, target_transform = self.transform_chest_labels)
+
+        d2_train = BloodMNIST('train', transform=transform, target_transform= self.transform_blood_labels)
+        d2_test = BloodMNIST('test'  , transform=transform, target_transform= self.transform_blood_labels)
+        d2_val = BloodMNIST('val'    , transform=transform, target_transform= self.transform_blood_labels)
+
+
         
-        d1_train = PneumoniaMNIST('train',transform=transforms.Compose([tx,add_channels()]))
-        d2_train = BloodMNIST('train', transform=tx)
-        
-        id1_train = torch.load('../data/train-med-path-idx.pt')
-        id2_train = torch.load('../data/train-med-tissue-idx.pt')
-        
+        id1_train = torch.load('../data/train-med-pneumonia-idx-bis.pt')
+        id1_test   = torch.load('../data/test-med-pneumonia-idx-bis.pt')
+        id1_val     = torch.load('../data/val-med-pneumonia-idx-bis.pt')
+
+
+        id2_train = torch.load('../data/train-med-blood-idx-bis.pt')
+        id2_test =   torch.load('../data/test-med-blood-idx-bis.pt')
+        id2_val =     torch.load('../data/val-med-blood-idx-bis.pt')
+
+
         
         tensor_train = TensorDataset([
             ResampleDataset(d1_train, lambda d,i : id1_train[i], size=len(id1_train)), 
@@ -537,11 +557,7 @@ class MEDMNIST_DL():
         
         train_dl = DataLoader(tensor_train, batch_size=batch_size, shuffle=True, **dlargs)
         
-        d1_test = PneumoniaMNIST('test',transform=transforms.Compose([tx,add_channels()]))
-        d2_test = BloodMNIST('test', transform=tx)
         
-        id1_test = torch.load('../data/test-med-path-idx.pt')
-        id2_test = torch.load('../data/test-med-tissue-idx.pt')
         
         tensor_test = TensorDataset([
             ResampleDataset(d1_test, lambda d,i : id1_test[i], size=len(id1_test)), 
@@ -550,15 +566,13 @@ class MEDMNIST_DL():
         
         test_dl = DataLoader(tensor_test, batch_size=batch_size, shuffle=False, **dlargs)
         
-        d1_val = PneumoniaMNIST('val',transform=transforms.Compose([tx,add_channels()]))
-        d2_val = BloodMNIST('val', transform=tx)
         
-        id1_val = torch.load('../data/val-med-path-idx.pt')
-        id2_val = torch.load('../data/val-med-tissue-idx.pt')
+        
+        
         
         tensor_val = TensorDataset([
-            ResampleDataset(d1_train, lambda d,i : id1_val[i], size=len(id1_val)), 
-            ResampleDataset(d2_train, lambda d, i : id2_val[i], size=len(id1_val))
+            ResampleDataset(d1_val, lambda d,i : id1_val[i], size=len(id1_val)), 
+            ResampleDataset(d2_val, lambda d, i : id2_val[i], size=len(id1_val))
         ])
         
         val_dl = DataLoader(tensor_val, batch_size=batch_size, shuffle=False, **dlargs)
