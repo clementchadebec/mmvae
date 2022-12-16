@@ -355,6 +355,10 @@ class Multi_VAES(nn.Module):
         return metrics
     
     
+    def step(self, epoch):
+        pass
+        
+    
     
 
 
