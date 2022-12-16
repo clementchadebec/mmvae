@@ -47,7 +47,7 @@ class wrapper_encoder_lcca_model1(nn.Module):
         # get the outdim size of the encoders from the json file
 
         model1 = encoder(VAEConfig((1,28,28), 16))
-        model1.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model1.pt'))
+        model1.load_state_dict(torch.load('../experiments/dcca/medmnist/model1.pt'))
         self.latent_dim = dim
 
         self.encoder = model1
@@ -69,7 +69,7 @@ class wrapper_encoder_lcca_model2(nn.Module):
         super(wrapper_encoder_lcca_model2, self).__init__()
 
         model2 = encoder(VAEConfig((3,28,28), 16))
-        model2.load_state_dict(torch.load('../experiments/dcca/mnist_svhn/model2.pt'))
+        model2.load_state_dict(torch.load('../experiments/dcca/medmnist/model2.pt'))
         self.latent_dim = dim
 
         self.encoder = model2
