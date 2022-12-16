@@ -10,7 +10,7 @@
   "K": 1,
   "recon_losses" : ["normal", "normal"],
   "looser": false,
-  "llik_scaling": 0,
+  "llik_scaling": 1,
   "batch_size": 128, "learning_rate" : 1e-3,
   "epochs": 200,
   "latent_dim": 20,
@@ -37,7 +37,6 @@
   "dcca": false,
   "device": "cuda",
   "wandb_experiment": "medmnist",
-  "wandb_mode" : "offline",
   "flow" : "maf", 
-  "use_gen" : false
+  "use_gen" :false
   }
