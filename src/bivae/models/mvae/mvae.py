@@ -21,6 +21,8 @@ class MVAE(Multi_VAES):
         self.subsampling = False
         self.subsets = []
         
+    
+        
         
     def poe(self, mus_list, log_vars_list, eps = 1e-8):
         

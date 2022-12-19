@@ -213,7 +213,7 @@ def compute_all_cond_ll_from_poe_subsets(model,data, K=1000,batch_size_K=100):
     r_dict = {}
     
     for s,gen_mod in zip(subsets, range(3)):
-        ll = compute_cond_ll_from_poe_subset(model,data,s,gen_mod,K,batch_size_K)
+        ll = compute_cond_ll_from_poe_subset(model,data,s,gen_mod,K,500)
         r_dict['cond_poe_ll_{}'.format(gen_mod)] = ll
     return r_dict
 
