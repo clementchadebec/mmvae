@@ -519,8 +519,8 @@ class MEDMNIST_DL():
         pass
     
     def transform_blood_labels(self,targets):
-        targets[targets == 1] = 1
-        targets[targets == 6] = 0
+        targets[targets == 3] = 1
+        targets[targets == 5] = 0
         return targets.squeeze()
     
     def transform_chest_labels(self, targets):

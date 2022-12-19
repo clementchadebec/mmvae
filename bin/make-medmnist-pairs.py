@@ -35,8 +35,8 @@ if __name__ == '__main__':
         l2, li2 = torch.tensor(d2.labels.squeeze()).sort()
         selected_classes = (l2 == 1).bool() +  (l2 ==6).bool()
         l2 = l2[selected_classes]
-        l2[(l2 == 6).bool()] = 0 # the bigger class is associated to zero
-        l2[(l2 == 1).bool()] = 1
+        l2[(l2 == 5).bool()] = 0 # the bigger class is associated to zero
+        l2[(l2 == 3).bool()] = 1
         l1 = 1 - l1 # The bigger class is associated to zero
         li2 = li2[selected_classes]
         
