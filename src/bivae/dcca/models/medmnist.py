@@ -60,7 +60,9 @@ class wrapper_encoder_lcca_model1(nn.Module):
         h = self.encoder(x)['embedding']
         result = h - self.m.reshape([1, -1]).repeat(len(h), 1)
         result = torch.mm(result, self.w)
-        o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        o = ModelOutput(embedding = h)
+        
         return o
 
 class wrapper_encoder_lcca_model2(nn.Module):
@@ -84,7 +86,9 @@ class wrapper_encoder_lcca_model2(nn.Module):
         result = h - self.m.reshape([1, -1]).repeat(len(h), 1)
         result = torch.mm(result, self.w)
 
-        o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        o = ModelOutput(embedding = h)
+
         return o
 
 
