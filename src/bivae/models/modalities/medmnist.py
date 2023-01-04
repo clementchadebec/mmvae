@@ -18,7 +18,7 @@ from ..nn import Decoder_VAE_SVHN, TwoStepsEncoder
 from bivae.analysis.accuracies import compute_accuracies
 from bivae.utils import update_details
 from bivae.dcca.models import load_dcca_medmnist
-from bivae.analysis.classifiers import load_medmnist_classifiers
+from bivae.analysis.classifiers import load_medmnist_classifiers, load_fake_dcca_medmnist
 
 
 class medmnist_utils():
@@ -48,7 +48,8 @@ class medmnist_utils():
         if params.dcca :
             # First load the DCCA encoders
             
-            self.dcca = load_dcca_medmnist(params.dcca_dim)
+            # self.dcca = load_dcca_medmnist(params.dcca_dim)
+            self.dcca = load_fake_dcca_medmnist()
 
             # Then add the flows
             encoder1 = TwoStepsEncoder(self.dcca[0], params)
