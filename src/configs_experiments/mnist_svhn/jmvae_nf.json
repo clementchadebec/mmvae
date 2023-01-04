@@ -2,7 +2,7 @@
   "comment":"The JMVAE model with added flows but no dcca pre-embeddings. No reconstruction and maf flows",
 
 
-  "experiment": "jmvae_nf/mnist_svhn",
+  "experiment": "jmvae_nf_recon/mnist_svhn",
   "model": "jnf_mnist_svhn_dcca",
   "obj": "jmvae_nf",
 
@@ -24,7 +24,7 @@
   "seed": 1,
   "dist": "normal",
   "data_path": "../data/",
-  "skip_warmup": false,
+  "skip_warmup": true,
   "warmup": 100,
   "no_nf": false,
   "beta_prior": 1,
@@ -32,7 +32,7 @@
   "decrease_beta_kl": 1,
   "fix_decoders": true,
   "fix_jencoder": true,
-  "no_recon": true,
+  "no_recon": false,
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",

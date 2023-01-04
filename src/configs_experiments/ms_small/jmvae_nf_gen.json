@@ -41,6 +41,6 @@
   "flow" : "maf", 
   "use_gen" : true,
   "len_train":10000, 
-  "len_gen": 4000
+  "len_gen": 9000
   }
 

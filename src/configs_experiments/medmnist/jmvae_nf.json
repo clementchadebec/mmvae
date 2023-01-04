@@ -36,7 +36,7 @@
   "print_freq": 0,
   "no_analytics": false,
   "no_cuda": false,
-  "seed": 1,
+  "seed": 0,
   "dist": "normal",
   "data_path": "../data/",
   "skip_warmup": false,
@@ -52,14 +52,8 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-
   "wandb_experiment": "medmnist",
   "flow" : "maf", 
-
   "use_gen" : false
   }
 
-=======
-  "use_gen" :false
-  }
->>>>>>> 93d02e95b90b282a500ba943a166b233cffed70b
