@@ -539,14 +539,14 @@ class MEDMNIST_DL():
 
 
         
-        id1_train = torch.load('../data/train-med-pneumonia-idx-bis.pt')
-        id1_test   = torch.load('../data/test-med-pneumonia-idx-bis.pt')
-        id1_val     = torch.load('../data/val-med-pneumonia-idx-bis.pt')
+        id1_train = torch.load('../data/train-med-pneumonia-idx.pt')
+        id1_test   = torch.load('../data/test-med-pneumonia-idx.pt')
+        id1_val     = torch.load('../data/val-med-pneumonia-idx.pt')
 
 
-        id2_train = torch.load('../data/train-med-blood-idx-bis.pt')
-        id2_test =   torch.load('../data/test-med-blood-idx-bis.pt')
-        id2_val =     torch.load('../data/val-med-blood-idx-bis.pt')
+        id2_train = torch.load('../data/train-med-blood-idx.pt')
+        id2_test =   torch.load('../data/test-med-blood-idx.pt')
+        id2_val =     torch.load('../data/val-med-blood-idx.pt')
 
 
         
