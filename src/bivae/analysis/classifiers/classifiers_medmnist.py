@@ -17,6 +17,8 @@ from tqdm import tqdm
 from bivae.models.nn.medmnist_classifiers import ResNet18
 import numpy as np
 from torchnet.dataset import TensorDataset, ResampleDataset
+from pythae.models.base.base_utils import ModelOutput
+
 
 
 
@@ -80,6 +82,58 @@ def load_medmnist_classifiers():
     
     return [model1, model2]
 
+
+#############################################################################################################
+# Define a fake DCCA with trained classifiers to wether the problems comes from the quality of the 
+# information extracted with the DCCA or is more fundamental than that
+
+class fake_encoder_lcca_model1(nn.Module):
+
+    def __init__(self, dim):
+        super(fake_encoder_lcca_model1, self).__init__()
+
+        model = ClassifierPneumonia()
+        self.latent_dim = 2
+
+        self.encoder = model
+        
+
+    def forward(self, x):
+        self.encoder.eval()
+        h = self.encoder(x)
+        
+
+        # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        o = ModelOutput(embedding = h)
+
+        return o
+    
+class fake_encoder_lcca_model2(nn.Module):
+
+    def __init__(self, dim):
+        super(fake_encoder_lcca_model2, self).__init__()
+
+        model = ClassifierBLOOD()
+        model.load_state_dict(torch.load('../experiments/classifiers_medmnist/model_2.pt'))
+        self.latent_dim = 2
+
+        self.encoder = model
+        
+
+    def forward(self, x):
+        self.encoder.eval()
+        h = self.encoder(x)
+        
+
+        # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
+        o = ModelOutput(embedding = h)
+
+        return o
+
+def load_fake_dcca_medmnist():
+    model1 = fake_encoder_lcca_model1()
+    model2 = fake_encoder_lcca_model2()
+    return [model1, model2]
 
 ##############################################################################################################
 # Load the fashion mnist dataset and train

@@ -1,7 +1,7 @@
 from .classifier_mnist import MnistClassifier, load_pretrained_mnist,load_pretrained_fashion
 from .classifier_SVHN import SVHNClassifier, load_pretrained_svhn
 from .classifier_empty_full import CirclesClassifier
-from .classifiers_medmnist import ClassifierBLOOD, ClassifierPneumonia, load_medmnist_classifiers
+from .classifiers_medmnist import ClassifierBLOOD, ClassifierPneumonia, load_medmnist_classifiers, load_fake_dcca_medmnist
 # from .CelebA_classifier import Resnet_classifier_celeba
 
 __all__ = ['load_medmnist_classifiers', 
@@ -12,5 +12,6 @@ __all__ = ['load_medmnist_classifiers',
            'SVHNClassifier',
            'CirclesClassifier',
            'ClassifierBLOOD',
-           'ClassifierPneumonia'
+           'ClassifierPneumonia',
+           'load_fake_dcca_medmnist'
            ]
