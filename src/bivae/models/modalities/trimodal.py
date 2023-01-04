@@ -154,9 +154,11 @@ def compute_poe_subset_accuracy(model,data, classes,n_data=100,ns=100):
 
 
 
-def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_size_K=100):
-    """Compute the likehoods of the generation from conditional poe subset posteriors.
-    Function used with MVAE and JMVAE
+def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_size_K=200,i_s=0):
+    """
+    Compute the likehoods of the generation from conditional poe subset posteriors.
+    Function used with MVAE and JMVAE. 
+    We use one of the two unimodal distributions as the importance distribution.
 
     Args:
         model (MVAE or JMVAE_NF instance)
@@ -164,48 +166,56 @@ def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_
         subset (list): _description_
         gen_mod (int): _description_
         K (int, optional): number of samples to estimate likelihoods. Defaults to 1000.
-        batch_size_K (int, optional): how to batch. Defaults to 100.
+        i_s (int) : the distribution to use for importance sampling (0 for the first of the subset,1 for the second)
 
     Returns:
         float: average likelihoods across the datapoints
     """
-
+    i_s_mod = subset[i_s]
+    importance_dist = model.vaes[i_s_mod].encoder
+    
 
     # Then iter on each datapoint to compute the iwae estimate of ln(p(x|y))
     ll = []
+    nb_batches = K // batch_size_K
     for i in range(len(data[0])):
-        start_idx, stop_index = 0, batch_size_K
-        lnpxs = []
+        for n in range(nb_batches):
+            lnpxs = []
+            repeated_data_point = torch.stack(batch_size_K * [data[i_s_mod][i]]) # batch_size_K, n_channels, h, w
+            repeated_data_subset = [torch.stack(batch_size_K * [data[m][i]]) for m in range(model.mod)]        
 
-        while stop_index <= K:
+            # Encode with the conditional VAE
+            latents = model.infer_latent_from_mod(i_s_mod,repeated_data_point)
 
-            # Encode with product of experts
-            bdata = [d[i].unsqueeze(0) for d in data]
-
-            zs = model.sample_from_poe_subset(subset,bdata,K = batch_size_K) #(batch_size_K,1,latent_dim)
-            zs = zs.squeeze(1)
-            
             # Decode with the opposite decoder
-            with torch.no_grad():
-                r = model.vaes[gen_mod].decoder(zs).reconstruction # (batch_size , ch,w,h)
-        
+            recon = model.vaes[gen_mod].decoder(latents).reconstruction
 
             # Compute lnp(y|z)
 
 
             if model.px_z[gen_mod] == dist.Bernoulli:
-                lpx_z = model.px_z[gen_mod](r).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+                lpx_z = model.px_z[gen_mod](recon).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
             else:
-                lpx_z = model.px_z[gen_mod](r, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
+                lpx_z = model.px_z[gen_mod](recon, scale=1).log_prob(data[gen_mod][i]).sum(dim=(1, 2, 3))
 
-            lnpxs.append(torch.logsumexp(lpx_z,dim=0))
-            # next batch
-            start_idx += batch_size_K
-            stop_index += batch_size_K
+            # Compute Importance weights 
+            # As subset we only consider the modality we didn't use to sample from since w = q(z|x_1)q(z|x_2)/(p(z)*q(z|x_2)) if i_s=2
+            ln_q_zxs = model.compute_poe_posterior([subset[1 - i_s]],latents,repeated_data_subset, divide_prior=True, grad=False)
+            
+            # Normalize the weights
+            # print("shape of ln_q_zxs", ln_q_zxs.shape)
+            ln_q_zxs = ln_q_zxs - torch.logsumexp(ln_q_zxs,dim=0)
+            
+            lpx_z += ln_q_zxs
 
-        ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(K))
+            lnpxs.append(torch.logsumexp(torch.Tensor(lpx_z), dim=0) ) 
+        
+        ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(nb_batches))
 
     return torch.sum(torch.tensor(ll))/len(ll)
+
+
+
 
 
 def compute_all_cond_ll_from_poe_subsets(model,data, K=1000,batch_size_K=100):
@@ -213,7 +223,7 @@ def compute_all_cond_ll_from_poe_subsets(model,data, K=1000,batch_size_K=100):
     r_dict = {}
     
     for s,gen_mod in zip(subsets, range(3)):
-        ll = compute_cond_ll_from_poe_subset(model,data,s,gen_mod,K,500)
+        ll = compute_cond_ll_from_poe_subset(model,data,s,gen_mod,K)
         r_dict['cond_poe_ll_{}'.format(gen_mod)] = ll
     return r_dict
 

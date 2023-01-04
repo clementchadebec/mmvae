@@ -27,18 +27,23 @@ random.seed(0)
 device = 'cuda'
 n_samples = 50
 
+wandb.init(project = 'plot_celeba_samples' , entity="asenellart") 
+
 
 """A script to plot samples from the different models and saving all the attributes """
 
-models_to_evaluate = ['jmvae_nf/celeba', 'jmvae_nf_celeba/celeba','mmvae/celeba','mvae/celeba']
+models_to_evaluate = [ 'jmvae_nf_dcca/celeba','mmvae/celeba','mvae/celeba', 'jmvae/celeba']
 model_dicts = []
 
 # load args from disk if pretrained model path is given
 for model_name in models_to_evaluate:
+    print(model_name)
     day_path = max(glob.glob(os.path.join('../experiments/' + model_name, '*/')), key=os.path.getmtime)
     model_path = max(glob.glob(os.path.join(day_path, '*/')), key=os.path.getmtime)
     with open(model_path + 'args.json', 'r') as fcc_file:
         # Load the args
+        wandb.init(project = 'plot_celeba_samples' , entity="asenellart") 
+
         args = argparse.Namespace()
         args.__dict__.update(json.load(fcc_file))
         # Get the model class
@@ -83,17 +88,21 @@ def compare_samples():
         model = m['model']
         model.eval()
         s = model._sample_from_conditional(data, n=10) # s[i][j] is a list with n tensors (n_batch, c, w, h)
-        s = torch.stack(s).permute(1,0,2,3,4) # n_batch x n_samples x c x w x h
+        s = torch.stack(s[1][0]).permute(1,0,2,3,4) # n_batch x n_samples x c x w x h
         samples.append(s)
     samples = torch.stack(samples).permute(1,0,2,3,4,5)
 
     for i, t in enumerate(samples):
         # t is of size n_models, 10, c, w, h
         kwargs = dict(nrow = 10)
-        save_image(t.reshape(len(t)*10, *t.shape[2:]), str(runPath) + f'/samples_{i}.png')
-    # save the attributes 
-    np.savetxt(str(runPath) + f'/attribute.txt',classes[0])
+        save_image(t.reshape(len(t)*10, *t.shape[2:]), str(runPath) + f'/samples_{i}.png',**kwargs)
+        # get the attributes 
+        att = np.argwhere(classes[0][i] ==1)[0].numpy()
+        
 
+        l = np.array(train_loader.dataset.attr_names)[att]
+        
+        np.savetxt(str(runPath) + f'/attributes_{i}.txt', l,fmt="%s")
 
     return 
 

@@ -33,19 +33,19 @@ if __name__ == '__main__':
         l1, li1 = torch.tensor(d1.labels.squeeze()).sort()
         
         l2, li2 = torch.tensor(d2.labels.squeeze()).sort()
-        selected_classes = (l2 == 5).bool() +  (l2 == 3).bool()
+        selected_classes = (l2 == 1).bool() +  (l2 == 6).bool()
         l2 = l2[selected_classes]
-        l2[(l2 == 5).bool()] = 0 # the bigger class is associated to zero
-        l2[(l2 == 3).bool()] = 1
-        l1 = 1 - l1 # The bigger class is associated to zero
         li2 = li2[selected_classes]
+        l2[(l2 == 1).bool()] = 0 
+        l2[(l2 == 6).bool()] = 1
+        # l1 = 1 - l1 # The bigger class is associated to zero
         
         print(l1.unique(), l2.unique())
         idx1, idx2 = rand_match_on_idx(l1, li1, l2, li2, max_d=max_d, dm=dm)
         shuffle = torch.randperm(len(idx1))
         print(idx1[:4], idx2[:4])
         print('len {} idx:'.format(split), len(idx1), len(idx2))
-        torch.save(idx1[shuffle], '../data/' + split + '-med-pneumonia-idx-bis.pt')
-        torch.save(idx2[shuffle], '../data/' + split + '-med-blood-idx-bis.pt')
+        torch.save(idx1[shuffle], '../data/' + split + '-med-pneumonia-idx.pt')
+        torch.save(idx2[shuffle], '../data/' + split + '-med-blood-idx.pt')
 
     

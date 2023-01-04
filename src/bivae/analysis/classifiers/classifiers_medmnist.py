@@ -48,7 +48,7 @@ class ClassifierPneumonia(nn.Module):
         
         h = self.network(self.transform(x))
         print(h.shape)
-        return h[:,[1,0]]
+        return h
     
 
 class ClassifierBLOOD(nn.Module):
@@ -70,7 +70,7 @@ def load_medmnist_classifiers():
     
     model1 = ClassifierPneumonia()
     model2 = ClassifierBLOOD()
-    model2.load_state_dict(torch.load('../experiments/classifiers_medmnist/model_2_bis.pt'))
+    model2.load_state_dict(torch.load('../experiments/classifiers_medmnist/model_2.pt'))
     
     model1.eval()
     model2.eval()
@@ -98,8 +98,8 @@ if __name__ == '__main__':
                              batch_size=2000, shuffle=False)
     
     def transform_blood_labels(targets):
-        targets[targets == 3] = 1
-        targets[targets == 5] = 0
+        targets[targets == 1] = 0
+        targets[targets == 6] = 1
         return targets.squeeze()
     
     # Train the Blood classifier
@@ -108,10 +108,10 @@ if __name__ == '__main__':
     test_set_b = BloodMNIST('test', transforms.ToTensor(), target_transform=  transform_blood_labels)
 
 
-    # Only keep classes 6 and 7
-    selected_classes_t = np.argwhere((train_set_b.labels.squeeze()==5) + (train_set_b.labels.squeeze()==3)).squeeze()
-    selected_classes_v = np.argwhere((val_set_b.labels.squeeze()==5) + (val_set_b.labels.squeeze()==3)).squeeze()
-    selected_classes_te = np.argwhere((test_set_b.labels.squeeze()==5) + (test_set_b.labels.squeeze()==3)).squeeze()
+    # Only keep classes 6 and 1
+    selected_classes_t = np.argwhere((train_set_b.labels.squeeze()==6) + (train_set_b.labels.squeeze()==1)).squeeze()
+    selected_classes_v = np.argwhere((val_set_b.labels.squeeze()==6) + (val_set_b.labels.squeeze()==1)).squeeze()
+    selected_classes_te = np.argwhere((test_set_b.labels.squeeze()==6) + (test_set_b.labels.squeeze()==1)).squeeze()
     
     train_set_b = ResampleDataset(train_set_b, lambda d,i : selected_classes_t[i], size = len(selected_classes_t))
     val_set_b = ResampleDataset(val_set_b, lambda d,i : selected_classes_v[i], size = len(selected_classes_v))
@@ -173,5 +173,5 @@ if __name__ == '__main__':
         train(train_loader_b, model_b,epoch,objective, optimizer )
         test(val_loader_b,model_b)
     
-    torch.save(model_b.state_dict(), '../experiments/classifiers_medmnist/model_2_bis.pt')
+    torch.save(model_b.state_dict(), '../experiments/classifiers_medmnist/model_2.pt')
 

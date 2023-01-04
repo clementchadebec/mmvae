@@ -519,12 +519,12 @@ class MEDMNIST_DL():
         pass
     
     def transform_blood_labels(self,targets):
-        targets[targets == 3] = 1
-        targets[targets == 5] = 0
+        targets[targets == 1] = 0
+        targets[targets == 6] = 1
         return targets.squeeze()
     
     def transform_chest_labels(self, targets):
-        targets = 1-targets
+        # targets = 1-targets
         return targets.squeeze()
     
     def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(),dlargs={}):
