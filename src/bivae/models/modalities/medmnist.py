@@ -47,7 +47,8 @@ class medmnist_utils():
 
         if params.dcca :
             # First load the DCCA encoders
-            self.dcca = load_dcca_medmnist(2)
+            
+            self.dcca = load_dcca_medmnist(params.dcca_dim)
 
             # Then add the flows
             encoder1 = TwoStepsEncoder(self.dcca[0], params)
