@@ -89,7 +89,7 @@ def load_medmnist_classifiers():
 
 class fake_encoder_lcca_model1(nn.Module):
 
-    def __init__(self, dim):
+    def __init__(self):
         super(fake_encoder_lcca_model1, self).__init__()
 
         model = ClassifierPneumonia()
@@ -110,7 +110,7 @@ class fake_encoder_lcca_model1(nn.Module):
     
 class fake_encoder_lcca_model2(nn.Module):
 
-    def __init__(self, dim):
+    def __init__(self):
         super(fake_encoder_lcca_model2, self).__init__()
 
         model = ClassifierBLOOD()
