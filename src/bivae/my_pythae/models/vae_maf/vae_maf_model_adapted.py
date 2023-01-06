@@ -87,7 +87,7 @@ class my_VAE_MAF(VAE):
 
         recon_x = self.decoder(z)["reconstruction"]
 
-
+        loss, recon_loss, kld = self.loss_function( recon_x, x, mu, log_var, z0, z, log_abs_det_jac)
 
         output = ModelOutput(
             recon_x=recon_x,
@@ -96,6 +96,7 @@ class my_VAE_MAF(VAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac = log_abs_det_jac,
+            neg_elbo = loss
 
 
         )
@@ -106,7 +107,7 @@ class my_VAE_MAF(VAE):
 
         if self.model_config.reconstruction_loss == "mse":
 
-            recon_loss = F.mse_loss(
+            recon_loss = 0.5*F.mse_loss(
                 recon_x.reshape(x.shape[0], -1),
                 x.reshape(x.shape[0], -1),
                 reduction="none",
@@ -130,7 +131,7 @@ class my_VAE_MAF(VAE):
 
         KLD = log_prob_z0 - log_prob_zk - log_abs_det_jac
 
-        return (recon_loss + KLD).mean(dim=0), recon_loss.mean(dim=0), KLD.mean(dim=0)
+        return (recon_loss + KLD).sum(dim=0), recon_loss.sum(dim=0), KLD.sum(dim=0)
 
     def _sample_gauss(self, mu, std):
         # Reparametrization trick

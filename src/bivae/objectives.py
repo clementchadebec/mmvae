@@ -225,24 +225,30 @@ def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
     for m, xm in enumerate(x):
         assert recons[m].shape == xm.shape , f'Sizes are different : {recons[m].shape,xm.shape}'
 
-        loss = loss - F.mse_loss(
+        F_loss = recon_loss_dict[model.params.recon_losses[m]]
+
+        details[f'loss_{m}'] = F_loss(
                 recons[m].reshape(xm.shape[0], -1),
                 xm.reshape(xm.shape[0], -1),
                 reduction="none",
-            ).sum(dim=-1).sum()*model.lik_scaling[m]
-    details['loss'] = loss.item()
+            ).sum()*model.lik_scaling[m]
+
+        loss = loss - details[f'loss_{m}']
+
+
+    details['loss'] = loss
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
     # print(list(model.joint_encoder.parameters())[0].requires_grad)
     details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
+    
     # Approximate the posterior
     if epoch >= warmup:
         # Add the unimodal elbos
         for m,vae in enumerate(model.vaes):
             o = model.vaes[m].forward(x[m])
-            details[f'recon_loss_{m}'] = o.recon_loss * x[m].shape[0]
-            details[f'kld_{m}'] = o.kld *x[m].shape[0]
-            loss -= (details[f'recon_loss_{m}'] + model.beta_kl*details[f'kld_{m}'])*model.lik_scaling[m]
+            details[f'neg_elbo_{m}'] = o.neg_elbo * model.lik_scaling[m]
+            loss -= details[f'neg_elbo_{m}']
 
     return loss - beta_prior * details['kld_prior'] , details
 

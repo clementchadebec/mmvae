@@ -86,6 +86,7 @@ class my_VAE(BaseAE):
         z, eps = self._sample_gauss(mu, std)
         recon_x = self.decoder(z)["reconstruction"]
 
+        neg_elbo, _, _= self.loss_function(recon_x, x, mu, log_var, z)
 
         output = ModelOutput(
             recon_x=recon_x,
@@ -94,7 +95,8 @@ class my_VAE(BaseAE):
             log_var=log_var,
             z=z,
             log_abs_det_jac=0,
-            std=std
+            std=std,
+            neg_elbo=neg_elbo
         )
 
         return output
@@ -103,7 +105,7 @@ class my_VAE(BaseAE):
 
         if self.model_config.reconstruction_loss == "mse":
 
-            recon_loss = F.mse_loss(
+            recon_loss = 0.5*F.mse_loss(
                 recon_x.reshape(x.shape[0], -1),
                 x.reshape(x.shape[0], -1),
                 reduction="none",
@@ -119,7 +121,7 @@ class my_VAE(BaseAE):
 
         KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1)
 
-        return (recon_loss + KLD).mean(dim=0), recon_loss.mean(dim=0), KLD.mean(dim=0)
+        return (recon_loss + KLD).sum(dim=0), recon_loss.sum(dim=0), KLD.sum(dim=0)
 
     def inverse_flow(self, z):
         output = ModelOutput(
