@@ -311,7 +311,7 @@ class JMVAE_NF(Multi_VAES):
         
         for m in subset:
             # Compute lnqz
-            flow_output = self.vaes[m].flow(z) if hasattr(self.vaes[m], "flow") else self.vae[m].inverse_flow(z)
+            flow_output = self.vaes[m].flow(z) if hasattr(self.vaes[m], "flow") else self.vaes[m].inverse_flow(z)
             vae_output = self.vaes[m].encoder(data[m])
             mu, log_var, z0 = vae_output.embedding, vae_output.log_covariance, flow_output.out
 
