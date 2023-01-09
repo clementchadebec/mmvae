@@ -349,7 +349,7 @@ class Multi_VAES(nn.Module):
         if self.mod == 3:
             
             for i in range(3):
-                moe = torch.logsumexp(torch.stack([ll[i][j] for j in range(self.mod) if i!=j]), dim=0)
+                moe = torch.logsumexp(torch.stack([ll[i][j] for j in range(self.mod) if i!=j]), dim=0) - np.log(2)
                 update_details(metrics, {f'cond_lw_subset_{i}' : torch.mean(moe)})
                 
         return metrics
