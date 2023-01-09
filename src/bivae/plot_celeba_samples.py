@@ -32,13 +32,13 @@ wandb.init(project = 'plot_celeba_samples' , entity="asenellart")
 
 """A script to plot samples from the different models and saving all the attributes """
 
-models_to_evaluate = [ 'jmvae_nf_dcca/celeba','mmvae/celeba','mvae/celeba', 'jmvae/celeba']
+models_to_evaluate = ['jmvae_nf/celeba', 'jmvae_nf_dcca/celeba','mmvae/celeba','mvae/celeba', 'jmvae/celeba']
 model_dicts = []
 
 # load args from disk if pretrained model path is given
 for model_name in models_to_evaluate:
     print(model_name)
-    day_path = max(glob.glob(os.path.join('../experiments/' + model_name, '*/')), key=os.path.getmtime)
+    day_path = max(glob.glob(os.path.join('/gpfsscratch/rech/wlr/uhw48em/experiments/' + model_name, '*/')), key=os.path.getmtime)
     model_path = max(glob.glob(os.path.join(day_path, '*/')), key=os.path.getmtime)
     with open(model_path + 'args.json', 'r') as fcc_file:
         # Load the args
@@ -62,7 +62,7 @@ for model_name in models_to_evaluate:
 
 # set up run path
 
-runPath = Path('../experiments/compare_celeba')
+runPath = Path('/gpfsscratch/rech/wlr/uhw48em/experiments/compare_celeba')
 runPath.mkdir(parents=True, exist_ok=True)
 sys.stdout = Logger('{}/run.log'.format(runPath))
 print('Expt:', runPath)
