@@ -10,6 +10,7 @@ from torchvision.utils import save_image
 
 from bivae.analysis.pytorch_fid import wrapper_inception, calculate_frechet_distance
 from bivae.dataloaders import BasicDataset
+import time
 
 def fid(model, batch_size):
         
@@ -180,7 +181,7 @@ def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_
         # Choose at random a modality to use for the importance sampling
         i_s = np.random.randint(0,2)
         i_s_mod, n_i_s_mod = subset[i_s], subset[1-i_s]
-
+        normalize_weights = []
         for n in range(nb_batches):
             lnpxs = []
             repeated_data_point = torch.stack(batch_size_K * [data[i_s_mod][i]]) # batch_size_K, n_channels, h, w
@@ -188,7 +189,6 @@ def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_
 
             # Encode with the conditional VAE
             latents = model.infer_latent_from_mod(i_s_mod,repeated_data_point)
-
             # Decode with the opposite decoder
             recon = model.vaes[gen_mod].decoder(latents).reconstruction
 
@@ -203,16 +203,14 @@ def compute_cond_ll_from_poe_subset(model, data, subset, gen_mod, K=1000, batch_
             # Compute Importance weights 
             # As subset we only consider the modality we didn't use to sample from since w = q(z|x_1)q(z|x_2)/(p(z)*q(z|x_2)) if i_s=2
             ln_q_zxs = model.compute_poe_posterior([n_i_s_mod],latents,repeated_data_subset, divide_prior=True, grad=False)
-            
-            # Normalize the weights
-            # print("shape of ln_q_zxs", ln_q_zxs.shape)
-            ln_q_zxs = ln_q_zxs - torch.logsumexp(ln_q_zxs,dim=0)
+
             
             lpx_z += ln_q_zxs
-
+            normalize_weights.append(torch.logsumexp(ln_q_zxs, dim=0))
             lnpxs.append(torch.logsumexp(torch.Tensor(lpx_z), dim=0) ) 
         
-        ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - np.log(nb_batches))
+        normalize_weights = torch.logsumexp(torch.Tensor(normalize_weights), dim=0)
+        ll.append(torch.logsumexp(torch.Tensor(lnpxs), dim=0) - normalize_weights)
 
     return torch.sum(torch.tensor(ll))/len(ll)
 

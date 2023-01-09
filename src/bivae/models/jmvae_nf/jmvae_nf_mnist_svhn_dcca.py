@@ -106,7 +106,8 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         they are well distributed in that class"""
         
         self.set_classifiers()
-        general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+        # general_metrics = super.compute_metrics(self, runPath, epoch, freq=freq)
+        general_metrics = {}
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)

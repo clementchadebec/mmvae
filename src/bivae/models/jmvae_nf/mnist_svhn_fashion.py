@@ -21,6 +21,7 @@ from bivae.utils import add_channels, update_details
 from ..jmvae_nf import JMVAE_NF
 from ..modalities.trimodal import *
 from ..nn import Decoder_VAE_SVHN, MultipleHeadJoint, TwoStepsEncoder
+import time
 
 dist_dict = {'normal': dist.Normal, 'laplace': dist.Laplace}
 
@@ -124,9 +125,9 @@ class MNIST_SVHN_FASHION(JMVAE_NF):
     
     def compute_conditional_likelihoods(self, data, K=1000, batch_size_K=100):
         d =  super().compute_conditional_likelihoods(data, K, batch_size_K)
-        
         poe_ll = compute_all_cond_ll_from_poe_subsets(self,data,K,batch_size_K=500)
         update_details(d,poe_ll)
+        
         
         return d
     

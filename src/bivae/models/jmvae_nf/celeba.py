@@ -46,7 +46,7 @@ from bivae.models.modalities.celeba import *
 
 class JMVAE_NF_CELEBA(JMVAE_NF):
 
-    shape_mod1, shape_mod2 = (3, 64, 64), (1,1,40)
+    shape_mods = [(3, 64, 64), (1,1,40)]
     modelName = 'jmvae_nf_dcca_celeb_a'
 
 
@@ -60,15 +60,15 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
         # Define the joint encoder
         hidden_dim = 1024
-        pre_configs = [VAEConfig(self.shape_mod1, 128), VAEConfig(self.shape_mod2, 40)]
+        pre_configs = [VAEConfig(self.shape_mods[0], 128), VAEConfig(self.shape_mods[1], 40)]
         joint_encoder = DoubleHeadJoint(hidden_dim,pre_configs[0], pre_configs[1],
                                         Encoder_ResNet_VAE_CELEBA ,
                                         Encoder_VAE_MLP,
                                         params)
 
         # Define the unimodal encoders config
-        vae_config1 = vae_config(self.shape_mod1, params.latent_dim)
-        vae_config2 = vae_config(self.shape_mod2, params.latent_dim)
+        vae_config1 = vae_config(self.shape_mods[0], params.latent_dim)
+        vae_config2 = vae_config(self.shape_mods[1], params.latent_dim)
 
         # # First load the DCCA encoders
         if params.dcca :

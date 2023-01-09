@@ -31,8 +31,9 @@ def create_resnet_finetune():
 
     return model
 
-def accuracy(logits, labels):
-    return torch.sum((logits > 0).int() == labels)/(np.prod(labels.shape))
+def accuracy(logits, labels):    
+
+    return torch.sum((logits > 0).int() == labels.squeeze())/(labels.shape[-1])
 
 class attribute_classifier(torch.nn.Module):
 
