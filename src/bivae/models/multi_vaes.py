@@ -214,8 +214,6 @@ class Multi_VAES(nn.Module):
                 wandb.log({'cond_samples_{}x{}.png'.format(r,o) : wandb.Image(filename)})
 
 
-    def compute_metrics(self, runPath, epoch, freq = 5, num_clusters = 10):
-        return {}
 
 
     def compute_uni_ll_from_prior(self, data, mod, K=1000, batch_size_K = 100):
@@ -356,6 +354,10 @@ class Multi_VAES(nn.Module):
                 
         return metrics
     
+    
+    def step(self, epoch):
+        pass
+        
     
     
 

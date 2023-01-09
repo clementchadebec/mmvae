@@ -189,7 +189,9 @@ def test(epoch, agg):
             if i == 0:
                 wandb.log({'epoch' : epoch})
                 # Compute accuracies
-
+                # if hasattr(model, 'dcca'):
+                #     model.plot_dcca_values(data,runPath, classes[0])
+                    
                 if not args.no_analytics and (epoch%args.freq_analytics == 0 or epoch==1):
 
                     # wandb.log(model.compute_metrics(data, runPath, epoch, classes))
@@ -231,6 +233,7 @@ def estimate_log_marginal(K):
 
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
+
         agg = defaultdict(list)
         best_loss = torch.inf
         num_epochs_without_improvement = 0

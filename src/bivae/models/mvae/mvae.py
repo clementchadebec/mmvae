@@ -21,6 +21,8 @@ class MVAE(Multi_VAES):
         self.subsampling = False
         self.subsets = []
         
+    
+        
         
     def poe(self, mus_list, log_vars_list, eps = 1e-8):
         
@@ -302,3 +304,26 @@ class MVAE(Multi_VAES):
         return zs
     
     
+    def compute_poe_posterior(self,subset,z,data, divide_prior=True, grad=False):
+        """Return the log density q(z|x_subset) = q(z|x1)p(z)q(z|x_2)p(z)/p(z)
+
+        Args:
+            subset (_type_): List
+            latents (_type_): tensor (len(data[0]), latent_dim)
+            data (_type_): _description_
+            divide_prior (bool, optional): _description_. Defaults to True.
+            grad : False
+        """
+
+        # Compute the embeddings from each modality in the subset
+        lqz_xs = 0
+        for m in subset:
+            o = self.vaes[m].encoder(data[m])
+            t = self.poe([o.embedding], [o.log_covariance])
+            lqz_xs += (-0.5 * (t[1] + np.log(2*np.pi) + torch.pow(z - t[0], 2) / torch.exp(t[1]))).sum(dim=1) 
+        
+        # Divide by the prior 
+        lqz_xs -= (-0.5 *( np.log(2*np.pi) + torch.pow(z,2))).sum(dim=1)
+        
+        
+        return lqz_xs

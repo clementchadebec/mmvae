@@ -12,12 +12,13 @@ from bivae.my_pythae.models import my_VAE, my_VAE_IAF
 from bivae.my_pythae.models.vae_maf import VAE_MAF_Config, my_VAE_MAF
 from bivae.models.nn.medmnist import Encoder_ResNet_VAE_medmnist, Decoder_ResNet_AE_medmnist
 from bivae.dataloaders import MEDMNIST_DL
-from bivae.analysis.classifiers import ClassifierBLOOD, ClassifierPATH
+from bivae.analysis.classifiers import ClassifierBLOOD, ClassifierPneumonia
 
 from ..nn import Decoder_VAE_SVHN, TwoStepsEncoder
 from bivae.analysis.accuracies import compute_accuracies
 from bivae.utils import update_details
 from bivae.dcca.models import load_dcca_medmnist
+from bivae.analysis.classifiers import load_medmnist_classifiers, load_fake_dcca_medmnist
 
 
 class medmnist_utils():
@@ -26,8 +27,8 @@ class medmnist_utils():
     def __init__(self, params) -> None:
         
         self.data_path = params.data_path
-        self.shape_mods = [(3,28,28), (1,28,28)]
-        self.lik_scaling = (1,1)
+        self.shape_mods = [(1,28,28), (3,28,28)]
+        self.lik_scaling = (3,1) if params.llik_scaling == 0 else (1,1)
         
     def get_vaes(self,params):
         
@@ -41,12 +42,14 @@ class medmnist_utils():
         
 
         # Define the unimodal encoders config
-        vae_config1 = vae_config((3, 28, 28), params.latent_dim)
+        vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 28, 28), params.latent_dim)
 
         if params.dcca :
             # First load the DCCA encoders
-            self.dcca = load_dcca_medmnist()
+            
+            # self.dcca = load_dcca_medmnist(params.dcca_dim)
+            self.dcca = load_fake_dcca_medmnist()
 
             # Then add the flows
             encoder1 = TwoStepsEncoder(self.dcca[0], params)
@@ -66,19 +69,19 @@ class medmnist_utils():
             vae(model_config=vae_config2, encoder=encoder2, decoder=decoder2)
         ])
         
-        vaes[0].modelName = 'PATH'
+        vaes[0].modelName = 'PNEUMONIA'
         vaes[1].modelName = 'BLOOD'
         
         return vaes
     
-    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform = transforms.ToTensor()):
+    def getDataLoaders(self, batch_size, shuffle=True, device="cuda", transform= transforms.ToTensor()):
         
-        train, test, val = MEDMNIST_DL().getDataLoaders(batch_size, shuffle, device, transform)
+        train, test, val = MEDMNIST_DL().getDataLoaders(batch_size, shuffle, device, transform=transform)
         return train, test, val
     
     def set_classifiers(self):
 
-        self.classifiers = [ClassifierPATH(), ClassifierBLOOD()]
+        self.classifiers = load_medmnist_classifiers()
         return 
     
     def compute_fid(self, batch_size):
@@ -89,7 +92,8 @@ class medmnist_utils():
         they are well distributed in that class"""
         
         self.set_classifiers()
-        general_metrics = super().compute_metrics(self, runPath, epoch, freq=freq)
+        general_metrics={}
+        # general_metrics = super().compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
         update_details(accuracies, general_metrics)

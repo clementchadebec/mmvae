@@ -7,7 +7,7 @@ import torch.distributions as dist
 import torch.nn.functional as F
 from torchvision.utils import save_image
 from tqdm import tqdm
-
+from torch.autograd import grad
 import wandb
 from bivae.utils import (unpack_data)
 
@@ -71,7 +71,12 @@ class JMVAE_NF(Multi_VAES):
             else:
                 vae_output = vae(x[m])
                 details_reg[f'recon_loss_{m}'] = self.compute_recon_loss(x[m],vae_output.recon_x,m) # already the negative log conditional expectation
-                self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                # self.ratio_kl_recon[m] = details_reg[f'kld_{m}'].item() / details_reg[f'recon_loss_{m}'].item()
+                self.ratio_kl_recon[m] = 1
+                # for p in iter(vae.encoder.parameters()):
+                #     print(grad(details_reg[f'kld_{m}'], p,retain_graph=True)[0].norm())
+                #     print(grad(details_reg[f'recon_loss_{m}'],p, retain_graph=True)[0].norm())
+                #     1/0
                 reg += ( self.beta_kl*details_reg[f'kld_{m}'] + self.ratio_kl_recon[m]*details_reg[f'recon_loss_{m}']) # I don't think any likelihood scaling is needed here
 
         return reg, details_reg
@@ -141,8 +146,13 @@ class JMVAE_NF(Multi_VAES):
         if hasattr(self,'dcca') and self.params.dcca :
             self.dcca[m].requires_grad_(False)
             t = self.dcca[m](x).embedding
+
             recon_t = self.dcca[m](recon).embedding
+
             loss = F.mse_loss(t,recon_t,reduction='sum')
+            # print(torch.autograd.grad(loss,recon, retain_graph=True))
+            
+            # print(m,loss)
             return loss
         else : 
             return F.mse_loss(x.reshape(x.shape[0],-1),
@@ -278,7 +288,7 @@ class JMVAE_NF(Multi_VAES):
             
 
     
-    def compute_poe_posterior(self, subset : list,z_ : torch.Tensor,data : list, divide_prior = False):
+    def compute_poe_posterior(self, subset : list,z_ : torch.Tensor,data : list, divide_prior = True, grad=True):
         """Compute the log density of the product of experts for Hamiltonian sampling.
 
         Args:
@@ -293,7 +303,7 @@ class JMVAE_NF(Multi_VAES):
         
         lnqzs = 0
 
-        z = z_.clone().detach().requires_grad_(True)
+        z = z_.clone().detach().requires_grad_(grad)
         
         if divide_prior:
             # print('Dividing by the prior')
@@ -309,15 +319,14 @@ class JMVAE_NF(Multi_VAES):
             lnqzs += (log_q_z0 + flow_output.log_abs_det_jac) # n_data_points x 1
 
         
+        if grad:
+            g = torch.autograd.grad(lnqzs.sum(), z)[0]
+            return lnqzs, g
+        else:
+            return lnqzs
 
-        g = torch.autograd.grad(lnqzs.sum(), z)[0]
-        
 
-            
-        return lnqzs, g
-
-
-    def sample_from_poe_subset(self,subset,data, ax=None, mcmc_steps=100, n_lf=10, eps_lf=0.01, K=1, divide_prior=False):
+    def sample_from_poe_subset(self,subset,data, ax=None, mcmc_steps=100, n_lf=10, eps_lf=0.01, K=1, divide_prior=True):
         """Sample from the product of experts using Hamiltonian sampling.
 
         Args:

@@ -1,19 +1,19 @@
 {
-  "comment":"The JMVAE model with added flows but no dcca pre-embeddings. No reconstruction and maf flows",
+  "comment":"The TELBO model with added flows but no dcca pre-embeddings. No reconstruction and maf flows",
 
 
-  "experiment": "jmvae_nf/medmnist",
-  "model": "jnf_medmnist",
-  "obj": "jmvae_nf",
+  "experiment": "telbo_nf/celeba",
+  "model": "jnf_celeba",
+  "obj": "telbo_nf",
 
 
   "K": 1,
-  "recon_losses" : ["normal", "normal"],
+  "recon_losses" : ["normal", "bernoulli"],
   "looser": false,
-  "llik_scaling": 1,
-  "batch_size": 128, "learning_rate" : 1e-3,
-  "epochs": 200,
-  "latent_dim": 20,
+  "llik_scaling": 0,
+  "batch_size": 256, "learning_rate" : 1e-3,
+  "epochs": 60,
+  "latent_dim": 64,
   "num_hidden_layers": 1,
   "use_pretrain": "",
   "learn_prior": false,
@@ -25,7 +25,7 @@
   "dist": "normal",
   "data_path": "../data/",
   "skip_warmup": false,
-  "warmup": 100,
+  "warmup": 30,
   "no_nf": false,
   "beta_prior": 1,
   "beta_kl": 1,
@@ -36,7 +36,6 @@
   "freq_analytics": 5,
   "dcca": false,
   "device": "cuda",
-  "wandb_experiment": "medmnist",
-  "flow" : "maf", 
-  "use_gen" :false
+  "wandb_experiment": "celeba",
+  "flow" : "maf"
   }

@@ -176,7 +176,6 @@ if __name__ == '__main__':
     epoch_num = 100
     batch_size = 500
     dlargs = {'drop_last':True}
-    tx = transforms.Compose([transforms.ToTensor(), add_channels()])
     train_loader,test_loader, val_loader = MEDMNIST_DL().getDataLoaders(batch_size=batch_size, shuffle=True,dlargs=dlargs)
 
 

@@ -80,7 +80,7 @@ print('RunID:', runId)
 
 
 # Get the data
-train_loader, test_loader, val_loader = model.getDataLoaders(args.batch_size, device=device)
+train_loader, test_loader, val_loader = model.getDataLoaders(500, device=device)
 print(f"Train : {len(train_loader.dataset)},"
       f"Test : {len(test_loader.dataset)},"
       f"Val : {len(val_loader.dataset)}")

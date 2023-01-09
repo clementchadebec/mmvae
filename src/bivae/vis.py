@@ -10,6 +10,8 @@ import torch
 from matplotlib.lines import Line2D
 # from umap import UMAP
 from torchvision.utils import make_grid, save_image
+import matplotlib as mlp
+
 
 def custom_cmap(n):
     """Create customised colormap for scattered latent plot of n categories.
@@ -53,7 +55,7 @@ def plot_embeddings(emb, emb_l, labels, filepath, ticks=None, K=1):
     plt.savefig(filepath, bbox_inches='tight')
     plt.close()
 
-def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, filters=None, ax_lim = [-4,4]):
+def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, filters=None, ax_lim = None):
     point_shapes = ['o', '^']
     if filters is None:
         filters = [torch.ones_like(emb_l0)]
@@ -78,18 +80,24 @@ def plot_embeddings_colorbars(emb0,emb1,emb_l0,emb_l1,filepath, filters=None, ax
     plt.savefig(filepath)
     plt.close()
     
-def plot_joint_latent_space(emb,rayons,ax, fig, filters=None):
-    point_shapes = ['o', '^']
-    if filters is None:
-        filters = [torch.ones_like(rayons)]
+# def plot_joint_latent_space(emb,rayons,ax, fig, filters=None):
+#     point_shapes = ['o', '^']
+#     color_maps = [mlp.colormaps['coolwarm'], mlp.colormaps['coolwarm']]
+#     if filters is None:
+#         filters = [torch.ones_like(rayons).cpu()]
     
-    for m,filter in enumerate(filters):
-        filter = filter.numpy().astype(bool)
-        embf = emb[filter]
-        rf = rayons[filter]
-        sc = ax.scatter(embf[:,0],embf[:,1],marker=point_shapes[m], c = rf)
+#     for m,filter in enumerate(filters):
+#         filter = filter.numpy().astype(bool)
+#         embf = emb[filter]
+#         rf = rayons[filter]
+#         sc = ax.scatter(embf[:,0],embf[:,1],marker=point_shapes[m], c = rf, alpha=1, cmap = color_maps[m])
+#     return sc
 
-    fig.colorbar(sc, ax=ax)
+def plot_joint_latent_space(emb,rayons,ax, fig,classes):
+    
+    rf = (2*classes[0] - 1)*rayons
+    sc = ax.scatter(emb[:,0],emb[:,1], c = rf, alpha=1, cmap =  mlp.colormaps['RdBu'])
+    return sc
     
 
 def plot_posteriors_ellipsoid(means, stds,filepath,labels, ticks = None, colors = ['blue', 'orange', 'green']):
