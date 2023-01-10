@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from bivae.dcca.models import load_dcca_circles
 from bivae.vis import plot_joint_latent_space
 from seaborn import kdeplot
+from matplotlib.patches import Ellipse
 import pandas as pd
 
 
@@ -184,14 +185,30 @@ class JMVAE_NF_CIRCLES(JMVAE_NF):
         m,s, z = self.analyse_joint_posterior(data,len(data[0]))
         # sc = plot_joint_latent_space(z,rayons[mod],ax, fig,filters = [classes[0], 1-classes[0]])
         sc = plot_joint_latent_space(z,rayons[mod],ax, fig,classes)
-        # Then on the other side, take an image and sample from the posterior
-        samples= self.vaes[mod].forward(torch.stack([data[mod][idx]]*N)).z.cpu()
-        print(samples.shape)
         
-        # ax.scatter(samples[:,0], samples[:,1], c='black')
-        df = pd.DataFrame(samples, columns=[r'$z_1$', r'$z_2$'])
-        kdeplot(df, x=r'$z_1$',y=r'$z_2$', ax=ax, color='black', levels=5, linewidths = 1, bw_adjust=1)
-            
+        # Then plot one posterior density 
+        if self.params.no_nf :
+            out = self.vaes[mod].forward(data[mod][idx])
+            mu = out.mu.cpu().squeeze()
+            log_var = out.log_var.cpu().squeeze()
+            stds = np.exp(0.5*log_var)
+            print(mu.shape, stds.shape)
+            # We trace 3 ellipses
+            scale = [0.1,0.2, 0.4, 0.6,0.8]
+            for s in scale:
+                s = np.sqrt(-2*np.log(s))
+                ax.add_patch(Ellipse((mu[0],mu[1]), stds[0]*s*2, stds[1]*s*2,figure=fig, color='black', fill=False))
+                ax.set_xlabel(r'$z_1$')
+                ax.set_ylabel(r'$z_2$')
+
+        else:
+            samples= self.vaes[mod].forward(torch.stack([data[mod][idx]]*N)).z.cpu()
+            print(samples.shape)
+            # ax.scatter(samples[:,0], samples[:,1], c='black')
+            df = pd.DataFrame(samples, columns=[r'$z_1$', r'$z_2$'])
+            levels = [0.1,0.2, 0.4, 0.6,0.8]
+            kdeplot(df, x=r'$z_1$',y=r'$z_2$', ax=ax, color='black', levels=levels, linewidths = 1, bw_adjust=1)
+                
         
         return sc
         

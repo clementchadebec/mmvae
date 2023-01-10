@@ -156,7 +156,7 @@ def eval():
                         t = [-1. , -0.8, -0.6, -0.4, -0.2,  0.  , 0.2 , 0.4 , 0.6,  0.8 , 1. ]
                         cb = plots[mod][0].colorbar(sc, cax=cax, ticks=t)
                         cb.ax.set_yticklabels(np.abs(t))
-                        c_label = 'Circle size' if mod==0 else 'Square size'
+                        c_label = 'Square size' if mod==0 else 'Circle size'
                         cb.set_label(c_label)
                         # Save the image 
                         save_image(data[mod][idx], str(runPath) + '/image_{}_{}.png'.format(mod, idx))
