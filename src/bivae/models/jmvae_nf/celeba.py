@@ -98,7 +98,7 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
 
         self.vaes[0].modelName = 'celeb'
         self.vaes[1].modelName = 'attributes'
-        self.lik_scaling = ( np.prod(self.shape_mod2) / np.prod(self.shape_mod1), 1) if params.llik_scaling == 0.0 else (
+        self.lik_scaling = ( np.prod(self.shape_mods[1]) / np.prod(self.shape_mods[0]), 1) if params.llik_scaling == 0.0 else (
         params.llik_scaling, 1)
 
         # Set the classifiers
