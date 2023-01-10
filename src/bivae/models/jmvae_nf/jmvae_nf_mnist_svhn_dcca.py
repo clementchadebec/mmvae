@@ -58,7 +58,7 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
 
         if params.dcca :
             # First load the DCCA encoders
-            dim_dcca = 9
+            dim_dcca = params.dim_dcca
             self.dcca = load_dcca_mnist_svhn(dim=dim_dcca)
             wandb.log({'dcca_dim' : dim_dcca})
 

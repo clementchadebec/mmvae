@@ -38,5 +38,6 @@
   "device": "cuda",
   "wandb_experiment": "mnist_svhn",
   "flow" : "maf",
-  "use_gen" : false
+  "use_gen" : false,
+  "dim_dcca" : 9
   }
