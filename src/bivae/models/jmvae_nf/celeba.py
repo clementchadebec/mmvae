@@ -148,7 +148,8 @@ class JMVAE_NF_CELEBA(JMVAE_NF):
         - classes of shape (batch_size, 40)"""
         self.set_classifiers()
         metrics = compute_accuracies(self, data, runPath, epoch, classes, n_data, ns, freq)
-        general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
+        general_metrics = {}
+        #general_metrics = JMVAE_NF.compute_metrics(self, runPath, epoch, freq=freq)
 
         update_details(metrics, general_metrics)
         return metrics
