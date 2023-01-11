@@ -115,6 +115,7 @@ def visualize_umap(z,classes, save_file = None):
 
     fig = plt.figure()
     plt.scatter(z_embed[:,0], z_embed[:,1], c=classes)
+    plt.legend()
     if save_file is not None:
         plt.savefig(save_file)
     return fig

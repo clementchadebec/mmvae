@@ -33,6 +33,8 @@ class JMVAE_NF(Multi_VAES):
         self.train_latents = None
         if hasattr(params,'linear_warmup'):
             self.linear_warmup = params.linear_warmup
+        else:
+            self.linear_warmup=False
 
 
 

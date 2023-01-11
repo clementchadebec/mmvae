@@ -288,6 +288,63 @@ class MNIST_SVHN_DL():
         test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=False, **kwargs)
         val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
         return train, test, val
+    
+    
+class CHEST_SVHN_DL():
+
+    def __init__(self, data_path='../data'):
+        self.data_path = data_path
+
+    def getDataLoaders(self, batch_size, shuffle=True, device='cuda', transform=transforms.ToTensor(), len_train=None, dl_args={}):
+
+        if not (os.path.exists(self.data_path + '/trainchest_s-idx.pt')
+                and os.path.exists(self.data_path + '/trainc_svhn-idx.pt')
+                and os.path.exists(self.data_path + '/testchest_s-idx.pt')
+                and os.path.exists(self.data_path + '/testc_svhn-idx.pt')):
+            raise RuntimeError('Generate transformed indices with the script in bin')
+        # get transformed indices
+        t_mnist = torch.load(self.data_path + '/trainchest_s-idx.pt')
+        t_svhn = torch.load(self.data_path + '/trainc_svhn-idx.pt')
+        s_mnist = torch.load(self.data_path + '/testchest_s-idx.pt')
+        s_svhn = torch.load(self.data_path + '/testc_svhn-idx.pt')
+
+        # load base datasets
+        t1 = PneumoniaMNIST('train',transform=transform, target_transform=lambda t: t.squeeze(0))
+        s1  = PneumoniaMNIST('test' ,transform=transform, target_transform=lambda t: t.squeeze(0))
+        t2, s2 = SVHN_DL(self.data_path).getDataLoaders(batch_size, shuffle, device, transform)
+        
+        # shuffle to be able to reduce size of the dataset
+        
+        rd_idx = np.random.RandomState(seed=42).permutation(len(t_mnist))
+        t_mnist, t_svhn = t_mnist[rd_idx], t_svhn[rd_idx]
+        if len_train is None: 
+            len_train = len(t_mnist)
+        
+        train_mnist_svhn = TensorDataset([
+            ResampleDataset(t1, lambda d, i: t_mnist[i], size=len_train),
+            ResampleDataset(t2.dataset, lambda d, i: t_svhn[i], size=len_train)
+        ])
+        test_mnist_svhn = TensorDataset([
+            ResampleDataset(s1, lambda d, i: s_mnist[i], size=len(s_mnist)),
+            ResampleDataset(s2.dataset, lambda d, i: s_svhn[i], size=len(s_svhn))
+        ])
+
+        # Split between test and validation while fixing the seed to ensure that we always have the same sets
+        len_val = min(10000, len(train_mnist_svhn)//10)
+        train_set, val_set = random_split(train_mnist_svhn,
+                                         [len(train_mnist_svhn)-len_val,
+                                          len_val],
+                                         generator=torch.Generator().manual_seed(42))
+
+
+        kwargs = dl_args
+        if device == 'cuda':
+            kwargs['num_workers']=2
+            kwargs['pin_memory'] = True
+        train = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        test = DataLoader(test_mnist_svhn, batch_size=batch_size, shuffle=False, **kwargs)
+        val = DataLoader(val_set, batch_size=batch_size, shuffle=False, **kwargs)
+        return train, test, val
 
 class BINARY_MNIST_SVHN_DL():
 

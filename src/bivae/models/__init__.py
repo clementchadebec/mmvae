@@ -30,6 +30,7 @@ from .mvae.msf import MNIST_SVHN_FASHION as VAE_mvae_msf
 from .jmvae_nf.medmnist import MEDMNIST as VAE_jnf_medmnist
 from .mmvae.medmnist import MEDMNIST as VAE_mmvae_medmnist
 from .mvae.medmnist import MEDMNIST as VAE_mvae_medmnist
+from .jmvae_nf.chest_svhn import CHEST_SVHN as VAE_jnf_chest_svhn
 
 __all__ = [ 'VAE_mnist_svhn',
             'VAE_circles_squares',
@@ -51,6 +52,7 @@ __all__ = [ 'VAE_mnist_svhn',
             'VAE_mvae_msf',
             'VAE_jnf_medmnist', 
             'VAE_mmvae_medmnist',
-            'VAE_mvae_medmnist'
+            'VAE_mvae_medmnist',
+            'VAE_jnf_chest_svhn'
 
             ]
