@@ -238,7 +238,7 @@ if __name__ == '__main__':
         best_loss = torch.inf
         num_epochs_without_improvement = 0
         for epoch in range(min_epoch, args.epochs + 1):
-            if epoch == args.warmup :
+            if epoch == args.warmup and args.fix_jencoder:
                 print(f" ====> Epoch {epoch} Reset the optimizer")
                 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),lr=learning_rate)
                 scheduler = ReduceLROnPlateau(optimizer,'min')
@@ -252,7 +252,7 @@ if __name__ == '__main__':
                 print("Saved model after improvement of {}".format(best_loss-test_loss))
                 best_loss = test_loss
                 
-                if hasattr(model, 'joint_encoder') and epoch <= args.warmup :
+                if hasattr(model, 'joint_encoder') and epoch <= args.warmup and args.save_joint:
                     save_joint_path = Path('../experiments/joint_encoders/' + args.experiment.split('/')[1] )
                     save_joint_path.mkdir(parents=True, exist_ok=True)
                     save_joint_vae(model,save_joint_path)
