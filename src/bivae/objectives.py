@@ -181,6 +181,12 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
         model.joint_encoder.requires_grad_(not model.fix_jencoder) #fix the joint encoder
         for vae in model.vaes:
             vae.decoder.requires_grad_(not model.fix_decoders) #fix the decoders
+            
+    if model.linear_warmup:
+        beta_reg = (epoch-1)/warmup
+    else: 
+        beta_reg = 1
+        
     qz_xy, recons, z_xy = model.forward(x)
     # mu, std = model.joint_encoder.forward(x)
     loss, details = 0, {}
@@ -198,20 +204,20 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
         loss = loss - details[f'loss_{m}']
 
 
-    details['loss'] = loss
+    details['loss'] = loss # Reconstruction term only
     # KLD to the prior
     mu, log_var = qz_xy.mean, 2*torch.log(qz_xy.stddev)
     # print(list(model.joint_encoder.parameters())[0].requires_grad)
     details['kld_prior'] = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=-1).sum()
     # Approximate the posterior
-    if epoch >= warmup:
+    if epoch >= warmup or model.linear_warmup:
         reg, det = model.compute_kld(x)
         details['reg'] = reg
         update_details(details, det)
     else :
         details['reg']=0
 
-    return  (loss - beta_prior*details['kld_prior'] - details['reg'], details)
+    return  (loss - beta_reg*(beta_prior*details['kld_prior'] + details['reg']), details)
 
 
 def m_telbo_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):

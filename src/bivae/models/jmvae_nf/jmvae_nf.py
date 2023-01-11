@@ -31,7 +31,8 @@ class JMVAE_NF(Multi_VAES):
         self.ratio_kl_recon = [None,None]
         self.no_recon = params.no_recon if hasattr(params, 'no_recon') else False# if we want to omit the reconstruction term in the loss (jmvae loss)
         self.train_latents = None
-
+        if hasattr(params,'linear_warmup'):
+            self.linear_warmup = params.linear_warmup
 
 
 
