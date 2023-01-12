@@ -4,7 +4,7 @@ import torch
 from numpy import prod
 import torch.nn.functional as F
 from bivae.utils import log_mean_exp, is_multidata, kl_divergence, wasserstein_2, update_details
-
+import wandb
 
 # helper to vectorise computation
 def compute_microbatch_split(x, K):
@@ -183,10 +183,10 @@ def m_jmvae_nf(model,x,K=1, epoch=1, warmup=0, beta_prior=1):
             vae.decoder.requires_grad_(not model.fix_decoders) #fix the decoders
             
     if model.linear_warmup:
-        beta_reg = (epoch-1)/warmup
+        beta_reg = (epoch-1)/warmup if epoch-1 <= warmup else 1
     else: 
         beta_reg = 1
-        
+    wandb.log({'beta_reg' : beta_reg})
     qz_xy, recons, z_xy = model.forward(x)
     # mu, std = model.joint_encoder.forward(x)
     loss, details = 0, {}

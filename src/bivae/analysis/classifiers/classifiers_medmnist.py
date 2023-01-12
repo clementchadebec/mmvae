@@ -67,7 +67,13 @@ class ClassifierBLOOD(nn.Module):
     def forward(self, x):
         return self.network(self.transform(x))
 
-2
+
+def load_pneumonia_classifier():
+    model1 = ClassifierPneumonia()
+    model1.eval()
+    model1.cuda()
+    return model1
+
 def load_medmnist_classifiers():
     
     model1 = ClassifierPneumonia()
