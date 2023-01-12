@@ -46,15 +46,21 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
         hidden_dim = 512
         pre_configs = [VAEConfig((1, 28, 28), 20), VAEConfig((3, 32, 32), 20)]
         joint_encoder = DoubleHeadJoint(hidden_dim, pre_configs[0], pre_configs[1],Encoder_VAE_MLP, Encoder_VAE_SVHN,params)
-        # joint_encoder = MultipleHeadJoint(hidden_dim,pre_configs,
-        #                                 [Encoder_VAE_MLP ,
-        #                                 Encoder_VAE_SVHN],
-        #                                 params)
-        
+       
 
         # Define the unimodal encoders config
         vae_config1 = vae_config((1, 28, 28), params.latent_dim)
         vae_config2 = vae_config((3, 32, 32), params.latent_dim)
+        
+        if hasattr(params,'n_made_blocks'):
+            vae_config1.n_made_blocks = params.n_made_blocks
+            vae_config2.n_made_blocks = params.n_made_blocks
+            print(f'Using {params.n_made_blocks} in the flows')
+            
+        wandb.config.update(vae_config1.to_dict())
+        wandb.config.update(vae_config2.to_dict())
+
+        
 
         if params.dcca :
             # First load the DCCA encoders
