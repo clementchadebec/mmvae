@@ -46,10 +46,10 @@ class ClassifierPneumonia(nn.Module):
         ])
         
     def forward(self, x):
-        print(x.shape)
+        #print(x.shape)
         
         h = self.network(self.transform(x))
-        print(h.shape)
+        #print(h.shape)
         return h
     
 
@@ -101,8 +101,9 @@ class fake_encoder_lcca_model1(nn.Module):
     def forward(self, x):
         self.encoder.eval()
         h = self.encoder(x)
-        h = (h == torch.max(h, dim=1)).float()
-        print(h)
+        #print("hshape",torch.max(h,dim=1).shape)
+        h = (h == torch.max(h, dim=1, keepdim=True).values).float()
+        #print(h)
         # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
         o = ModelOutput(embedding = h)
 
@@ -123,8 +124,8 @@ class fake_encoder_lcca_model2(nn.Module):
     def forward(self, x):
         self.encoder.eval()
         h = self.encoder(x)
-        h = (h == torch.max(h, dim=1)).float()
-        print(h)
+        h = (h == torch.max(h, dim=1, keepdim=True).values).float()
+        #print(h)
 
         # o = ModelOutput(embedding = result.float()[:,:self.latent_dim])
         o = ModelOutput(embedding = h)
