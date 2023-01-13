@@ -43,6 +43,7 @@
   "save_joint":false,
   "linear_warmup":false,
 
+  "dim_dcca" : 9,
 
   "n_made_blocks":5
 
