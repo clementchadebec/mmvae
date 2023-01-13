@@ -76,7 +76,7 @@ skip_warmup = args.skip_warmup
 # pretrained_joint_path = '../experiments/clean_mnist_svhn/2022-06-29/2022-06-29T11:41:41.132687__5qri92/'
 # pretrained_joint_path = '../experiments/jmvae/2022-06-28/2022-06-28T17:25:01.03903846svjh2d/'
 # pretrained_joint_path = '../experiments/celeba/2022-10-13/2022-10-13T13:54:42.595068mmpybk9u/'
-pretrained_joint_path = '../experiments/joint_encoders/'+ args.experiment.split('/')[1] + '/'
+pretrained_joint_path = '../experiments/joint_encoders/'+ args.experiment.split('/')[-1] + '/'
 
 min_epoch = 1
 
