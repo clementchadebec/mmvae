@@ -2,7 +2,7 @@
   "comment":"The JMVAE model with added flows but no dcca pre-embeddings. No reconstruction and maf flows",
 
 
-  "experiment": "flow_tuning/jmvae_nf_2/mnist_svhn",
+  "experiment": "flow_tuning/jnfd_2/mnist_svhn",
   "model": "jnf_mnist_svhn_dcca",
   "obj": "jmvae_nf",
 
