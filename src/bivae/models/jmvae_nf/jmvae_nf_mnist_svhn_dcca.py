@@ -57,8 +57,8 @@ class JMVAE_NF_DCCA_MNIST_SVHN(JMVAE_NF):
             vae_config2.n_made_blocks = params.n_made_blocks
             print(f'Using {params.n_made_blocks} in the flows')
             
-        wandb.config.update(vae_config1.to_dict())
-        wandb.config.update(vae_config2.to_dict())
+        wandb.config.update({'config_1' : vae_config1.to_dict()})
+        wandb.config.update({'config_2' : vae_config2.to_dict()})
 
         
 
