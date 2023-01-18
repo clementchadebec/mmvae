@@ -72,9 +72,9 @@ class celeba(MMVAE):
     def compute_metrics(self, data, runPath, epoch, classes, n_data=100, ns=300, freq=10):
         self.set_classifiers()
         metrics = compute_accuracies(self, data, runPath, epoch, classes, n_data, ns, freq)
-        general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
+        # general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
 
-        update_details(metrics, general_metrics)
+        # update_details(metrics, general_metrics)
         return metrics
 
 
