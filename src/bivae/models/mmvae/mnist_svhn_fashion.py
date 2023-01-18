@@ -68,10 +68,10 @@ class MNIST_SVHN_FASHION(MMVAE):
         they are well distributed in that class"""
         
         self.set_classifiers()
-        general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
+        # general_metrics = MMVAE.compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
 
-        update_details(accuracies, general_metrics)
+        # update_details(accuracies, general_metrics)
         return accuracies
 
     def compute_fid(self, batch_size):
