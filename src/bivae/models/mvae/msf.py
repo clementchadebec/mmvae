@@ -70,9 +70,9 @@ class MNIST_SVHN_FASHION(MVAE):
         they are well distributed in that class"""
         
         self.set_classifiers()
-        general_metrics = MVAE.compute_metrics(self, runPath, epoch, freq=freq)
+        # general_metrics = MVAE.compute_metrics(self, runPath, epoch, freq=freq)
         accuracies = compute_accuracies(self,data,classes,n_data,ns)
-        update_details(accuracies, general_metrics)
+        # update_details(accuracies, general_metrics)
         
         # Compute subset conditional accuracies
         cond_acc = compute_poe_subset_accuracy(self,data,classes,n_data,ns)
