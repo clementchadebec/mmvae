@@ -25,7 +25,9 @@ if __name__ == '__main__':
 
     # get the individual datasets
     tx = transforms.ToTensor()
+    path_data = '../data'=
     path_data = '../data/'
+
     train_mnist = datasets.MNIST(path_data, train=True, download=True, transform=tx)
     test_mnist = datasets.MNIST(path_data, train=False, download=True, transform=tx)
     train_svhn = datasets.SVHN(path_data, split='train', download=True, transform=tx)

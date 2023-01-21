@@ -1,7 +1,7 @@
 { "experiment": "mmvae/medmnist",
   "model": "mmvae_medmnist",
   "obj": "dreg",
-  "K": 15,
+  "K": 30,
   "recon_losses" : ["normal", "normal"],
   "looser": true,
   "llik_scaling": 0.0,

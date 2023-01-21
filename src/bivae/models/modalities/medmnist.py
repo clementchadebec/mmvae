@@ -46,7 +46,7 @@ class medmnist_utils():
         vae_config2 = vae_config((3, 28, 28), params.latent_dim)
 
         if params.dcca :
-            # First load the DCCA encoders
+            # First load the DCCA encoder
             
             # self.dcca = load_dcca_medmnist(params.dcca_dim)
             self.dcca = load_fake_dcca_medmnist()

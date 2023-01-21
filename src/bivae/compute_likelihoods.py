@@ -118,5 +118,5 @@ def eval():
 
 if __name__ == '__main__':
     with Timer('MM-VAE') as t:
-        for r in range(1): # The number of independant runs
+        for r in range(5): # The number of independant runs
             eval()

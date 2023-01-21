@@ -32,7 +32,7 @@ wandb.init(project = 'plot_celeba_samples' , entity="asenellart")
 
 """A script to plot samples from the different models and saving all the attributes """
 
-models_to_evaluate = [ 'jmvae_nf_dcca/celeba','mmvae/celeba','mvae/celeba', 'jmvae/celeba']
+models_to_evaluate = ['mvae/celeba','mmvae/celeba','jean_zay_models/jmvae/celeba','jean_zay_models/jmvae_nf/celeba','jean_zay_models/jmvae_nf_dcca/celeba']
 model_dicts = []
 
 # load args from disk if pretrained model path is given

@@ -38,4 +38,8 @@ src/bivae/models/jmvae_nf/__pycache__/
 src/bivae/my_pythae/models/__pycache__/
 src/bivae/dcca/__pycache__/utils.cpython-38.pyc
 examples/model.pt
+*.cpython-38.pyc
+
+
 toy_compare/
+
