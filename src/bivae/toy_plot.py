@@ -122,7 +122,7 @@ def eval():
                     # model.generate(runPath, epoch=0, N=32, save=True)
                     # model.generate_from_conditional(runPath, epoch=0, N=32, save=True)
                 
-                for idx in range(20):
+                for idx in [1]:
                     plt.rc('font', size=8)          # controls default text sizes
                     plt.rc('axes', titlesize=8)     # fontsize of the axes title
                     plt.rc('axes', labelsize=10)    # fontsize of the x and y labels
@@ -150,6 +150,9 @@ def eval():
                             model.eval()
                             sc = model.plot_joint_and_uni(data, rayons, classes,plots[mod][1][i], plots[mod][0], idx, mod, N=1000)
                             plots[mod][1][i].set_title(model_pretty_names[i])
+                            # sample conditional samples from this model
+                            model.sample_from_conditional([torch.stack([data[m][idx]]*8) for m in range(2)], runPath,i,n=20)
+
                         plots[mod][0].tight_layout()
                         plots[mod][0].subplots_adjust(right=0.91)
                         cax = plots[mod][0].add_axes([0.93, 0.06, 0.015, 0.90])
@@ -164,6 +167,7 @@ def eval():
                     fig1.savefig(str(runPath) + '/joint_uni_mod_1_{}.pdf'.format(idx))    
                     fig2.savefig(str(runPath) + '/joint_uni_mod_2_{}.pdf'.format(idx))
                     plt.close()
+                    
                 break
 
 
